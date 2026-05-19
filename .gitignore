@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules
 .pnpm-store
 
@@ -41,5 +41,5 @@ Thumbs.db
 *.tsbuildinfo
 .eslintcache
 
+# Vercel
 .vercel
-.env*.local
