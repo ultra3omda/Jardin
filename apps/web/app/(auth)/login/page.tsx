@@ -5,12 +5,8 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
-
-// useSearchParams() requires either a Suspense boundary or dynamic rendering.
-// Login is interactive — static prerender adds no value — so force dynamic.
-export const dynamic = 'force-dynamic';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -40,7 +36,12 @@ interface LoginError {
   availableTenantSlugs?: string[];
 }
 
-export default function LoginPage() {
+/**
+ * useSearchParams() forces this subtree out of static rendering, so Next.js 14
+ * requires it to be wrapped in <Suspense>. The exported page below provides
+ * that boundary.
+ */
+function LoginPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const setSession = useAuthStore((s) => s.setSession);
@@ -183,5 +184,21 @@ export default function LoginPage() {
         </form>
       </Form>
     </Card>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <div className="flex min-h-[200px] items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Chargement" />
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
