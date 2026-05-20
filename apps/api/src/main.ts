@@ -11,7 +11,9 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
 
   const config = app.get(ConfigService);
-  const port = config.get<number>('apiPort', 4000);
+  // Railway and some PaaS providers inject PORT — honour it; fall back to apiPort.
+  const port =
+    parseInt(process.env.PORT ?? '', 10) || config.get<number>('apiPort', 4000);
   const corsOrigin = config.get<string[]>('corsOrigin', ['http://localhost:3000']);
   const isProduction = config.get<string>('nodeEnv') === 'production';
 
@@ -50,7 +52,10 @@ async function bootstrap(): Promise<void> {
     swaggerOptions: { persistAuthorization: true },
   });
 
-  await app.listen(port);
+  // Bind to 0.0.0.0 explicitly so the server reachable on both IPv4 and IPv6
+  // — Node 18+ resolves "localhost" to ::1 first, which can cause CI healthcheck
+  // failures if the server only listens on IPv6 by default.
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap().catch((err) => {
