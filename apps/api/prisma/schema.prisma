@@ -1,0 +1,127 @@
+// Prisma schema for Ecole SaaS multi-tenant API
+// IDs are cuid2 (generated in code via @paralleldrive/cuid2) — Prisma's
+// native @default(cuid()) is cuid v1, which CLAUDE.md explicitly forbids.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum TenantType {
+  KINDERGARTEN
+  PRIMARY_SCHOOL
+  MIXED
+}
+
+enum Locale {
+  fr
+  en
+  ar
+  es
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  PARENT
+  STAFF
+}
+
+// ============================================================================
+// Models
+// ============================================================================
+
+model Tenant {
+  id        String     @id
+  name      String
+  slug      String     @unique
+  type      TenantType
+  locale    Locale     @default(fr)
+  timezone  String     @default("Europe/Paris")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  users         User[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@index([slug])
+  @@map("tenants")
+}
+
+model User {
+  id           String    @id
+  tenantId     String?
+  email        String
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole
+  locale       Locale    @default(fr)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  lastLoginAt  DateTime?
+
+  tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@unique([tenantId, email], name: "email_per_tenant")
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id                String    @id
+  tenantId          String
+  userId            String
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  revokedAt         DateTime?
+  replacedByTokenId String?   @unique
+  ip                String?
+  userAgent         String?
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedByToken RefreshToken? @relation("RefreshTokenChain", fields: [replacedByTokenId], references: [id])
+  replaces        RefreshToken? @relation("RefreshTokenChain")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id        String   @id
+  tenantId  String?
+  userId    String?
+  action    String
+  resource  String
+  metadata  Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
