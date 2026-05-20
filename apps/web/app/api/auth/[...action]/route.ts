@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { REFRESH_COOKIE_NAME, clearRefreshCookie, setRefreshCookie } from '@/lib/auth/cookies';
 import type { AuthResponse } from '@/lib/auth/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+// Use `||` (not `??`) so an empty string also falls back. Catches the
+// Vercel case where the env var exists but its value is `""`, which
+// would otherwise produce a relative URL and crash undici with
+// ERR_INVALID_URL.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+if (!/^https?:\/\//.test(API_URL)) {
+  throw new Error(
+    `NEXT_PUBLIC_API_URL must be an absolute http(s) URL. Got: "${API_URL}"`,
+  );
+}
 
 interface Context {
   params: { action: string[] };
