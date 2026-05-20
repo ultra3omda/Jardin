@@ -1,31 +1,89 @@
-# 🔧 Backend API (NestJS)
+# 🔧 @ecole-saas/api
 
-> 🚧 À venir en **Vague 1**
+Backend API NestJS pour la plateforme SaaS multi-tenant.
 
-API REST + WebSocket pour la plateforme SaaS multi-tenant.
+## Stack
 
-## Stack prévue
-
-- NestJS 10+
-- Prisma ORM
-- PostgreSQL 16
-- Redis (cache + queues BullMQ)
-- JWT auth + Refresh tokens
-- Multi-tenant via `tenant_id` (Row-Level Security)
+- NestJS 10 (Express adapter)
+- TypeScript strict
+- Prisma ORM + PostgreSQL 16
+- JWT (access 15min + refresh 30j, rotation)
+- Pino structured logging (PII redaction)
 - Swagger / OpenAPI auto-généré
+- Helmet + Throttler (rate limiting)
+- class-validator pour les DTOs
 
-## Hébergement prévu
+## Setup local
 
-- **Railway** ou **Render** pour l'API
-- **Neon** ou **Supabase** pour PostgreSQL
-- **Upstash** pour Redis
+1. **Copier les variables d'environnement**
 
-## Setup à venir
+   ```bash
+   cp .env.example .env
+   ```
 
-```bash
-cd apps/api
-pnpm install
-docker compose up -d  # postgres + redis local
-pnpm prisma migrate dev
-pnpm dev
-```
+   Génère des secrets JWT (≥ 256 bits) :
+
+   ```bash
+   openssl rand -base64 48   # une fois pour JWT_ACCESS_SECRET
+   openssl rand -base64 48   # une fois pour JWT_REFRESH_SECRET
+   ```
+
+2. **Démarrer Postgres** (depuis la racine du monorepo)
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. **Installer les dépendances**
+
+   ```bash
+   pnpm install
+   ```
+
+4. **Lancer l'API en dev**
+
+   ```bash
+   pnpm --filter=@ecole-saas/api dev
+   ```
+
+L'API tourne sur `http://localhost:4000`.
+
+## Endpoints
+
+| Route                | Description                        |
+| -------------------- | ---------------------------------- |
+| `GET  /health`       | Liveness probe                     |
+| `GET  /api/docs`     | Swagger UI                         |
+| `POST /api/auth/*`   | Auth endpoints (Vague 1, en cours) |
+
+## Scripts
+
+| Script             | Description                          |
+| ------------------ | ------------------------------------ |
+| `pnpm dev`         | NestJS en watch mode                 |
+| `pnpm build`       | Build production (`dist/`)           |
+| `pnpm start`       | Run production build                 |
+| `pnpm lint`        | ESLint                               |
+| `pnpm type-check`  | TypeScript strict check              |
+| `pnpm test`        | Vitest (unit + e2e)                  |
+| `pnpm test:cov`    | Coverage (seuil 70%)                 |
+
+## Variables d'environnement
+
+Voir `.env.example` à la racine du monorepo. Toutes sont validées par
+`class-validator` au démarrage (l'API refuse de démarrer si une variable
+est manquante ou invalide).
+
+## Sécurité
+
+- bcrypt rounds **12**
+- JWT HS256 avec secrets ≥ 256 bits
+- Refresh token rotation côté DB
+- Helmet sur tous les endpoints
+- Rate limiting global (100 req/min/ip)
+- CORS strict (whitelist via `CORS_ORIGIN`)
+- PII redactée des logs (passwords, tokens, cookies)
+
+## Multi-tenant
+
+Voir `docs/adr/0001-auth-strategy.md` (Vague 1, à venir).
