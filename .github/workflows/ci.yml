@@ -101,8 +101,8 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter=@ecole-saas/api exec prisma generate
 
-      - name: Apply Prisma migrations
-        run: pnpm --filter=@ecole-saas/api exec prisma migrate deploy
+      - name: Apply schema to CI database (no migration files yet — use db push)
+        run: pnpm --filter=@ecole-saas/api exec prisma db push --skip-generate --accept-data-loss
 
       - name: Run API tests with coverage
         run: pnpm --filter=@ecole-saas/api test:cov
@@ -137,7 +137,10 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      NODE_ENV: production
+      # NB: NODE_ENV is intentionally NOT set to production at the job level
+      # because pnpm install would skip devDependencies (incl. prisma CLI),
+      # which would break the apps/api postinstall hook. We set NODE_ENV=
+      # production only on the "Start API" and "Start web" steps below.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecole_saas?schema=public
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 30d
@@ -175,8 +178,8 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter=@ecole-saas/api exec prisma generate
 
-      - name: Apply Prisma migrations
-        run: pnpm --filter=@ecole-saas/api exec prisma migrate deploy
+      - name: Apply schema to CI database (no migration files yet — use db push)
+        run: pnpm --filter=@ecole-saas/api exec prisma db push --skip-generate --accept-data-loss
 
       - name: Build API
         run: pnpm --filter=@ecole-saas/api build
@@ -188,6 +191,8 @@ jobs:
         run: pnpm --filter=@ecole-saas/web exec playwright install --with-deps chromium
 
       - name: Start API (background)
+        env:
+          NODE_ENV: production
         run: |
           nohup pnpm --filter=@ecole-saas/api start > api.log 2>&1 &
           echo "API_PID=$!" >> $GITHUB_ENV
@@ -206,6 +211,8 @@ jobs:
           exit 1
 
       - name: Start web (background)
+        env:
+          NODE_ENV: production
         run: |
           nohup pnpm --filter=@ecole-saas/web start > web.log 2>&1 &
           echo "WEB_PID=$!" >> $GITHUB_ENV

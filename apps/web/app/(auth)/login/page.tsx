@@ -8,6 +8,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+// useSearchParams() requires either a Suspense boundary or dynamic rendering.
+// Login is interactive — static prerender adds no value — so force dynamic.
+export const dynamic = 'force-dynamic';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
