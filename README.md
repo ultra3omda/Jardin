@@ -28,26 +28,57 @@ ecole-saas/
 
 ### Prérequis
 
-- **Node.js** ≥ 20.0.0 (utilisez `nvm use` pour respecter `.nvmrc`)
-- **pnpm** ≥ 9.0.0 → `npm install -g pnpm`
+- **Node.js** 20.18.0 (cf. `.nvmrc`) — installer via [fnm](https://github.com/Schniz/fnm) ou nvm
+- **pnpm** 9.12.0 → `corepack enable && corepack prepare pnpm@9.12.0 --activate`
+- **Docker** + Docker Compose (pour Postgres local — Vague 1+)
+- **OpenSSL** (pour générer les secrets JWT)
+
+> 💡 **Windows** : utiliser **WSL2** (Ubuntu) pour éviter les blocages
+> Smart App Control sur les binaires natifs (esbuild, bcrypt, Prisma engines).
 
 ### Installation
 
 ```bash
-git clone <votre-repo-url>
+git clone <votre-repo-url> ecole-saas
 cd ecole-saas
 
-# Installer toutes les dépendances du monorepo
+# Activer la bonne version de Node
+fnm use   # ou: nvm use
+
+# Installer les dépendances du monorepo
 pnpm install
 
-# Copier les variables d'environnement
-cp .env.example .env.local
+# Préparer les variables d'environnement
+cp .env.example .env
+# Génère des secrets JWT >= 256 bits :
+#   openssl rand -base64 48   (deux fois, pour JWT_ACCESS_SECRET et JWT_REFRESH_SECRET)
+# Et reporte-les dans .env
 
-# Lancer le serveur de dev (Web uniquement pour Vague 0)
+# Démarrer Postgres (Vague 1+)
+docker compose up -d
+docker compose ps   # postgres doit être "healthy"
+
+# Appliquer le schéma Prisma (Vague 1+)
+pnpm --filter=@ecole-saas/api prisma migrate dev
+pnpm --filter=@ecole-saas/api prisma db seed
+
+# Lancer web + api en parallèle
 pnpm dev
 ```
 
-Ouvrez [http://localhost:3000](http://localhost:3000)
+| Service | URL                                              |
+| ------- | ------------------------------------------------ |
+| Web     | [http://localhost:3000](http://localhost:3000)   |
+| API     | [http://localhost:4000](http://localhost:4000)   |
+| Swagger | [http://localhost:4000/api/docs](http://localhost:4000/api/docs) |
+| Health  | [http://localhost:4000/health](http://localhost:4000/health)     |
+
+### Arrêter / nettoyer
+
+```bash
+docker compose down              # arrête postgres (données conservées)
+docker compose down -v           # arrête + supprime le volume (RAZ totale)
+```
 
 ### Commandes disponibles
 
