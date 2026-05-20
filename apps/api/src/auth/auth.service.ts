@@ -1,0 +1,360 @@
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { createId } from '@paralleldrive/cuid2';
+import { Tenant, User, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+
+import { PrismaService } from '../common/prisma/prisma.service';
+import { AuthResponseDto, MeResponseDto, TenantDto, UserDto } from './dto/auth-response.dto';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import type { JwtPayload } from './strategies/jwt.strategy';
+import { parseDurationMs } from './utils/duration.utils';
+import type { RequestMeta } from './utils/request-meta.utils';
+import { generateRefreshToken, hashRefreshToken } from './utils/token.utils';
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
+  ) {}
+
+  // ===== Public API =====
+
+  async register(dto: RegisterDto, meta: RequestMeta): Promise<AuthResponseDto> {
+    const email = this.normalizeEmail(dto.admin.email);
+    const slug = dto.tenant.slug.toLowerCase();
+
+    const existing = await this.prisma.tenant.findUnique({ where: { slug } });
+    if (existing) {
+      throw new BadRequestException({
+        code: 'TENANT_SLUG_TAKEN',
+        message: `Tenant slug "${slug}" is already taken`,
+      });
+    }
+
+    const rounds = this.config.get<number>('bcryptRounds', 12);
+    const passwordHash = await bcrypt.hash(dto.admin.password, rounds);
+
+    const { tenant, user } = await this.prisma.$transaction(async (tx) => {
+      const newTenant = await tx.tenant.create({
+        data: {
+          id: createId(),
+          name: dto.tenant.name.trim(),
+          slug,
+          type: dto.tenant.type,
+          locale: dto.tenant.locale ?? 'fr',
+          timezone: dto.tenant.timezone ?? 'Europe/Paris',
+        },
+      });
+      const newUser = await tx.user.create({
+        data: {
+          id: createId(),
+          tenantId: newTenant.id,
+          email,
+          passwordHash,
+          firstName: dto.admin.firstName.trim(),
+          lastName: dto.admin.lastName.trim(),
+          role: UserRole.SCHOOL_ADMIN,
+          locale: dto.admin.locale ?? 'fr',
+        },
+      });
+      return { tenant: newTenant, user: newUser };
+    });
+
+    await this.logAudit('auth.register', {
+      userId: user.id,
+      tenantId: tenant.id,
+      ...meta,
+    });
+
+    return this.issueTokensAndBuildResponse(user, tenant, meta);
+  }
+
+  async login(dto: LoginDto, meta: RequestMeta): Promise<AuthResponseDto> {
+    const email = this.normalizeEmail(dto.email);
+    const tenantSlug = dto.tenantSlug?.toLowerCase();
+
+    const candidates = await this.prisma.user.findMany({
+      where: {
+        email,
+        deletedAt: null,
+        ...(tenantSlug ? { tenant: { slug: tenantSlug } } : {}),
+      },
+      include: { tenant: true },
+    });
+
+    if (candidates.length === 0) {
+      await this.logAudit('auth.login.failed', {
+        metadata: { email, reason: 'not-found' },
+        ...meta,
+      });
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (candidates.length > 1) {
+      const slugs = candidates.map((c) => c.tenant?.slug).filter((s): s is string => !!s);
+      throw new BadRequestException({
+        code: 'TENANT_SLUG_REQUIRED',
+        message: 'Multiple accounts match this email. Specify tenantSlug.',
+        availableTenantSlugs: slugs,
+      });
+    }
+
+    const user = candidates[0]!;
+
+    // Vague 1: super_admin login flow not yet supported (refresh tokens
+    // require a non-null tenantId per current schema). Documented in
+    // docs/adr/0001-auth-strategy.md.
+    if (user.role === UserRole.SUPER_ADMIN) {
+      throw new BadRequestException({
+        code: 'SUPER_ADMIN_LOGIN_NOT_SUPPORTED',
+        message: 'Super admin login is reserved for a future wave (Vague 10).',
+      });
+    }
+
+    const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!valid) {
+      await this.logAudit('auth.login.failed', {
+        userId: user.id,
+        tenantId: user.tenantId,
+        metadata: { email, reason: 'bad-password' },
+        ...meta,
+      });
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    await this.logAudit('auth.login.success', {
+      userId: user.id,
+      tenantId: user.tenantId,
+      ...meta,
+    });
+
+    return this.issueTokensAndBuildResponse(user, user.tenant, meta);
+  }
+
+  async refresh(token: string, meta: RequestMeta): Promise<AuthResponseDto> {
+    const tokenHash = hashRefreshToken(token);
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      include: { user: { include: { tenant: true } } },
+    });
+
+    if (!stored) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    if (stored.revokedAt) {
+      // Token reuse detected — revoke the entire chain (defense against theft).
+      await this.revokeAllUserTokens(stored.userId);
+      await this.logAudit('auth.token_reuse_detected', {
+        userId: stored.userId,
+        tenantId: stored.tenantId,
+        metadata: { refreshTokenId: stored.id },
+        ...meta,
+      });
+      this.logger.warn(
+        `Refresh token reuse detected for user=${stored.userId} (tenant=${stored.tenantId}). All sessions revoked.`,
+      );
+      throw new UnauthorizedException('Refresh token reuse detected — please log in again');
+    }
+
+    // Rotate
+    const newRaw = generateRefreshToken();
+    const newId = createId();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.create({
+        data: {
+          id: newId,
+          tenantId: stored.tenantId,
+          userId: stored.userId,
+          tokenHash: hashRefreshToken(newRaw),
+          expiresAt: this.computeRefreshExpiry(),
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        },
+      });
+      await tx.refreshToken.update({
+        where: { id: stored.id },
+        data: { revokedAt: new Date(), replacedByTokenId: newId },
+      });
+    });
+
+    await this.logAudit('auth.refresh', {
+      userId: stored.userId,
+      tenantId: stored.tenantId,
+      ...meta,
+    });
+
+    const accessToken = await this.signAccessToken(stored.user);
+    return {
+      accessToken,
+      refreshToken: newRaw,
+      user: this.userToDto(stored.user),
+      tenant: stored.user.tenant ? this.tenantToDto(stored.user.tenant) : null,
+    };
+  }
+
+  async logout(token: string, meta: RequestMeta): Promise<void> {
+    const tokenHash = hashRefreshToken(token);
+    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
+    if (stored && !stored.revokedAt) {
+      await this.prisma.refreshToken.update({
+        where: { id: stored.id },
+        data: { revokedAt: new Date() },
+      });
+      await this.logAudit('auth.logout', {
+        userId: stored.userId,
+        tenantId: stored.tenantId,
+        ...meta,
+      });
+    }
+    // Silently succeed for unknown/already-revoked tokens — avoids leaking info
+  }
+
+  async me(userId: string): Promise<MeResponseDto> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      include: { tenant: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return {
+      user: this.userToDto(user),
+      tenant: user.tenant ? this.tenantToDto(user.tenant) : null,
+    };
+  }
+
+  // ===== Private =====
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  private async signAccessToken(user: User): Promise<string> {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      role: user.role,
+    };
+    return this.jwt.signAsync(payload, {
+      secret: this.config.get<string>('jwt.accessSecret'),
+      expiresIn: this.config.get<string>('jwt.accessExpiresIn', '15m'),
+    });
+  }
+
+  private computeRefreshExpiry(): Date {
+    const ms = parseDurationMs(this.config.get<string>('jwt.refreshExpiresIn', '30d'));
+    return new Date(Date.now() + ms);
+  }
+
+  private async issueTokensAndBuildResponse(
+    user: User,
+    tenant: Tenant | null,
+    meta: RequestMeta,
+  ): Promise<AuthResponseDto> {
+    if (!user.tenantId) {
+      // Belt-and-suspenders: callers must filter out super_admin before reaching
+      // this point. Documented in ADR 0001.
+      throw new BadRequestException({
+        code: 'SUPER_ADMIN_LOGIN_NOT_SUPPORTED',
+        message: 'Super admin login is reserved for a future wave (Vague 10).',
+      });
+    }
+
+    const accessToken = await this.signAccessToken(user);
+    const refreshTokenPlaintext = generateRefreshToken();
+    await this.prisma.refreshToken.create({
+      data: {
+        id: createId(),
+        tenantId: user.tenantId,
+        userId: user.id,
+        tokenHash: hashRefreshToken(refreshTokenPlaintext),
+        expiresAt: this.computeRefreshExpiry(),
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      },
+    });
+
+    return {
+      accessToken,
+      refreshToken: refreshTokenPlaintext,
+      user: this.userToDto(user),
+      tenant: tenant ? this.tenantToDto(tenant) : null,
+    };
+  }
+
+  private async revokeAllUserTokens(userId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  private async logAudit(
+    action: string,
+    opts: { tenantId?: string | null; userId?: string | null; metadata?: object } & RequestMeta,
+  ): Promise<void> {
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          id: createId(),
+          action,
+          resource: 'auth',
+          tenantId: opts.tenantId ?? null,
+          userId: opts.userId ?? null,
+          metadata: (opts.metadata ?? undefined) as object | undefined,
+          ip: opts.ip,
+          userAgent: opts.userAgent,
+        },
+      });
+    } catch (err) {
+      // Audit logging failures must never break the auth flow
+      this.logger.error(`Failed to write audit log for action=${action}: ${String(err)}`);
+    }
+  }
+
+  private userToDto(user: User): UserDto {
+    return {
+      id: user.id,
+      tenantId: user.tenantId,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      locale: user.locale,
+    };
+  }
+
+  private tenantToDto(tenant: Tenant): TenantDto {
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.slug,
+      type: tenant.type,
+      locale: tenant.locale,
+      timezone: tenant.timezone,
+    };
+  }
+}
