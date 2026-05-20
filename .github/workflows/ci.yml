@@ -194,6 +194,13 @@ jobs:
         env:
           NODE_ENV: production
         run: |
+          echo "::group::apps/api/dist contents"
+          find apps/api/dist -maxdepth 2 -type f 2>&1 | head -20 || echo "(dist not found)"
+          echo "::endgroup::"
+          if [ ! -f apps/api/dist/main.js ]; then
+            echo "::error::apps/api/dist/main.js missing — nest build output mislocated."
+            exit 1
+          fi
           nohup pnpm --filter=@ecole-saas/api start > api.log 2>&1 &
           echo "API_PID=$!" >> $GITHUB_ENV
 
