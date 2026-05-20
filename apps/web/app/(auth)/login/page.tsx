@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -52,7 +53,10 @@ export default function LoginPage() {
       const session = await login(values);
       setSession(session);
       const next = params.get('next');
-      router.push(next && next.startsWith('/') ? next : '/dashboard');
+      // typedRoutes is enabled in next.config.mjs, so dynamic strings need
+      // a Route cast. The `startsWith('/')` guard still prevents open-redirect.
+      const target = (next && next.startsWith('/') ? next : '/dashboard') as Route;
+      router.push(target);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === 'TENANT_SLUG_REQUIRED') {
