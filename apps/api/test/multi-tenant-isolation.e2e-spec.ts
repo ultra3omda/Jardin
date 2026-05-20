@@ -1,0 +1,216 @@
+/**
+ * Multi-tenant isolation e2e test (CRITICAL).
+ *
+ * Vague 1 contract: a user from tenant A MUST NEVER be able to read or
+ * write data belonging to tenant B, regardless of the query used.
+ *
+ * This test verifies the Prisma client extension that auto-injects
+ * `tenantId` into all read queries on tenant-scoped models when a tenant
+ * context is set. It also verifies the SUPER_ADMIN bypass for cross-tenant
+ * platform operations.
+ *
+ * Requires a running Postgres (docker compose up -d) and a clean DB.
+ */
+import { ConfigModule } from '@nestjs/config';
+import { Test, TestingModule } from '@nestjs/testing';
+import { createId } from '@paralleldrive/cuid2';
+import { Locale, TenantType, UserRole } from '@prisma/client';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import { configuration } from '../src/common/config/configuration';
+import { validateEnv } from '../src/common/config/env.validation';
+import { PrismaModule } from '../src/common/prisma/prisma.module';
+import { PrismaService } from '../src/common/prisma/prisma.service';
+import { TenantPrismaService } from '../src/common/prisma/tenant-prisma.service';
+import { TenantContextService } from '../src/common/tenant/tenant-context.service';
+import { TenantModule } from '../src/common/tenant/tenant.module';
+
+describe('Multi-tenant isolation (CRITICAL)', () => {
+  let moduleRef: TestingModule;
+  let prisma: PrismaService;
+  let tenantPrisma: TenantPrismaService;
+  let tenantContext: TenantContextService;
+
+  let tenantAId: string;
+  let tenantBId: string;
+  let userAId: string;
+  let userBId: string;
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          load: [configuration],
+          validate: validateEnv,
+          cache: true,
+        }),
+        TenantModule,
+        PrismaModule,
+      ],
+    }).compile();
+
+    await moduleRef.init();
+
+    prisma = moduleRef.get(PrismaService);
+    tenantPrisma = moduleRef.get(TenantPrismaService);
+    tenantContext = moduleRef.get(TenantContextService);
+  });
+
+  afterAll(async () => {
+    await moduleRef.close();
+  });
+
+  beforeEach(async () => {
+    // Wipe tenant-scoped data, then seed two isolated tenants
+    await prisma.refreshToken.deleteMany({});
+    await prisma.auditLog.deleteMany({});
+    await prisma.user.deleteMany({});
+    await prisma.tenant.deleteMany({});
+
+    tenantAId = createId();
+    tenantBId = createId();
+    userAId = createId();
+    userBId = createId();
+
+    await prisma.tenant.createMany({
+      data: [
+        {
+          id: tenantAId,
+          name: 'Tenant A',
+          slug: `tenant-a-${tenantAId.slice(0, 6)}`,
+          type: TenantType.KINDERGARTEN,
+          locale: Locale.fr,
+          timezone: 'Europe/Paris',
+        },
+        {
+          id: tenantBId,
+          name: 'Tenant B',
+          slug: `tenant-b-${tenantBId.slice(0, 6)}`,
+          type: TenantType.PRIMARY_SCHOOL,
+          locale: Locale.fr,
+          timezone: 'Europe/Paris',
+        },
+      ],
+    });
+
+    await prisma.user.createMany({
+      data: [
+        {
+          id: userAId,
+          tenantId: tenantAId,
+          email: 'user-a@tenant-a.test',
+          passwordHash: 'irrelevant',
+          firstName: 'User',
+          lastName: 'A',
+          role: UserRole.SCHOOL_ADMIN,
+          locale: Locale.fr,
+        },
+        {
+          id: userBId,
+          tenantId: tenantBId,
+          email: 'user-b@tenant-b.test',
+          passwordHash: 'irrelevant',
+          firstName: 'User',
+          lastName: 'B',
+          role: UserRole.SCHOOL_ADMIN,
+          locale: Locale.fr,
+        },
+      ],
+    });
+  });
+
+  it('findMany returns only tenant A users when context = tenant A', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const users = await tenantPrisma.client.user.findMany();
+        expect(users).toHaveLength(1);
+        expect(users[0]!.id).toBe(userAId);
+        expect(users[0]!.tenantId).toBe(tenantAId);
+      },
+    );
+  });
+
+  it('findMany returns only tenant B users when context = tenant B', async () => {
+    await tenantContext.run(
+      { tenantId: tenantBId, userId: userBId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const users = await tenantPrisma.client.user.findMany();
+        expect(users).toHaveLength(1);
+        expect(users[0]!.id).toBe(userBId);
+        expect(users[0]!.tenantId).toBe(tenantBId);
+      },
+    );
+  });
+
+  it('findFirst by id of tenant B from tenant A context returns null', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const stolen = await tenantPrisma.client.user.findFirst({ where: { id: userBId } });
+        expect(stolen).toBeNull();
+      },
+    );
+  });
+
+  it('count is tenant-scoped', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const count = await tenantPrisma.client.user.count();
+        expect(count).toBe(1);
+      },
+    );
+  });
+
+  it('updateMany scoped to tenant A does NOT touch tenant B rows', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const result = await tenantPrisma.client.user.updateMany({
+          data: { firstName: 'Pwned' },
+        });
+        expect(result.count).toBe(1);
+      },
+    );
+
+    const userB = await prisma.user.findUnique({ where: { id: userBId } });
+    expect(userB?.firstName).toBe('User');
+
+    const userA = await prisma.user.findUnique({ where: { id: userAId } });
+    expect(userA?.firstName).toBe('Pwned');
+  });
+
+  it('deleteMany scoped to tenant A does NOT delete tenant B rows', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        await tenantPrisma.client.user.deleteMany({});
+      },
+    );
+
+    const userB = await prisma.user.findUnique({ where: { id: userBId } });
+    expect(userB).not.toBeNull();
+    expect(userB?.tenantId).toBe(tenantBId);
+  });
+
+  it('SUPER_ADMIN bypass (skipTenantFilter=true) returns both tenants', async () => {
+    await tenantContext.run(
+      { tenantId: null, userId: 'super-admin', role: UserRole.SUPER_ADMIN, skipTenantFilter: true },
+      async () => {
+        const users = await tenantPrisma.client.user.findMany();
+        expect(users).toHaveLength(2);
+      },
+    );
+  });
+
+  it('without context, queries are NOT scoped (used by auth lookups)', async () => {
+    // No context set — useful for login flow where we need to find a user
+    // across tenants by email before issuing tokens. Auth service is the
+    // ONLY caller allowed to do this; everything else must run inside a
+    // tenant context.
+    const users = await tenantPrisma.client.user.findMany();
+    expect(users).toHaveLength(2);
+  });
+});
