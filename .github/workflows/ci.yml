@@ -68,8 +68,6 @@ jobs:
     env:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecole_saas?schema=public
-      JWT_ACCESS_SECRET: ci-test-access-secret-at-least-32-characters-long
-      JWT_REFRESH_SECRET: ci-test-refresh-secret-at-least-32-characters-long
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 30d
       BCRYPT_ROUNDS: '10'
@@ -86,6 +84,16 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
+
+      - name: Generate ephemeral JWT secrets for this CI run
+        # Secrets are generated fresh per run — never persisted in repo.
+        # Keeps GitGuardian and other static scanners happy (no dummy
+        # high-entropy strings checked in to source).
+        run: |
+          {
+            echo "JWT_ACCESS_SECRET=$(openssl rand -base64 48)"
+            echo "JWT_REFRESH_SECRET=$(openssl rand -base64 48)"
+          } >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -131,8 +139,6 @@ jobs:
     env:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecole_saas?schema=public
-      JWT_ACCESS_SECRET: ci-test-access-secret-at-least-32-characters-long
-      JWT_REFRESH_SECRET: ci-test-refresh-secret-at-least-32-characters-long
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 30d
       BCRYPT_ROUNDS: '10'
@@ -153,6 +159,15 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
+
+      - name: Generate ephemeral JWT secrets for this CI run
+        # Same rationale as in test-api: avoids checking in any dummy
+        # high-entropy string that scanners would flag as a leak.
+        run: |
+          {
+            echo "JWT_ACCESS_SECRET=$(openssl rand -base64 48)"
+            echo "JWT_REFRESH_SECRET=$(openssl rand -base64 48)"
+          } >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
