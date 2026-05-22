@@ -1,7 +1,11 @@
 'use client';
 
 import type { AuthSessionResponse, MeResponse } from '@/lib/auth/types';
-import type { LoginFormValues, RegisterFormValues } from '@/lib/validation/auth.schemas';
+import type {
+  ForgotPasswordFormValues,
+  LoginFormValues,
+  RegisterFormValues,
+} from '@/lib/validation/auth.schemas';
 
 /**
  * The web calls its OWN Next.js Route Handlers (NOT the NestJS API directly),
@@ -108,5 +112,27 @@ export async function resendVerificationEmail(accessToken: string): Promise<void
   return jsonRequest<void>(`${PROXY_BASE}/email/resend`, {
     method: 'POST',
     auth: accessToken,
+  });
+}
+
+export async function forgotPassword(values: ForgotPasswordFormValues): Promise<void> {
+  // Normalise empty optional tenantSlug to undefined for the API
+  const payload = {
+    email: values.email,
+    ...(values.tenantSlug && values.tenantSlug.length > 0 ? { tenantSlug: values.tenantSlug } : {}),
+  };
+  return jsonRequest<void>(`${PROXY_BASE}/password/forgot`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resetPassword(args: {
+  token: string;
+  newPassword: string;
+}): Promise<{ success: true; userId: string }> {
+  return jsonRequest<{ success: true; userId: string }>(`${PROXY_BASE}/password/reset`, {
+    method: 'POST',
+    body: JSON.stringify(args),
   });
 }
