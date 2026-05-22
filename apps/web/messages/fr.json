@@ -1,0 +1,16 @@
+{
+  "app": {
+    "name": "École SaaS",
+    "tagline": "Gestion d'établissement scolaire"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "retry": "Réessayer",
+    "back": "Retour",
+    "next": "Suivant",
+    "error": "Erreur",
+    "success": "Succès"
+  }
+}
