@@ -12,6 +12,7 @@ export interface AppConfig {
   };
   bcryptRounds: number;
   corsOrigin: string[];
+  webAppUrl: string;
 }
 
 export function configuration(): AppConfig {
@@ -30,5 +31,6 @@ export function configuration(): AppConfig {
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean),
+    webAppUrl: process.env.WEB_APP_URL ?? 'https://ecole-saas-weld.vercel.app',
   };
 }

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -29,6 +30,7 @@ import { HealthModule } from './health/health.module';
       { name: 'global', ttl: 60_000, limit: 100 },
     ]),
     AuthModule,
+    AdminModule,
     HealthModule,
   ],
   providers: [

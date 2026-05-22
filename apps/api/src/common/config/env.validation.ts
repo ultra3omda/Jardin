@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsInt,
   IsString,
+  Matches,
   Max,
   Min,
   MinLength,
@@ -55,6 +56,10 @@ export class EnvironmentVariables {
 
   @IsString()
   CORS_ORIGIN: string = 'http://localhost:3000';
+
+  @IsString()
+  @Matches(/^https?:\/\/.+/, { message: 'WEB_APP_URL must be an absolute http(s) URL' })
+  WEB_APP_URL: string = 'https://ecole-saas-weld.vercel.app';
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
