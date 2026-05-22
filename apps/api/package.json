@@ -24,6 +24,8 @@
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1052.0",
+    "@aws-sdk/s3-request-presigner": "^3.1052.0",
     "@ecole-saas/shared": "workspace:*",
     "@nestjs/common": "^10.4.4",
     "@nestjs/config": "^3.2.3",
@@ -36,6 +38,7 @@
     "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^5.20.0",
     "@react-email/components": "^0.0.34",
+    "archiver": "^8.0.0",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
@@ -56,6 +59,7 @@
     "@nestjs/schematics": "^10.2.2",
     "@nestjs/testing": "^10.4.4",
     "@swc/core": "^1.7.36",
+    "@types/archiver": "^7.0.0",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.6",
     "@types/node": "^22.7.5",
