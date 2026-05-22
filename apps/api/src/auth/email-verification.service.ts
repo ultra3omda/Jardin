@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
 import { User } from '@prisma/client';
+import { createElement } from 'react';
 
 import { ResendService } from '../common/email/resend.service';
 import { VerifyEmail } from '../common/email/templates/verify-email';
@@ -53,7 +54,7 @@ export class EmailVerificationService {
     const result = await this.resend.send({
       to: user.email,
       subject: 'Confirmez votre adresse email — École SaaS',
-      template: VerifyEmail({ firstName: user.firstName, verifyUrl }),
+      template: createElement(VerifyEmail, { firstName: user.firstName, verifyUrl }),
     });
 
     await this.writeAudit('auth.email.verification_sent', {

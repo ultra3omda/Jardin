@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
 import archiver from 'archiver';
+import { createElement } from 'react';
 
 import { R2Service } from '../common/r2/r2.service';
 import { ResendService } from '../common/email/resend.service';
@@ -173,7 +174,7 @@ export class ExportService {
     const emailResult = await this.resend.send({
       to: user.email,
       subject: 'Votre export de données École SaaS est prêt',
-      template: ExportReadyEmail({
+      template: createElement(ExportReadyEmail, {
         firstName: user.firstName,
         downloadUrl,
         expiresAtIso: expiresAt.toISOString(),

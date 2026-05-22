@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
 import * as bcrypt from 'bcrypt';
+import { createElement } from 'react';
 
 import { ResendService } from '../common/email/resend.service';
 import { ResetPasswordEmail } from '../common/email/templates/reset-password';
@@ -78,7 +79,7 @@ export class PasswordRecoveryService {
         const result = await this.resend.send({
           to: u.email,
           subject: 'Réinitialisation de votre mot de passe — École SaaS',
-          template: ResetPasswordEmail({ firstName: u.firstName, resetUrl }),
+          template: createElement(ResetPasswordEmail, { firstName: u.firstName, resetUrl }),
         });
 
         if (!result.success) {
