@@ -6,8 +6,30 @@ import { Locale, TenantType, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { InviteTokensService } from '../admin/invite-tokens.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
+
+const VALID_INVITE_TOKEN = 'a-valid-token-string-at-least-20-chars';
+const INVITE_ROW = {
+  id: 'inv-1',
+  tokenHash: 'hash',
+  invitedEmail: null as string | null,
+  intendedRole: UserRole.SCHOOL_ADMIN,
+  createdById: 'super-1',
+  consumedByUserId: null as string | null,
+  expiresAt: new Date(Date.now() + 86_400_000),
+  consumedAt: null as Date | null,
+  createdAt: new Date(),
+};
+
+type InviteTokensMock = {
+  validate: ReturnType<typeof vi.fn>;
+  validateAndConsume: ReturnType<typeof vi.fn>;
+  create: ReturnType<typeof vi.fn>;
+  list: ReturnType<typeof vi.fn>;
+  revoke: ReturnType<typeof vi.fn>;
+};
 
 type PrismaMock = {
   tenant: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
@@ -67,13 +89,22 @@ const baseTenant = {
 describe('AuthService', () => {
   let service: AuthService;
   let prisma: PrismaMock;
+  let inviteTokens: InviteTokensMock;
 
   beforeEach(async () => {
     prisma = buildPrismaMock();
+    inviteTokens = {
+      validate: vi.fn().mockResolvedValue({ ...INVITE_ROW }),
+      validateAndConsume: vi.fn(),
+      create: vi.fn(),
+      list: vi.fn(),
+      revoke: vi.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
+        { provide: InviteTokensService, useValue: inviteTokens },
         {
           provide: JwtService,
           useValue: {
@@ -311,11 +342,12 @@ describe('AuthService', () => {
   // register
   // ---------------------------------------------------------------------
   describe('register', () => {
-    it('rejects when slug is taken', async () => {
+    it('rejects when slug is taken (before invite validation)', async () => {
       prisma.tenant.findUnique.mockResolvedValueOnce({ ...baseTenant });
       await expect(
         service.register(
           {
+            inviteToken: VALID_INVITE_TOKEN,
             tenant: { name: 'X', slug: 'demo', type: TenantType.KINDERGARTEN },
             admin: {
               email: 'a@b.test',
@@ -327,16 +359,77 @@ describe('AuthService', () => {
           {},
         ),
       ).rejects.toMatchObject({ response: { code: 'TENANT_SLUG_TAKEN' } });
+      expect(inviteTokens.validate).not.toHaveBeenCalled();
     });
 
-    it('creates tenant + admin in a transaction and issues tokens', async () => {
+    it('propagates INVITE_TOKEN_UNKNOWN from the invite-tokens service', async () => {
       prisma.tenant.findUnique.mockResolvedValueOnce(null);
+      inviteTokens.validate.mockRejectedValueOnce(
+        new BadRequestException({ code: 'INVITE_TOKEN_UNKNOWN' }),
+      );
+
+      const err = await service
+        .register(
+          {
+            inviteToken: VALID_INVITE_TOKEN,
+            tenant: { name: 'X', slug: 'new', type: TenantType.KINDERGARTEN },
+            admin: {
+              email: 'a@b.test',
+              firstName: 'A',
+              lastName: 'B',
+              password: 'pwdpwdpwdpwd',
+            },
+          },
+          {},
+        )
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).getResponse()).toMatchObject({
+        code: 'INVITE_TOKEN_UNKNOWN',
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects invites whose intendedRole is not SCHOOL_ADMIN', async () => {
+      prisma.tenant.findUnique.mockResolvedValueOnce(null);
+      inviteTokens.validate.mockResolvedValueOnce({
+        ...INVITE_ROW,
+        intendedRole: UserRole.TEACHER,
+      });
+
+      const err = await service
+        .register(
+          {
+            inviteToken: VALID_INVITE_TOKEN,
+            tenant: { name: 'X', slug: 'new', type: TenantType.KINDERGARTEN },
+            admin: {
+              email: 'a@b.test',
+              firstName: 'A',
+              lastName: 'B',
+              password: 'pwdpwdpwdpwd',
+            },
+          },
+          {},
+        )
+        .catch((e) => e);
+
+      expect((err as BadRequestException).getResponse()).toMatchObject({
+        code: 'INVITE_ROLE_NOT_SUPPORTED_FOR_REGISTER',
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('creates tenant + admin + consumes invite in a single tx and issues tokens', async () => {
+      prisma.tenant.findUnique.mockResolvedValueOnce(null);
+      const txInviteUpdate = vi.fn().mockResolvedValue({ ...INVITE_ROW });
       prisma.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           tenant: { create: vi.fn().mockResolvedValue({ ...baseTenant, slug: 'new', id: 'tenant-2' }) },
           user: {
             create: vi.fn().mockResolvedValue({ ...baseUser, id: 'user-2', tenantId: 'tenant-2' }),
           },
+          inviteToken: { update: txInviteUpdate },
         };
         return cb(tx);
       });
@@ -344,6 +437,7 @@ describe('AuthService', () => {
 
       const result = await service.register(
         {
+          inviteToken: VALID_INVITE_TOKEN,
           tenant: { name: 'New School', slug: 'new', type: TenantType.PRIMARY_SCHOOL },
           admin: {
             email: 'Founder@New.School',
@@ -358,6 +452,14 @@ describe('AuthService', () => {
       expect(result.tenant?.slug).toBe('new');
       expect(result.user.id).toBe('user-2');
       expect(result.accessToken).toBe('signed-access-token');
+      expect(inviteTokens.validate).toHaveBeenCalledWith(VALID_INVITE_TOKEN, 'founder@new.school');
+      expect(txInviteUpdate).toHaveBeenCalledWith({
+        where: { id: 'inv-1' },
+        data: expect.objectContaining({
+          consumedByUserId: 'user-2',
+          consumedAt: expect.any(Date),
+        }),
+      });
     });
   });
 });

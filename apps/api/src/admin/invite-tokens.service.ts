@@ -119,22 +119,16 @@ export class InviteTokensService {
   }
 
   /**
-   * Validate and atomically consume a token. Throws an explicit code on
-   * each failure mode so the caller can surface a clear error to the user.
-   *
-   * Called by `AuthService.register()` AFTER tenant + user creation, with
-   * the freshly-created user's id as `consumingUserId`. Wrap in the same
-   * transaction as the user creation to keep things consistent.
+   * Read-only validation. Returns the token row if valid, or throws an
+   * explicit code on each failure mode so the caller can surface a clear
+   * error to the user. Does NOT mark the token as consumed — callers
+   * needing atomicity should call this BEFORE opening their transaction,
+   * then inline `tx.inviteToken.update({ ... consumedAt, consumedByUserId })`
+   * inside the transaction.
    */
-  async validateAndConsume(
-    plaintext: string,
-    consumingUserId: string,
-    consumingEmail: string,
-    tx?: Pick<PrismaService, 'inviteToken'>,
-  ): Promise<InviteToken> {
-    const client = tx ?? this.prisma;
+  async validate(plaintext: string, consumingEmail: string): Promise<InviteToken> {
     const tokenHash = hashRefreshToken(plaintext);
-    const stored = await client.inviteToken.findUnique({ where: { tokenHash } });
+    const stored = await this.prisma.inviteToken.findUnique({ where: { tokenHash } });
 
     if (!stored) {
       throw new BadRequestException({
@@ -160,13 +154,25 @@ export class InviteTokensService {
         message: 'This invite was issued for a different email address.',
       });
     }
+    return stored;
+  }
 
-    const consumed = await client.inviteToken.update({
+  /**
+   * Validate then atomically consume. Convenience wrapper for callers
+   * that do not need to combine the consume with other DB writes.
+   * AuthService.register() does NOT use this — it inlines the update
+   * inside its own $transaction for atomicity.
+   */
+  async validateAndConsume(
+    plaintext: string,
+    consumingUserId: string,
+    consumingEmail: string,
+  ): Promise<InviteToken> {
+    const stored = await this.validate(plaintext, consumingEmail);
+    return this.prisma.inviteToken.update({
       where: { id: stored.id },
       data: { consumedAt: new Date(), consumedByUserId: consumingUserId },
     });
-
-    return consumed;
   }
 
   // ===== Private =====

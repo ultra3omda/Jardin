@@ -2,20 +2,26 @@
  * Auth e2e — exercises the full HTTP flow against a real Postgres database.
  *
  * Requires: docker compose up -d  (postgres healthy)
- *         + pnpm prisma migrate dev (schema applied)
+ *         + pnpm prisma migrate deploy (schema applied)
  */
+import { createHash, randomBytes } from 'node:crypto';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { TenantType } from '@prisma/client';
+import { createId } from '@paralleldrive/cuid2';
+import { TenantType, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 
+const SUPER_ADMIN_FIXTURE_EMAIL = 'super-e2e-test@e2e.test';
+
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let superAdminId: string;
 
   const adminPassword = 'TestPassword1234!';
   const tenantPayload = {
@@ -29,6 +35,22 @@ describe('Auth (e2e)', () => {
     lastName: 'Admin',
     password: adminPassword,
   };
+
+  async function mintInviteToken(invitedEmail?: string | null): Promise<string> {
+    const plaintext = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(plaintext).digest('hex');
+    await prisma.inviteToken.create({
+      data: {
+        id: createId(),
+        tokenHash,
+        invitedEmail: invitedEmail?.toLowerCase() ?? null,
+        intendedRole: UserRole.SCHOOL_ADMIN,
+        createdById: superAdminId,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+    return plaintext;
+  }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -48,14 +70,38 @@ describe('Auth (e2e)', () => {
     await app.init();
 
     prisma = moduleRef.get(PrismaService);
+
+    // Idempotent super_admin fixture for minting invite tokens.
+    const existing = await prisma.user.findFirst({
+      where: { email: SUPER_ADMIN_FIXTURE_EMAIL, role: UserRole.SUPER_ADMIN },
+    });
+    if (existing) {
+      superAdminId = existing.id;
+    } else {
+      const created = await prisma.user.create({
+        data: {
+          id: createId(),
+          email: SUPER_ADMIN_FIXTURE_EMAIL,
+          passwordHash: await bcrypt.hash('e2e-fixture-not-used', 4),
+          firstName: 'Super',
+          lastName: 'E2E',
+          role: UserRole.SUPER_ADMIN,
+        },
+      });
+      superAdminId = created.id;
+    }
   });
 
   afterAll(async () => {
+    // Cascades delete the super_admin's invite tokens (FK onDelete: Cascade)
+    await prisma.user
+      .deleteMany({ where: { email: SUPER_ADMIN_FIXTURE_EMAIL, role: UserRole.SUPER_ADMIN } })
+      .catch(() => undefined);
     await app.close();
   });
 
   beforeEach(async () => {
-    // Clean only the rows we touch — keeps seeds intact if present
+    // Clean only the rows we touch — keeps seeds + super_admin fixture intact
     await prisma.refreshToken.deleteMany({ where: { user: { email: adminPayload.email.toLowerCase() } } });
     await prisma.auditLog.deleteMany({ where: { user: { email: adminPayload.email.toLowerCase() } } });
     await prisma.user.deleteMany({ where: { email: adminPayload.email.toLowerCase() } });
@@ -64,9 +110,10 @@ describe('Auth (e2e)', () => {
 
   it('completes a full register → login → me → refresh → logout flow', async () => {
     // Register
+    const inviteToken = await mintInviteToken();
     const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ tenant: tenantPayload, admin: adminPayload })
+      .send({ inviteToken, tenant: tenantPayload, admin: adminPayload })
       .expect(201);
 
     expect(registerRes.body.accessToken).toBeTypeOf('string');
@@ -114,9 +161,10 @@ describe('Auth (e2e)', () => {
   });
 
   it('returns 401 on bad password', async () => {
+    const inviteToken = await mintInviteToken();
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ tenant: tenantPayload, admin: adminPayload })
+      .send({ inviteToken, tenant: tenantPayload, admin: adminPayload })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -126,14 +174,17 @@ describe('Auth (e2e)', () => {
   });
 
   it('returns 400 when slug is already taken', async () => {
+    const firstInviteToken = await mintInviteToken();
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ tenant: tenantPayload, admin: adminPayload })
+      .send({ inviteToken: firstInviteToken, tenant: tenantPayload, admin: adminPayload })
       .expect(201);
 
+    const secondInviteToken = await mintInviteToken();
     await request(app.getHttpServer())
       .post('/api/auth/register')
       .send({
+        inviteToken: secondInviteToken,
         tenant: tenantPayload,
         admin: { ...adminPayload, email: `other-${Date.now()}@acme.test` },
       })

@@ -10,6 +10,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { Tenant, User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+import { InviteTokensService } from '../admin/invite-tokens.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthResponseDto, MeResponseDto, TenantDto, UserDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly inviteTokens: InviteTokensService,
   ) {}
 
   // ===== Public API =====
@@ -40,6 +42,22 @@ export class AuthService {
       throw new BadRequestException({
         code: 'TENANT_SLUG_TAKEN',
         message: `Tenant slug "${slug}" is already taken`,
+      });
+    }
+
+    // V1.5: /register is invite-only (Q4=B). Validate the token BEFORE
+    // touching the DB. The actual consume happens inside the tx below so
+    // tenant + user creation + token consume are atomic.
+    const invite = await this.inviteTokens.validate(dto.inviteToken, email);
+
+    // V1.5 simplification: only SCHOOL_ADMIN role is supported via the
+    // /register flow (creating a brand-new tenant). Other intended roles
+    // (TEACHER, PARENT, STAFF) will be supported via invite-to-existing-
+    // tenant flows in V2+. SUPER_ADMIN can never be created via /register.
+    if (invite.intendedRole !== UserRole.SCHOOL_ADMIN) {
+      throw new BadRequestException({
+        code: 'INVITE_ROLE_NOT_SUPPORTED_FOR_REGISTER',
+        message: `Invites with role ${invite.intendedRole} cannot be consumed via /register — only SCHOOL_ADMIN.`,
       });
     }
 
@@ -69,12 +87,19 @@ export class AuthService {
           locale: dto.admin.locale ?? 'fr',
         },
       });
+      // Consume the invite token in the same tx — atomic with tenant+user
+      // creation. If anything below throws, the consume is rolled back.
+      await tx.inviteToken.update({
+        where: { id: invite.id },
+        data: { consumedAt: new Date(), consumedByUserId: newUser.id },
+      });
       return { tenant: newTenant, user: newUser };
     });
 
     await this.logAudit('auth.register', {
       userId: user.id,
       tenantId: tenant.id,
+      metadata: { inviteTokenId: invite.id },
       ...meta,
     });
 
