@@ -60,6 +60,13 @@ export class EnvironmentVariables {
   @IsString()
   @Matches(/^https?:\/\/.+/, { message: 'WEB_APP_URL must be an absolute http(s) URL' })
   WEB_APP_URL: string = 'https://ecole-saas-weld.vercel.app';
+
+  @IsString()
+  @MinLength(10, { message: 'RESEND_API_KEY must be set (looks like `re_…`)' })
+  RESEND_API_KEY!: string;
+
+  @IsString()
+  EMAIL_FROM: string = 'onboarding@resend.dev';
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

@@ -4,8 +4,9 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*", "test/**/*", "prisma/**/*.ts"],
+  "include": ["src/**/*", "src/**/*.tsx", "test/**/*", "prisma/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

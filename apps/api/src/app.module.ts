@@ -10,6 +10,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { TenantContextInterceptor } from './auth/interceptors/tenant-context.interceptor';
 import { configuration } from './common/config/configuration';
 import { validateEnv } from './common/config/env.validation';
+import { EmailModule } from './common/email/email.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { TenantModule } from './common/tenant/tenant.module';
@@ -26,6 +27,7 @@ import { HealthModule } from './health/health.module';
     LoggerModule,
     TenantModule,
     PrismaModule,
+    EmailModule,
     ThrottlerModule.forRoot([
       { name: 'global', ttl: 60_000, limit: 100 },
     ]),

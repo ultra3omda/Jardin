@@ -13,6 +13,10 @@ export interface AppConfig {
   bcryptRounds: number;
   corsOrigin: string[];
   webAppUrl: string;
+  email: {
+    resendApiKey: string;
+    from: string;
+  };
 }
 
 export function configuration(): AppConfig {
@@ -32,5 +36,9 @@ export function configuration(): AppConfig {
       .map((o) => o.trim())
       .filter(Boolean),
     webAppUrl: process.env.WEB_APP_URL ?? 'https://ecole-saas-weld.vercel.app',
+    email: {
+      resendApiKey: process.env.RESEND_API_KEY ?? '',
+      from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    },
   };
 }
