@@ -2,6 +2,7 @@ import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
   Matches,
   Max,
