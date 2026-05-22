@@ -31,9 +31,9 @@
 | **8** | Stock + Cantine + Transport + Santé (carnet médical) + Sécurité (incidents) | 3j | V2 + V4 | 📋 Planifiée |
 | **9** | Notifications multi-canal : push (Expo) + email (Resend) + SMS (Twilio) + WhatsApp Business (option) + queues BullMQ/Upstash | 2j | V3 + V5 + Upstash | 📋 Planifiée |
 | **10** | Admin SaaS : super-admin platform, billing tenants (subscription Stripe), analytics plateforme (PostHog) | 2j | V7 | 📋 Planifiée |
-| **11** | Hardening : Sentry complet + Better Stack + Postgres RLS + perf audit + audit RGPD + backup strategy | 2j | tout V1-10 | 📋 Planifiée |
+| **11** | Hardening : Sentry complet + Better Stack + Postgres RLS + perf audit + audit RGPD + backup strategy **+ tenant white-label retrofit** (couleurs + logo per tenant via CSS vars runtime, voir D19) | ~5-6j | tout V1-10 | 📋 Planifiée |
 | **12** | Mobile build & soumission stores : EAS Build + screenshots + TestFlight + Google Play Internal Testing | 3j | tout V1-11 | 📋 Planifiée |
-| | **Total restant** | **~31 jours** | | |
+| | **Total restant** | **~34-35 jours** | | |
 
 ---
 
@@ -94,6 +94,7 @@ Ces décisions impactent plusieurs vagues. Lockées dans cette roadmap pour évi
 | **Localisation par défaut** | `fr` partout. Tenants peuvent changer leur `locale` à la création. Sélecteur de langue dans la page profil V1.5. | V1.5 |
 | **Custom domain OVH** | **Q3=C** — Repoussé en V11 hardening. On garde `ecole-saas-weld.vercel.app` + `ecole-saasapi-production.up.railway.app` jusque-là. | V11 |
 | **Modèle d'inscription** | **Q4=B** — **Invite-only**. Public `/register` désactivé sans `?token=xxx` valide. Super-admin émet les tokens via endpoint dédié. Page landing remplace "Créer un établissement" par "Demander un accès" (mailto pour MVP). | V1.5 |
+| **White-label per-tenant** (couleurs + logo + favicon par école) | **Décision utilisateur 2026-05-22 : option B — repoussé en V11 hardening**. Indigo unique pour V1.5 → V10. Coût retrofit accepté : **3-4j** (refonte tokens design system + emails Resend déjà envoyés + composants UI déjà codés). Plus tôt = moins cher, mais le scope V2-V10 (mobile + élèves + parents + ...) reste prioritaire. Custom domain par école garde Q3=C (V11 aussi). Voir D19 ci-dessous pour l'implémentation prévue. | V11 |
 
 ### Décisions techniques additionnelles (lockées 2026-05-22)
 
@@ -117,6 +118,7 @@ Ces décisions impactent plusieurs vagues. Lockées dans cette roadmap pour évi
 | D16 | Webhook receiver Stripe V7 | Endpoint NestJS `/api/webhooks/stripe` + signature verify | Pas de Vercel Function ; API Railway gère |
 | D17 | App icon + splash mobile | Placeholder V2, design pro en V12 (avant store) | Pas bloquant TestFlight interne |
 | D18 | Throttling sur `/auth/register` | 5 req/min/IP (déjà via Throttler global) + CAPTCHA en V11 | V1 a déjà le throttler; CAPTCHA post-spam |
+| D19 | **White-label per-tenant** (couleurs + logo + favicon par école) | **Repoussé en V11** (décision utilisateur 2026-05-22, option B). Indigo unique en V1.5 → V10. Retrofit V11 = **3-4j accepté** : (1) `Tenant.brand JSON` `{primaryColor, secondaryColor, logoUrl, faviconUrl?}` avec defaults indigo/logo École SaaS, (2) `GET/PATCH /api/admin/tenant/branding` (SCHOOL_ADMIN-only), (3) Web `(app)/layout.tsx` injecte CSS vars `--primary`/`--primary-hover` etc après `getMe()` — Tailwind les pick automatiquement, (4) upload logo via R2 (bucket `ecole-saas-tenant-assets`, public read), (5) refonte des 4 templates @react-email pour utiliser `tenant.brand.logoUrl`, (6) mobile (V12) lit le branding au login via `expo-asset`. Sous-domaine par école (`<slug>.ecole-saas.com`) reste **Q3=C** (V11 + custom OVH). Mobile native white-label per-tenant (Option D : binaires séparés par école au store) **explicitement hors scope** — trop d'ops. | Plus tôt = moins cher (1.5j en V1.6 vs 3-4j en V11) — coût accepté pour préserver le focus V2 (mobile + élèves) ; cohérence indigo sur V1.5-V10 est OK pour les premiers tenants démo ; V11 hardening est de toute façon le moment où on refait passes UX/perf, donc retrofit naturel. |
 
 ---
 
@@ -262,6 +264,7 @@ Pour chaque vague N :
 - [`docs/architecture.md`](architecture.md) — Diagramme actuel (à mettre à jour à chaque vague)
 - [`docs/adr/`](adr/) — Architecture Decision Records
   - [`0001-auth-strategy.md`](adr/0001-auth-strategy.md) — Vague 1 (HS256, refresh rotation, bcrypt 12)
+  - [`0002-v1.5-recovery-invite.md`](adr/0002-v1.5-recovery-invite.md) — Vague 1.5 (invite-only, anti-enum, R2, Sentry, i18n, full session revocation)
 
 ---
 
@@ -271,3 +274,5 @@ Pour chaque vague N :
 |---|---|---|
 | 2026-05-22 | Claude Code + ultra3omda | Création initiale après livraison Vague 1 en prod |
 | 2026-05-22 | Claude Code + ultra3omda | Q3=C (custom domain repoussé V11), Q4=B (invite-only). V1.5 scope étendu (invite tokens + super_admin login + data export). 18 décisions techniques additionnelles lockées (D1-D18). |
+| 2026-05-22 | Claude Code + ultra3omda | V1.5 livrée et mergée sur main (PR #4 `5f2f1421`, PR #5 `7133324`). Politique auto-merge sur CI verte lockée dans CLAUDE.md. |
+| 2026-05-22 | Claude Code + ultra3omda | **D19 white-label per-tenant** lockée — option B (repoussé en V11). V11 effort 2j → 5-6j (retrofit 3-4j accepté). Indigo unique en V1.5 → V10. |
