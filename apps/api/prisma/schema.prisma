@@ -60,22 +60,27 @@ model Tenant {
 }
 
 model User {
-  id           String    @id
-  tenantId     String?
-  email        String
-  passwordHash String
-  firstName    String
-  lastName     String
-  role         UserRole
-  locale       Locale    @default(fr)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
-  lastLoginAt  DateTime?
+  id                String    @id
+  tenantId          String?
+  email             String
+  passwordHash      String
+  firstName         String
+  lastName          String
+  role              UserRole
+  locale            Locale    @default(fr)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+  lastLoginAt       DateTime?
+  emailVerifiedAt   DateTime? // V1.5: null = not verified, date = verified
+  passwordChangedAt DateTime? // V1.5: set on password change to invalidate sessions
 
-  tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]
+  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens           RefreshToken[]
+  auditLogs               AuditLog[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  createdInviteTokens     InviteToken[]            @relation("InviteTokenCreator")
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -85,7 +90,7 @@ model User {
 
 model RefreshToken {
   id                String    @id
-  tenantId          String
+  tenantId          String?   // V1.5: nullable to support SUPER_ADMIN (cross-tenant)
   userId            String
   tokenHash         String    @unique
   expiresAt         DateTime
@@ -95,7 +100,7 @@ model RefreshToken {
   ip                String?
   userAgent         String?
 
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   replacedByToken RefreshToken? @relation("RefreshTokenChain", fields: [replacedByTokenId], references: [id])
   replaces        RefreshToken? @relation("RefreshTokenChain")
@@ -123,5 +128,59 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([userId, createdAt])
   @@index([action])
+  @@index([action, createdAt]) // V1.5: for RGPD query "all login.success in 2026"
   @@map("audit_logs")
+}
+
+// ============================================================================
+// V1.5 — Recovery & Invite-only
+// ============================================================================
+
+model EmailVerificationToken {
+  id         String    @id
+  userId     String
+  tokenHash  String    @unique // SHA-256 of the token sent in the verification email
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id
+  userId     String
+  tokenHash  String    @unique // SHA-256 of the token sent in the reset email
+  expiresAt  DateTime
+  consumedAt DateTime?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model InviteToken {
+  id               String    @id
+  tokenHash        String    @unique // SHA-256 of the token shared with the invitee
+  invitedEmail     String?   // optional pre-fill for /register?token=...
+  intendedRole     UserRole  // SCHOOL_ADMIN for tenant creators (default)
+  createdById      String    // super_admin user who emitted the token
+  consumedByUserId String?   // user created by consuming this token
+  expiresAt        DateTime
+  consumedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  createdBy User @relation("InviteTokenCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("invite_tokens")
 }

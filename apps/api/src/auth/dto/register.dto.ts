@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  Length,
   Matches,
   MaxLength,
   MinLength,
@@ -84,6 +85,16 @@ export class RegisterAdminDto {
 }
 
 export class RegisterDto {
+  @ApiProperty({
+    description:
+      'Single-use invite token previously minted by a SUPER_ADMIN via POST /admin/invite-tokens. V1.5 makes /register invite-only (Q4=B).',
+    minLength: 20,
+    maxLength: 256,
+  })
+  @IsString()
+  @Length(20, 256)
+  inviteToken!: string;
+
   @ApiProperty({ type: RegisterTenantDto })
   @ValidateNested()
   @Type(() => RegisterTenantDto)

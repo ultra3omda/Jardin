@@ -1,13 +1,18 @@
 'use client';
 
 import type { AuthSessionResponse, MeResponse } from '@/lib/auth/types';
-import type { LoginFormValues, RegisterFormValues } from '@/lib/validation/auth.schemas';
+import type {
+  ForgotPasswordFormValues,
+  LoginFormValues,
+  RegisterFormValues,
+} from '@/lib/validation/auth.schemas';
 
 /**
  * The web calls its OWN Next.js Route Handlers (NOT the NestJS API directly),
  * because the Route Handlers proxy auth + manage the httpOnly refresh cookie.
  */
 const PROXY_BASE = '/api/auth';
+const USERS_PROXY_BASE = '/api/users';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -93,6 +98,116 @@ export async function logout(): Promise<void> {
 export async function me(accessToken: string): Promise<MeResponse> {
   return jsonRequest<MeResponse>(`${PROXY_BASE}/me`, {
     method: 'GET',
+    auth: accessToken,
+  });
+}
+
+export async function verifyEmail(token: string): Promise<{ verified: true; userId: string }> {
+  return jsonRequest<{ verified: true; userId: string }>(`${PROXY_BASE}/email/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resendVerificationEmail(accessToken: string): Promise<void> {
+  return jsonRequest<void>(`${PROXY_BASE}/email/resend`, {
+    method: 'POST',
+    auth: accessToken,
+  });
+}
+
+export async function forgotPassword(values: ForgotPasswordFormValues): Promise<void> {
+  // Normalise empty optional tenantSlug to undefined for the API
+  const payload = {
+    email: values.email,
+    ...(values.tenantSlug && values.tenantSlug.length > 0 ? { tenantSlug: values.tenantSlug } : {}),
+  };
+  return jsonRequest<void>(`${PROXY_BASE}/password/forgot`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resetPassword(args: {
+  token: string;
+  newPassword: string;
+}): Promise<{ success: true; userId: string }> {
+  return jsonRequest<{ success: true; userId: string }>(`${PROXY_BASE}/password/reset`, {
+    method: 'POST',
+    body: JSON.stringify(args),
+  });
+}
+
+// V1.5 — /api/users/me* endpoints
+// =============================================================================
+
+export async function getProfile(accessToken: string): Promise<MeResponse> {
+  return jsonRequest<MeResponse>(`${USERS_PROXY_BASE}/me`, {
+    method: 'GET',
+    auth: accessToken,
+  });
+}
+
+export async function updateProfile(
+  accessToken: string,
+  values: { firstName?: string; lastName?: string; locale?: string },
+): Promise<MeResponse> {
+  return jsonRequest<MeResponse>(`${USERS_PROXY_BASE}/me`, {
+    method: 'PATCH',
+    auth: accessToken,
+    body: JSON.stringify(values),
+  });
+}
+
+export async function changeMyPassword(
+  accessToken: string,
+  values: { currentPassword: string; newPassword: string },
+): Promise<void> {
+  return jsonRequest<void>(`${USERS_PROXY_BASE}/me/password`, {
+    method: 'POST',
+    auth: accessToken,
+    body: JSON.stringify(values),
+  });
+}
+
+export interface SessionListItem {
+  id: string;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export async function listSessions(accessToken: string): Promise<SessionListItem[]> {
+  return jsonRequest<SessionListItem[]>(`${USERS_PROXY_BASE}/me/sessions`, {
+    method: 'GET',
+    auth: accessToken,
+  });
+}
+
+export async function revokeSession(accessToken: string, sessionId: string): Promise<void> {
+  return jsonRequest<void>(`${USERS_PROXY_BASE}/me/sessions/${sessionId}`, {
+    method: 'DELETE',
+    auth: accessToken,
+  });
+}
+
+export interface ExportResultResponse {
+  key: string;
+  downloadUrl: string;
+  expiresAt: string;
+}
+
+export async function requestDataExport(accessToken: string): Promise<ExportResultResponse> {
+  return jsonRequest<ExportResultResponse>(`${USERS_PROXY_BASE}/me/export`, {
+    method: 'POST',
+    auth: accessToken,
+  });
+}
+
+export async function deleteAccount(accessToken: string): Promise<void> {
+  return jsonRequest<void>(`${USERS_PROXY_BASE}/me`, {
+    method: 'DELETE',
     auth: accessToken,
   });
 }

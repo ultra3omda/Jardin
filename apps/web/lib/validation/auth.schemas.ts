@@ -19,6 +19,13 @@ export const loginSchema = z.object({
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const registerSchema = z.object({
+  // V1.5: /register is invite-only (Q4=B). The token is pre-filled from
+  // the URL query param ?token=… and validated server-side against the
+  // invite_tokens table.
+  inviteToken: z
+    .string()
+    .min(20, "Lien d'invitation invalide")
+    .max(256, "Lien d'invitation invalide"),
   tenant: z.object({
     name: z
       .string()
@@ -43,3 +50,32 @@ export const registerSchema = z.object({
 });
 
 export type RegisterFormValues = z.infer<typeof registerSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Adresse email invalide').max(254),
+  tenantSlug: z
+    .string()
+    .min(3)
+    .max(63)
+    .regex(SLUG_REGEX, 'Slug invalide')
+    .optional()
+    .or(z.literal('')),
+});
+
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(20).max(256),
+    newPassword: z
+      .string()
+      .min(REGISTER_PASSWORD_MIN, `Au moins ${REGISTER_PASSWORD_MIN} caractères requis`)
+      .max(128, 'Mot de passe trop long'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Les mots de passe ne correspondent pas',
+    path: ['confirmPassword'],
+  });
+
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;

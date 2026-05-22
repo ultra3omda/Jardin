@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,10 +12,12 @@ import { createId } from '@paralleldrive/cuid2';
 import { Tenant, User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+import { InviteTokensService } from '../admin/invite-tokens.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthResponseDto, MeResponseDto, TenantDto, UserDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { EmailVerificationService } from './email-verification.service';
 import type { JwtPayload } from './strategies/jwt.strategy';
 import { parseDurationMs } from './utils/duration.utils';
 import type { RequestMeta } from './utils/request-meta.utils';
@@ -27,6 +31,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly inviteTokens: InviteTokensService,
+    private readonly emailVerification: EmailVerificationService,
   ) {}
 
   // ===== Public API =====
@@ -40,6 +46,22 @@ export class AuthService {
       throw new BadRequestException({
         code: 'TENANT_SLUG_TAKEN',
         message: `Tenant slug "${slug}" is already taken`,
+      });
+    }
+
+    // V1.5: /register is invite-only (Q4=B). Validate the token BEFORE
+    // touching the DB. The actual consume happens inside the tx below so
+    // tenant + user creation + token consume are atomic.
+    const invite = await this.inviteTokens.validate(dto.inviteToken, email);
+
+    // V1.5 simplification: only SCHOOL_ADMIN role is supported via the
+    // /register flow (creating a brand-new tenant). Other intended roles
+    // (TEACHER, PARENT, STAFF) will be supported via invite-to-existing-
+    // tenant flows in V2+. SUPER_ADMIN can never be created via /register.
+    if (invite.intendedRole !== UserRole.SCHOOL_ADMIN) {
+      throw new BadRequestException({
+        code: 'INVITE_ROLE_NOT_SUPPORTED_FOR_REGISTER',
+        message: `Invites with role ${invite.intendedRole} cannot be consumed via /register — only SCHOOL_ADMIN.`,
       });
     }
 
@@ -69,14 +91,25 @@ export class AuthService {
           locale: dto.admin.locale ?? 'fr',
         },
       });
+      // Consume the invite token in the same tx — atomic with tenant+user
+      // creation. If anything below throws, the consume is rolled back.
+      await tx.inviteToken.update({
+        where: { id: invite.id },
+        data: { consumedAt: new Date(), consumedByUserId: newUser.id },
+      });
       return { tenant: newTenant, user: newUser };
     });
 
     await this.logAudit('auth.register', {
       userId: user.id,
       tenantId: tenant.id,
+      metadata: { inviteTokenId: invite.id },
       ...meta,
     });
+
+    // V1.5: trigger verification email. Best-effort — failure logged inside
+    // the service and does NOT block registration.
+    await this.emailVerification.mintAndSend(user, meta);
 
     return this.issueTokensAndBuildResponse(user, tenant, meta);
   }
@@ -113,16 +146,6 @@ export class AuthService {
 
     const user = candidates[0]!;
 
-    // Vague 1: super_admin login flow not yet supported (refresh tokens
-    // require a non-null tenantId per current schema). Documented in
-    // docs/adr/0001-auth-strategy.md.
-    if (user.role === UserRole.SUPER_ADMIN) {
-      throw new BadRequestException({
-        code: 'SUPER_ADMIN_LOGIN_NOT_SUPPORTED',
-        message: 'Super admin login is reserved for a future wave (Vague 10).',
-      });
-    }
-
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
       await this.logAudit('auth.login.failed', {
@@ -132,6 +155,21 @@ export class AuthService {
         ...meta,
       });
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // V1.5: block login if email not yet verified. Legacy users (pre-V1.5)
+    // were grandfathered in the 20260522 migration so they are not blocked.
+    if (!user.emailVerifiedAt) {
+      await this.logAudit('auth.login.blocked.email_unverified', {
+        userId: user.id,
+        tenantId: user.tenantId,
+        metadata: { email },
+        ...meta,
+      });
+      throw new ForbiddenException({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Confirmez votre email avant de vous connecter.',
+      });
     }
 
     await this.prisma.user.update({
@@ -231,6 +269,30 @@ export class AuthService {
     // Silently succeed for unknown/already-revoked tokens — avoids leaking info
   }
 
+  /**
+   * Resend the email-verification email for the current user. Throws if
+   * the user is already verified — avoids spamming on accident.
+   */
+  async resendVerificationEmail(userId: string, meta: RequestMeta): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, emailVerifiedAt: true, deletedAt: true },
+    });
+    if (!user || user.deletedAt) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.emailVerifiedAt) {
+      throw new BadRequestException({
+        code: 'EMAIL_ALREADY_VERIFIED',
+        message: 'Votre email est déjà confirmé.',
+      });
+    }
+    await this.emailVerification.mintAndSend(
+      { id: user.id, email: user.email, firstName: user.firstName },
+      meta,
+    );
+  }
+
   async me(userId: string): Promise<MeResponseDto> {
     const user = await this.prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
@@ -274,15 +336,6 @@ export class AuthService {
     tenant: Tenant | null,
     meta: RequestMeta,
   ): Promise<AuthResponseDto> {
-    if (!user.tenantId) {
-      // Belt-and-suspenders: callers must filter out super_admin before reaching
-      // this point. Documented in ADR 0001.
-      throw new BadRequestException({
-        code: 'SUPER_ADMIN_LOGIN_NOT_SUPPORTED',
-        message: 'Super admin login is reserved for a future wave (Vague 10).',
-      });
-    }
-
     const accessToken = await this.signAccessToken(user);
     const refreshTokenPlaintext = generateRefreshToken();
     await this.prisma.refreshToken.create({

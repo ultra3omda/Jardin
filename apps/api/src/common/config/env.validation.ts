@@ -2,7 +2,9 @@ import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
+  Matches,
   Max,
   Min,
   MinLength,
@@ -55,6 +57,28 @@ export class EnvironmentVariables {
 
   @IsString()
   CORS_ORIGIN: string = 'http://localhost:3000';
+
+  @IsString()
+  @Matches(/^https?:\/\/.+/, { message: 'WEB_APP_URL must be an absolute http(s) URL' })
+  WEB_APP_URL: string = 'https://ecole-saas-weld.vercel.app';
+
+  @IsString()
+  @MinLength(10, { message: 'RESEND_API_KEY must be set (looks like `re_…`)' })
+  RESEND_API_KEY!: string;
+
+  @IsString()
+  EMAIL_FROM: string = 'onboarding@resend.dev';
+
+  // V1.5 — Cloudflare R2 (RGPD exports). All optional: if any is missing,
+  // ExportService will refuse with a clear error but the API still boots.
+  @IsOptional() @IsString() R2_ACCOUNT_ID?: string;
+  @IsOptional() @IsString() R2_ACCESS_KEY_ID?: string;
+  @IsOptional() @IsString() R2_SECRET_ACCESS_KEY?: string;
+  @IsOptional() @IsString() R2_BUCKET_NAME?: string;
+
+  // V1.5 — Sentry DSN for server-side error reporting. Optional — if
+  // missing, Sentry init is skipped (see src/instrument.ts).
+  @IsOptional() @IsString() SENTRY_DSN_API?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

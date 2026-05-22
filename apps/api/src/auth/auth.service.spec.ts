@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
@@ -6,8 +6,36 @@ import { Locale, TenantType, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { InviteTokensService } from '../admin/invite-tokens.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { EmailVerificationService } from './email-verification.service';
+
+type EmailVerificationMock = {
+  mintAndSend: ReturnType<typeof vi.fn>;
+  consume: ReturnType<typeof vi.fn>;
+};
+
+const VALID_INVITE_TOKEN = 'a-valid-token-string-at-least-20-chars';
+const INVITE_ROW = {
+  id: 'inv-1',
+  tokenHash: 'hash',
+  invitedEmail: null as string | null,
+  intendedRole: UserRole.SCHOOL_ADMIN,
+  createdById: 'super-1',
+  consumedByUserId: null as string | null,
+  expiresAt: new Date(Date.now() + 86_400_000),
+  consumedAt: null as Date | null,
+  createdAt: new Date(),
+};
+
+type InviteTokensMock = {
+  validate: ReturnType<typeof vi.fn>;
+  validateAndConsume: ReturnType<typeof vi.fn>;
+  create: ReturnType<typeof vi.fn>;
+  list: ReturnType<typeof vi.fn>;
+  revoke: ReturnType<typeof vi.fn>;
+};
 
 type PrismaMock = {
   tenant: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
@@ -50,6 +78,8 @@ const baseUser = {
   updatedAt: new Date(),
   deletedAt: null,
   lastLoginAt: null,
+  emailVerifiedAt: new Date(), // V1.5: default verified so login tests aren't blocked
+  passwordChangedAt: null,
 };
 
 const baseTenant = {
@@ -67,13 +97,28 @@ const baseTenant = {
 describe('AuthService', () => {
   let service: AuthService;
   let prisma: PrismaMock;
+  let inviteTokens: InviteTokensMock;
+  let emailVerification: EmailVerificationMock;
 
   beforeEach(async () => {
     prisma = buildPrismaMock();
+    inviteTokens = {
+      validate: vi.fn().mockResolvedValue({ ...INVITE_ROW }),
+      validateAndConsume: vi.fn(),
+      create: vi.fn(),
+      list: vi.fn(),
+      revoke: vi.fn(),
+    };
+    emailVerification = {
+      mintAndSend: vi.fn().mockResolvedValue(undefined),
+      consume: vi.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
+        { provide: InviteTokensService, useValue: inviteTokens },
+        { provide: EmailVerificationService, useValue: emailVerification },
         {
           provide: JwtService,
           useValue: {
@@ -132,14 +177,36 @@ describe('AuthService', () => {
       expect(response.availableTenantSlugs).toEqual(['a', 'b']);
     });
 
-    it('rejects super_admin login with explicit error code', async () => {
+    it('issues tokens for super_admin (tenantId null, no tenant relation)', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 4);
       prisma.user.findMany.mockResolvedValueOnce([
-        { ...baseUser, role: UserRole.SUPER_ADMIN, tenant: null },
+        {
+          ...baseUser,
+          id: 'super-1',
+          tenantId: null,
+          role: UserRole.SUPER_ADMIN,
+          passwordHash,
+          tenant: null,
+        },
       ]);
-      const err = await service.login({ email: 'super@x.test', password: 'pwdpwdpwdpwd' }, {}).catch((e) => e);
-      expect(err).toBeInstanceOf(BadRequestException);
-      const response = (err as BadRequestException).getResponse() as { code: string };
-      expect(response.code).toBe('SUPER_ADMIN_LOGIN_NOT_SUPPORTED');
+      prisma.user.update.mockResolvedValueOnce({});
+      prisma.refreshToken.create.mockResolvedValueOnce({});
+
+      const result = await service.login(
+        { email: 'super@x.test', password: 'correct-password' },
+        { ip: '127.0.0.1', userAgent: 'vitest' },
+      );
+
+      expect(result.accessToken).toBe('signed-access-token');
+      expect(result.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(result.user.id).toBe('super-1');
+      expect(result.user.role).toBe(UserRole.SUPER_ADMIN);
+      expect(result.tenant).toBeNull();
+      expect(prisma.refreshToken.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tenantId: null, userId: 'super-1' }),
+        }),
+      );
     });
 
     it('throws UnauthorizedException on bad password', async () => {
@@ -150,6 +217,29 @@ describe('AuthService', () => {
       await expect(
         service.login({ email: baseUser.email, password: 'wrong-password' }, {}),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('blocks login with EMAIL_NOT_VERIFIED when emailVerifiedAt is null', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 4);
+      prisma.user.findMany.mockResolvedValueOnce([
+        { ...baseUser, passwordHash, emailVerifiedAt: null, tenant: baseTenant },
+      ]);
+
+      const err = await service
+        .login({ email: baseUser.email, password: 'correct-password' }, {})
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(ForbiddenException);
+      expect((err as ForbiddenException).getResponse()).toMatchObject({
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: 'auth.login.blocked.email_unverified' }),
+        }),
+      );
     });
 
     it('issues tokens on success and updates lastLoginAt', async () => {
@@ -289,11 +379,12 @@ describe('AuthService', () => {
   // register
   // ---------------------------------------------------------------------
   describe('register', () => {
-    it('rejects when slug is taken', async () => {
+    it('rejects when slug is taken (before invite validation)', async () => {
       prisma.tenant.findUnique.mockResolvedValueOnce({ ...baseTenant });
       await expect(
         service.register(
           {
+            inviteToken: VALID_INVITE_TOKEN,
             tenant: { name: 'X', slug: 'demo', type: TenantType.KINDERGARTEN },
             admin: {
               email: 'a@b.test',
@@ -305,16 +396,77 @@ describe('AuthService', () => {
           {},
         ),
       ).rejects.toMatchObject({ response: { code: 'TENANT_SLUG_TAKEN' } });
+      expect(inviteTokens.validate).not.toHaveBeenCalled();
     });
 
-    it('creates tenant + admin in a transaction and issues tokens', async () => {
+    it('propagates INVITE_TOKEN_UNKNOWN from the invite-tokens service', async () => {
       prisma.tenant.findUnique.mockResolvedValueOnce(null);
+      inviteTokens.validate.mockRejectedValueOnce(
+        new BadRequestException({ code: 'INVITE_TOKEN_UNKNOWN' }),
+      );
+
+      const err = await service
+        .register(
+          {
+            inviteToken: VALID_INVITE_TOKEN,
+            tenant: { name: 'X', slug: 'new', type: TenantType.KINDERGARTEN },
+            admin: {
+              email: 'a@b.test',
+              firstName: 'A',
+              lastName: 'B',
+              password: 'pwdpwdpwdpwd',
+            },
+          },
+          {},
+        )
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).getResponse()).toMatchObject({
+        code: 'INVITE_TOKEN_UNKNOWN',
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects invites whose intendedRole is not SCHOOL_ADMIN', async () => {
+      prisma.tenant.findUnique.mockResolvedValueOnce(null);
+      inviteTokens.validate.mockResolvedValueOnce({
+        ...INVITE_ROW,
+        intendedRole: UserRole.TEACHER,
+      });
+
+      const err = await service
+        .register(
+          {
+            inviteToken: VALID_INVITE_TOKEN,
+            tenant: { name: 'X', slug: 'new', type: TenantType.KINDERGARTEN },
+            admin: {
+              email: 'a@b.test',
+              firstName: 'A',
+              lastName: 'B',
+              password: 'pwdpwdpwdpwd',
+            },
+          },
+          {},
+        )
+        .catch((e) => e);
+
+      expect((err as BadRequestException).getResponse()).toMatchObject({
+        code: 'INVITE_ROLE_NOT_SUPPORTED_FOR_REGISTER',
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('creates tenant + admin + consumes invite in a single tx and issues tokens', async () => {
+      prisma.tenant.findUnique.mockResolvedValueOnce(null);
+      const txInviteUpdate = vi.fn().mockResolvedValue({ ...INVITE_ROW });
       prisma.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           tenant: { create: vi.fn().mockResolvedValue({ ...baseTenant, slug: 'new', id: 'tenant-2' }) },
           user: {
             create: vi.fn().mockResolvedValue({ ...baseUser, id: 'user-2', tenantId: 'tenant-2' }),
           },
+          inviteToken: { update: txInviteUpdate },
         };
         return cb(tx);
       });
@@ -322,6 +474,7 @@ describe('AuthService', () => {
 
       const result = await service.register(
         {
+          inviteToken: VALID_INVITE_TOKEN,
           tenant: { name: 'New School', slug: 'new', type: TenantType.PRIMARY_SCHOOL },
           admin: {
             email: 'Founder@New.School',
@@ -336,6 +489,18 @@ describe('AuthService', () => {
       expect(result.tenant?.slug).toBe('new');
       expect(result.user.id).toBe('user-2');
       expect(result.accessToken).toBe('signed-access-token');
+      expect(inviteTokens.validate).toHaveBeenCalledWith(VALID_INVITE_TOKEN, 'founder@new.school');
+      expect(txInviteUpdate).toHaveBeenCalledWith({
+        where: { id: 'inv-1' },
+        data: expect.objectContaining({
+          consumedByUserId: 'user-2',
+          consumedAt: expect.any(Date),
+        }),
+      });
+      expect(emailVerification.mintAndSend).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-2' }),
+        expect.any(Object),
+      );
     });
   });
 });

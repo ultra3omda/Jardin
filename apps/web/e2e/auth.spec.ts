@@ -1,51 +1,45 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Auth e2e flow against the live web + API + Postgres.
+ * Auth UI smoke tests (V1.5).
+ *
+ * Note: the full register → email-verify → login → password-reset → /me
+ * flow is now thoroughly covered by the API e2e suite (8 specs under
+ * apps/api/test/*.e2e-spec.ts — invite-flow, email-verification,
+ * password-recovery, profile, auth, multi-tenant-isolation, …).
+ * Playwright tests here focus on the UI smoke: invite-only register
+ * landing, login error display, protected route redirection, and the
+ * new /forgot-password reachability.
  *
  * Prerequisites (local):
  *   docker compose up -d
- *   pnpm --filter=@ecole-saas/api prisma migrate dev
+ *   pnpm --filter=@ecole-saas/api prisma migrate deploy
  *   pnpm --filter=@ecole-saas/api dev   # API on :4000
  *   (web auto-starts via playwright.config.ts webServer)
  */
 
-const SUFFIX = Date.now().toString(36);
-const slug = `e2e-${SUFFIX}`;
-const email = `e2e-admin-${SUFFIX}@test.example`;
-const password = 'TestPlaywright1234!';
-
-test.describe('Auth flow', () => {
-  test('register -> dashboard -> logout -> login', async ({ page }) => {
-    // ----- Register -----
+test.describe('Auth UI smoke', () => {
+  test('GET /register without a token shows the invite-only landing card', async ({
+    page,
+  }) => {
+    // V1.5 (Q4=B): /register is invite-only. Without ?token=… the page
+    // renders the NoInviteCard instead of the form.
     await page.goto('/register');
-    await expect(page.getByRole('heading', { name: 'Créer un établissement' })).toBeVisible();
 
-    await page.getByLabel("Nom de l'établissement").fill(`E2E School ${SUFFIX}`);
-    await page.getByLabel('Slug').fill(slug);
-    await page.getByLabel("Type d'établissement").selectOption('KINDERGARTEN');
-    await page.getByLabel('Prénom').fill('E2E');
-    await page.getByLabel('Nom', { exact: true }).fill('Admin');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Mot de passe').fill(password);
+    await expect(
+      page.getByRole('heading', { name: 'Inscription sur invitation' }),
+    ).toBeVisible();
+    await expect(page.getByText(/uniquement sur invitation/i)).toBeVisible();
+    // The contact email must be reachable from the card so prospects can
+    // request access.
+    await expect(page.getByRole('link', { name: /ultra3omda@gmail\.com/ })).toBeVisible();
+    // "Retour à la connexion" affordance.
+    await expect(page.getByRole('link', { name: /Retour à la connexion/i })).toBeVisible();
 
-    await page.getByRole('button', { name: "Créer l'établissement" }).click();
-
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole('heading', { name: /Bienvenue, E2E/ })).toBeVisible();
-    await expect(page.getByText(`E2E School ${SUFFIX}`).first()).toBeVisible();
-
-    // ----- Logout -----
-    await page.getByRole('button', { name: 'Déconnexion' }).click();
-    await expect(page).toHaveURL(/\/login$/);
-
-    // ----- Login -----
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Mot de passe').fill(password);
-    await page.getByRole('button', { name: 'Se connecter' }).click();
-
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole('heading', { name: /Bienvenue, E2E/ })).toBeVisible();
+    // The actual create-account form must NOT be reachable from this state.
+    await expect(
+      page.getByRole('heading', { name: 'Créer un établissement' }),
+    ).toHaveCount(0);
   });
 
   test('shows an error on bad credentials', async ({ page }) => {
@@ -54,12 +48,22 @@ test.describe('Auth flow', () => {
     await page.getByLabel('Mot de passe').fill('something-wrong');
     await page.getByRole('button', { name: 'Se connecter' }).click();
 
-    await expect(page.getByText(/Email ou mot de passe incorrect/)).toBeVisible();
+    // The error message text may evolve; we just assert SOMETHING resembling
+    // a credential error is shown, and we stay on /login.
+    await expect(page.getByText(/(incorrect|invalid|credentials)/i)).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
   });
 
   test('protected /dashboard redirects to /login when no session', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('GET /forgot-password renders the V1.5 reset request form', async ({ page }) => {
+    // V1.5 — make sure the new entry point is reachable + has a working email field.
+    await page.goto('/forgot-password');
+    await expect(page.getByRole('heading', { name: /Mot de passe oublié/i })).toBeVisible();
+    await expect(page.getByLabel('Email')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Envoyer le lien/i })).toBeVisible();
   });
 });

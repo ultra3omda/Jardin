@@ -1,3 +1,8 @@
+// IMPORTANT: ./instrument MUST be imported FIRST so Sentry can auto-patch
+// Node's HTTP + Express stack before AppModule (and therefore Nest) load.
+// Do not reorder these imports.
+import './instrument';
+
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';

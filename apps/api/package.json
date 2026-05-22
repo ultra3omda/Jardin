@@ -24,6 +24,8 @@
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1052.0",
+    "@aws-sdk/s3-request-presigner": "^3.1052.0",
     "@ecole-saas/shared": "workspace:*",
     "@nestjs/common": "^10.4.4",
     "@nestjs/config": "^3.2.3",
@@ -35,6 +37,11 @@
     "@nestjs/throttler": "^6.2.1",
     "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^5.20.0",
+    "@react-email/components": "^0.0.34",
+    "@react-email/render": "^1.1.2",
+    "@sentry/nestjs": "^10.53.1",
+    "@sentry/node": "^10.53.1",
+    "archiver": "^7.0.1",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
@@ -44,7 +51,9 @@
     "passport-jwt": "^4.0.1",
     "pino": "^9.4.0",
     "pino-http": "^10.3.0",
+    "react": "^18.3.1",
     "reflect-metadata": "^0.2.2",
+    "resend": "^4.0.0",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
@@ -53,10 +62,12 @@
     "@nestjs/schematics": "^10.2.2",
     "@nestjs/testing": "^10.4.4",
     "@swc/core": "^1.7.36",
+    "@types/archiver": "^6.0.3",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.6",
     "@types/node": "^22.7.5",
     "@types/passport-jwt": "^4.0.1",
+    "@types/react": "^18.3.0",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.8.1",
     "@typescript-eslint/parser": "^8.8.1",

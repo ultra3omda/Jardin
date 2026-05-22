@@ -12,6 +12,17 @@ export interface AppConfig {
   };
   bcryptRounds: number;
   corsOrigin: string[];
+  webAppUrl: string;
+  email: {
+    resendApiKey: string;
+    from: string;
+  };
+  r2: {
+    accountId: string | undefined;
+    accessKeyId: string | undefined;
+    secretAccessKey: string | undefined;
+    bucketName: string;
+  };
 }
 
 export function configuration(): AppConfig {
@@ -30,5 +41,16 @@ export function configuration(): AppConfig {
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean),
+    webAppUrl: process.env.WEB_APP_URL ?? 'https://ecole-saas-weld.vercel.app',
+    email: {
+      resendApiKey: process.env.RESEND_API_KEY ?? '',
+      from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    },
+    r2: {
+      accountId: process.env.R2_ACCOUNT_ID,
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      bucketName: process.env.R2_BUCKET_NAME ?? 'ecole-saas-exports',
+    },
   };
 }

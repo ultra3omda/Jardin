@@ -31,6 +31,14 @@ export async function POST(request: NextRequest, ctx: Context): Promise<NextResp
       return proxyRefresh(request);
     case 'logout':
       return proxyLogout(request);
+    // V1.5 — public endpoints (no cookie, no upstream auth required)
+    case 'email/verify':
+    case 'password/forgot':
+    case 'password/reset':
+      return proxyPassthroughPost(request, action, false);
+    // V1.5 — authenticated endpoint (browser must attach Bearer)
+    case 'email/resend':
+      return proxyPassthroughPost(request, action, true);
     default:
       return NextResponse.json({ message: 'Unknown auth action' }, { status: 404 });
   }
@@ -133,4 +141,32 @@ async function forwardJson(upstream: Response): Promise<NextResponse> {
       'Content-Type': upstream.headers.get('content-type') ?? 'application/json',
     },
   });
+}
+
+/**
+ * Generic body+optional-Bearer passthrough for endpoints that don't touch
+ * the refresh cookie (V1.5: email verify/resend, password forgot/reset).
+ * The request body is forwarded verbatim; the Authorization header is only
+ * forwarded when `requireAuth` is true.
+ */
+async function proxyPassthroughPost(
+  request: NextRequest,
+  action: string,
+  requireAuth: boolean,
+): Promise<NextResponse> {
+  const body = await request.text();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (requireAuth) {
+    const auth = request.headers.get('authorization');
+    if (!auth) {
+      return NextResponse.json({ message: 'Missing Authorization header' }, { status: 401 });
+    }
+    headers.Authorization = auth;
+  }
+  const upstream = await fetch(`${API_URL}/api/auth/${action}`, {
+    method: 'POST',
+    headers,
+    body,
+  });
+  return forwardJson(upstream);
 }

@@ -174,6 +174,12 @@ function LoginPageContent() {
               )}
               Se connecter
             </Button>
+            <Link
+              href="/forgot-password"
+              className="text-center text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Mot de passe oublié ?
+            </Link>
             <p className="text-center text-sm text-muted-foreground">
               Nouvel établissement ?{' '}
               <Link href="/register" className="font-medium text-primary hover:underline">
