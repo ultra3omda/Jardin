@@ -19,6 +19,7 @@ import { MeResponseDto } from '../auth/dto/auth-response.dto';
 import { getRequestMeta } from '../auth/utils/request-meta.utils';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ExportService, type ExportResult } from './export.service';
 import { SessionsService, type SessionListItem } from './sessions.service';
 import { UsersService } from './users.service';
 
@@ -29,6 +30,7 @@ export class UsersController {
   constructor(
     private readonly users: UsersService,
     private readonly sessions: SessionsService,
+    private readonly exports: ExportService,
   ) {}
 
   @Get('me')
@@ -119,5 +121,20 @@ export class UsersController {
     @Req() req: Request,
   ): Promise<void> {
     await this.users.softDelete(user.id, getRequestMeta(req));
+  }
+
+  @Post('me/export')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Generate a RGPD-compatible data export (V1.5)',
+    description:
+      'Builds a ZIP of all data stored about the user, uploads it to R2, returns a pre-signed download URL valid 24h, and emails the URL to the user. Throws 503 R2_NOT_CONFIGURED if object storage is not provisioned.',
+  })
+  @ApiResponse({ status: 200 })
+  async exportData(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<ExportResult> {
+    return this.exports.exportForUser(user.id, getRequestMeta(req));
   }
 }

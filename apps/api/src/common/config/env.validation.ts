@@ -67,6 +67,13 @@ export class EnvironmentVariables {
 
   @IsString()
   EMAIL_FROM: string = 'onboarding@resend.dev';
+
+  // V1.5 — Cloudflare R2 (RGPD exports). All optional: if any is missing,
+  // ExportService will refuse with a clear error but the API still boots.
+  @IsOptional() @IsString() R2_ACCOUNT_ID?: string;
+  @IsOptional() @IsString() R2_ACCESS_KEY_ID?: string;
+  @IsOptional() @IsString() R2_SECRET_ACCESS_KEY?: string;
+  @IsOptional() @IsString() R2_BUCKET_NAME?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

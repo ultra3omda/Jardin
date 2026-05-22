@@ -17,6 +17,12 @@ export interface AppConfig {
     resendApiKey: string;
     from: string;
   };
+  r2: {
+    accountId: string | undefined;
+    accessKeyId: string | undefined;
+    secretAccessKey: string | undefined;
+    bucketName: string;
+  };
 }
 
 export function configuration(): AppConfig {
@@ -39,6 +45,12 @@ export function configuration(): AppConfig {
     email: {
       resendApiKey: process.env.RESEND_API_KEY ?? '',
       from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    },
+    r2: {
+      accountId: process.env.R2_ACCOUNT_ID,
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      bucketName: process.env.R2_BUCKET_NAME ?? 'ecole-saas-exports',
     },
   };
 }
