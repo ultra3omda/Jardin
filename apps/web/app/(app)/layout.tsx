@@ -1,6 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
 
@@ -54,9 +55,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
+            <Link
+              href="/profile"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+            >
               {user.firstName} {user.lastName}
-            </span>
+            </Link>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               Déconnexion
             </Button>

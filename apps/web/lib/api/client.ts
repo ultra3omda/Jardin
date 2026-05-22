@@ -12,6 +12,7 @@ import type {
  * because the Route Handlers proxy auth + manage the httpOnly refresh cookie.
  */
 const PROXY_BASE = '/api/auth';
+const USERS_PROXY_BASE = '/api/users';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -134,5 +135,79 @@ export async function resetPassword(args: {
   return jsonRequest<{ success: true; userId: string }>(`${PROXY_BASE}/password/reset`, {
     method: 'POST',
     body: JSON.stringify(args),
+  });
+}
+
+// V1.5 — /api/users/me* endpoints
+// =============================================================================
+
+export async function getProfile(accessToken: string): Promise<MeResponse> {
+  return jsonRequest<MeResponse>(`${USERS_PROXY_BASE}/me`, {
+    method: 'GET',
+    auth: accessToken,
+  });
+}
+
+export async function updateProfile(
+  accessToken: string,
+  values: { firstName?: string; lastName?: string; locale?: string },
+): Promise<MeResponse> {
+  return jsonRequest<MeResponse>(`${USERS_PROXY_BASE}/me`, {
+    method: 'PATCH',
+    auth: accessToken,
+    body: JSON.stringify(values),
+  });
+}
+
+export async function changeMyPassword(
+  accessToken: string,
+  values: { currentPassword: string; newPassword: string },
+): Promise<void> {
+  return jsonRequest<void>(`${USERS_PROXY_BASE}/me/password`, {
+    method: 'POST',
+    auth: accessToken,
+    body: JSON.stringify(values),
+  });
+}
+
+export interface SessionListItem {
+  id: string;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export async function listSessions(accessToken: string): Promise<SessionListItem[]> {
+  return jsonRequest<SessionListItem[]>(`${USERS_PROXY_BASE}/me/sessions`, {
+    method: 'GET',
+    auth: accessToken,
+  });
+}
+
+export async function revokeSession(accessToken: string, sessionId: string): Promise<void> {
+  return jsonRequest<void>(`${USERS_PROXY_BASE}/me/sessions/${sessionId}`, {
+    method: 'DELETE',
+    auth: accessToken,
+  });
+}
+
+export interface ExportResultResponse {
+  key: string;
+  downloadUrl: string;
+  expiresAt: string;
+}
+
+export async function requestDataExport(accessToken: string): Promise<ExportResultResponse> {
+  return jsonRequest<ExportResultResponse>(`${USERS_PROXY_BASE}/me/export`, {
+    method: 'POST',
+    auth: accessToken,
+  });
+}
+
+export async function deleteAccount(accessToken: string): Promise<void> {
+  return jsonRequest<void>(`${USERS_PROXY_BASE}/me`, {
+    method: 'DELETE',
+    auth: accessToken,
   });
 }
