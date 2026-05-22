@@ -96,3 +96,17 @@ export async function me(accessToken: string): Promise<MeResponse> {
     auth: accessToken,
   });
 }
+
+export async function verifyEmail(token: string): Promise<{ verified: true; userId: string }> {
+  return jsonRequest<{ verified: true; userId: string }>(`${PROXY_BASE}/email/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resendVerificationEmail(accessToken: string): Promise<void> {
+  return jsonRequest<void>(`${PROXY_BASE}/email/resend`, {
+    method: 'POST',
+    auth: accessToken,
+  });
+}
