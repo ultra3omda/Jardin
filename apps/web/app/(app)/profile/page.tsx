@@ -76,10 +76,14 @@ const PASSWORD_ERROR_COPY: Record<string, string> = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const session = useAuthStore((s) => s.session);
+  // Auth store exposes flat fields (no `session` aggregate). The `(app)/layout`
+  // already gates on accessToken + user before rendering children, so this
+  // guard is belt-and-suspenders for the SSR/hydration window.
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
   const setSession = useAuthStore((s) => s.setSession);
 
-  if (!session) {
+  if (!accessToken || !user) {
     return null;
   }
 
@@ -92,10 +96,10 @@ export default function ProfilePage() {
         </p>
       </header>
 
-      <ProfileCard accessToken={session.accessToken} setSession={setSession} />
-      <PasswordCard accessToken={session.accessToken} router={router} />
-      <SessionsCard accessToken={session.accessToken} />
-      <RgpdCard accessToken={session.accessToken} router={router} />
+      <ProfileCard accessToken={accessToken} setSession={setSession} />
+      <PasswordCard accessToken={accessToken} router={router} />
+      <SessionsCard accessToken={accessToken} />
+      <RgpdCard accessToken={accessToken} router={router} />
     </div>
   );
 }
@@ -110,16 +114,16 @@ function ProfileCard({
   accessToken: string;
   setSession: ReturnType<typeof useAuthStore.getState>['setSession'];
 }) {
-  const session = useAuthStore((s) => s.session);
+  const user = useAuthStore((s) => s.user);
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName: session?.user.firstName ?? '',
-      lastName: session?.user.lastName ?? '',
-      locale: (session?.user.locale as 'fr' | 'en' | 'ar' | 'es') ?? 'fr',
+      firstName: user?.firstName ?? '',
+      lastName: user?.lastName ?? '',
+      locale: (user?.locale as 'fr' | 'en' | 'ar' | 'es') ?? 'fr',
     },
   });
 
@@ -128,9 +132,10 @@ function ProfileCard({
     setSuccess(false);
     try {
       const updated = await updateProfile(accessToken, values);
-      if (session) {
-        setSession({ ...session, user: updated.user, tenant: updated.tenant });
-      }
+      // Rehydrate the store with the API's canonical shape — keeps Zustand
+      // in sync after the user edits their own profile from this page.
+      // AuthSessionResponse doesn't include refreshToken (httpOnly cookie).
+      setSession({ accessToken, user: updated.user, tenant: updated.tenant });
       setSuccess(true);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -167,7 +172,7 @@ function ProfileCard({
 
             <div className="space-y-1">
               <FormLabel>Email</FormLabel>
-              <Input value={session?.user.email ?? ''} disabled aria-readonly />
+              <Input value={user?.email ?? ''} disabled aria-readonly />
               <FormDescription>
                 L&apos;email ne peut pas être modifié depuis cette page (V1.5).
               </FormDescription>
