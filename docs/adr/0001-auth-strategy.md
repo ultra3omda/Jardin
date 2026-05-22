@@ -91,21 +91,25 @@ schools; each school has its own User row with the same email.
 scenarios including the SUPER_ADMIN bypass and cross-tenant
 read/update/delete attempts). This is THE critical test of the wave.
 
-### 8. SUPER_ADMIN login NOT supported in Vague 1
+### 8. SUPER_ADMIN login — blocked in V1, unlocked in V1.5
 
-Schema constraint: `RefreshToken.tenantId` is NOT NULL. Super admins
-have `User.tenantId = NULL`. Therefore they cannot currently hold
-refresh tokens, hence cannot log in via `/auth/login`.
+**V1 (historical)** — Schema constraint `RefreshToken.tenantId NOT NULL`
+forced super_admin login to throw `SUPER_ADMIN_LOGIN_NOT_SUPPORTED`,
+since super admins have `User.tenantId = NULL` and could not hold a
+refresh token under that constraint.
 
-Vague 10 (Admin SaaS) will introduce either:
+**V1.5 (current)** — Migration `20260522000000_vague_1_5_recovery_invite`
+makes `RefreshToken.tenantId` nullable, and `AuthService.login()` no
+longer special-cases super_admin. The full pipeline already supported
+the case (`TenantContextInterceptor` sets `skipTenantFilter: true` for
+`SUPER_ADMIN`, `JwtStrategy` payload accepts `tenantId: string | null`).
 
-- A separate auth flow for platform admins (e.g. `/admin/auth/*`), or
-- Make `RefreshToken.tenantId` nullable + adapt the multi-tenant
-  extension
+Driver: V1.5 requires super_admin to log in so they can mint invite
+tokens via the invite-only registration flow (Q4=B decision in
+`docs/roadmap.md`).
 
-The seed already creates a super_admin row (`superadmin@ecole-saas.test`)
-so the groundwork is in place. `/auth/login` returns the explicit error
-code `SUPER_ADMIN_LOGIN_NOT_SUPPORTED` if attempted.
+Vague 10 will layer a dedicated `/admin/*` UI on top — the API surface
+itself is already cross-tenant via the `skipTenantFilter` flag.
 
 ### 9. Web — refresh token in httpOnly cookie via Next.js Route Handler
 

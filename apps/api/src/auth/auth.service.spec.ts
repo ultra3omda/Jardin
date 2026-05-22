@@ -132,14 +132,36 @@ describe('AuthService', () => {
       expect(response.availableTenantSlugs).toEqual(['a', 'b']);
     });
 
-    it('rejects super_admin login with explicit error code', async () => {
+    it('issues tokens for super_admin (tenantId null, no tenant relation)', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 4);
       prisma.user.findMany.mockResolvedValueOnce([
-        { ...baseUser, role: UserRole.SUPER_ADMIN, tenant: null },
+        {
+          ...baseUser,
+          id: 'super-1',
+          tenantId: null,
+          role: UserRole.SUPER_ADMIN,
+          passwordHash,
+          tenant: null,
+        },
       ]);
-      const err = await service.login({ email: 'super@x.test', password: 'pwdpwdpwdpwd' }, {}).catch((e) => e);
-      expect(err).toBeInstanceOf(BadRequestException);
-      const response = (err as BadRequestException).getResponse() as { code: string };
-      expect(response.code).toBe('SUPER_ADMIN_LOGIN_NOT_SUPPORTED');
+      prisma.user.update.mockResolvedValueOnce({});
+      prisma.refreshToken.create.mockResolvedValueOnce({});
+
+      const result = await service.login(
+        { email: 'super@x.test', password: 'correct-password' },
+        { ip: '127.0.0.1', userAgent: 'vitest' },
+      );
+
+      expect(result.accessToken).toBe('signed-access-token');
+      expect(result.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(result.user.id).toBe('super-1');
+      expect(result.user.role).toBe(UserRole.SUPER_ADMIN);
+      expect(result.tenant).toBeNull();
+      expect(prisma.refreshToken.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tenantId: null, userId: 'super-1' }),
+        }),
+      );
     });
 
     it('throws UnauthorizedException on bad password', async () => {

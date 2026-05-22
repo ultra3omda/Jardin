@@ -113,16 +113,6 @@ export class AuthService {
 
     const user = candidates[0]!;
 
-    // Vague 1: super_admin login flow not yet supported (refresh tokens
-    // require a non-null tenantId per current schema). Documented in
-    // docs/adr/0001-auth-strategy.md.
-    if (user.role === UserRole.SUPER_ADMIN) {
-      throw new BadRequestException({
-        code: 'SUPER_ADMIN_LOGIN_NOT_SUPPORTED',
-        message: 'Super admin login is reserved for a future wave (Vague 10).',
-      });
-    }
-
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
       await this.logAudit('auth.login.failed', {
@@ -274,15 +264,6 @@ export class AuthService {
     tenant: Tenant | null,
     meta: RequestMeta,
   ): Promise<AuthResponseDto> {
-    if (!user.tenantId) {
-      // Belt-and-suspenders: callers must filter out super_admin before reaching
-      // this point. Documented in ADR 0001.
-      throw new BadRequestException({
-        code: 'SUPER_ADMIN_LOGIN_NOT_SUPPORTED',
-        message: 'Super admin login is reserved for a future wave (Vague 10).',
-      });
-    }
-
     const accessToken = await this.signAccessToken(user);
     const refreshTokenPlaintext = generateRefreshToken();
     await this.prisma.refreshToken.create({
