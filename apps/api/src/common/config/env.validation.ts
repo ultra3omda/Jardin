@@ -74,6 +74,10 @@ export class EnvironmentVariables {
   @IsOptional() @IsString() R2_ACCESS_KEY_ID?: string;
   @IsOptional() @IsString() R2_SECRET_ACCESS_KEY?: string;
   @IsOptional() @IsString() R2_BUCKET_NAME?: string;
+
+  // V1.5 — Sentry DSN for server-side error reporting. Optional — if
+  // missing, Sentry init is skipped (see src/instrument.ts).
+  @IsOptional() @IsString() SENTRY_DSN_API?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

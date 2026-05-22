@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AdminModule } from './admin/admin.module';
@@ -20,6 +21,9 @@ import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
+    // V1.5 — Sentry MUST be first so its interceptors / async-context tracking
+    // wraps every downstream module.
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
@@ -40,6 +44,9 @@ import { UsersModule } from './users/users.module';
     HealthModule,
   ],
   providers: [
+    // V1.5 — Sentry global filter MUST be first so it catches every other
+    // filter's caught exceptions and forwards them to Sentry.
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
     // Order matters: rate limit first, then auth, then role check, then
     // wrap the request in a tenant context for downstream services.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
