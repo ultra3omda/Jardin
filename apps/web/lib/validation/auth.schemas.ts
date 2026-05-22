@@ -19,6 +19,13 @@ export const loginSchema = z.object({
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const registerSchema = z.object({
+  // V1.5: /register is invite-only (Q4=B). The token is pre-filled from
+  // the URL query param ?token=… and validated server-side against the
+  // invite_tokens table.
+  inviteToken: z
+    .string()
+    .min(20, "Lien d'invitation invalide")
+    .max(256, "Lien d'invitation invalide"),
   tenant: z.object({
     name: z
       .string()
