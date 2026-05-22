@@ -15,6 +15,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { HealthModule } from './health/health.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { HealthModule } from './health/health.module';
     ]),
     AuthModule,
     AdminModule,
+    UsersModule,
     HealthModule,
   ],
   providers: [
