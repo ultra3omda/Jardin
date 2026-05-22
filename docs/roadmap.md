@@ -21,8 +21,9 @@
 |---|---|---|---|---|
 | **0** | Monorepo Turborepo + Next.js Hello World + CI/CD Vercel | 1j | — | ✅ Livrée |
 | **1** | Auth multi-tenant + Backend NestJS + Postgres + Web login/register/dashboard | 3j | V0 | ✅ Livrée prod 2026-05-21 |
-| **1.5** | Password reset + email verif + page profil + DB migrations + invite-only register + super_admin login + data export RGPD + cookie consent + Sentry boot + i18n infra | ~2.5j | V1 | 📋 Planifiée |
-| **2** | App Mobile Expo (shell + login + dashboard) + Module Élèves (CRUD complet web + mobile) | 3j | V1.5 | 📋 Planifiée |
+| **1.5** | Password reset + email verif + page profil + DB migrations + invite-only register + super_admin login + data export RGPD + cookie consent + Sentry boot + i18n infra | ~2.5j | V1 | ✅ Livrée prod 2026-05-22 |
+| **1.6** | **White-label runtime per-tenant** (fondations) : `Tenant.brand JSON` + endpoints API admin + bucket R2 logos + DNS wildcard `*.ecole-saas.com` + middleware Next.js resolver + injection CSS vars + page settings + emails brandés Resend + theme provider mobile (M1, écran « code école ») + ADR 0003. Décision **D20** (2026-05-22 PM, supersedes D19). | ~1.5j | V1.5 | 📋 Planifiée |
+| **2** | App Mobile Expo (shell + login + dashboard) + Module Élèves (CRUD complet web + mobile) | 3j | V1.6 | 📋 Planifiée |
 | **3** | Module Parents + Relations parent-élève (N-N) + Communication 1:1 (REST + WebSocket Socket.IO) | 2j | V2 | 📋 Planifiée |
 | **4** | Module Enseignants + Classes + Affectations + Emploi du temps (calendrier hebdo) | 3j | V2 | 📋 Planifiée |
 | **5** | RH (contrats, congés, présence) + Paie (calcul brut→net basique, fiche de paie PDF) | 3j | V4 (les enseignants sont aussi du personnel) | 📋 Planifiée |
@@ -31,9 +32,9 @@
 | **8** | Stock + Cantine + Transport + Santé (carnet médical) + Sécurité (incidents) | 3j | V2 + V4 | 📋 Planifiée |
 | **9** | Notifications multi-canal : push (Expo) + email (Resend) + SMS (Twilio) + WhatsApp Business (option) + queues BullMQ/Upstash | 2j | V3 + V5 + Upstash | 📋 Planifiée |
 | **10** | Admin SaaS : super-admin platform, billing tenants (subscription Stripe), analytics plateforme (PostHog) | 2j | V7 | 📋 Planifiée |
-| **11** | Hardening : Sentry complet + Better Stack + Postgres RLS + perf audit + audit RGPD + backup strategy **+ tenant white-label retrofit** (couleurs + logo per tenant via CSS vars runtime, voir D19) | ~5-6j | tout V1-10 | 📋 Planifiée |
+| **11** | Hardening : Sentry complet + Better Stack + Postgres RLS + perf audit + audit RGPD + backup strategy + **white-label premium** (custom domain `portail.ecole-xyz.fr` via API Vercel + optionnel M2 EAS Build natif per-tenant, voir D20) | ~3j | tout V1-10 + V1.6 | 📋 Planifiée |
 | **12** | Mobile build & soumission stores : EAS Build + screenshots + TestFlight + Google Play Internal Testing | 3j | tout V1-11 | 📋 Planifiée |
-| | **Total restant** | **~34-35 jours** | | |
+| | **Total restant** | **~33-34 jours** | | |
 
 ---
 
@@ -94,7 +95,7 @@ Ces décisions impactent plusieurs vagues. Lockées dans cette roadmap pour évi
 | **Localisation par défaut** | `fr` partout. Tenants peuvent changer leur `locale` à la création. Sélecteur de langue dans la page profil V1.5. | V1.5 |
 | **Custom domain OVH** | **Q3=C** — Repoussé en V11 hardening. On garde `ecole-saas-weld.vercel.app` + `ecole-saasapi-production.up.railway.app` jusque-là. | V11 |
 | **Modèle d'inscription** | **Q4=B** — **Invite-only**. Public `/register` désactivé sans `?token=xxx` valide. Super-admin émet les tokens via endpoint dédié. Page landing remplace "Créer un établissement" par "Demander un accès" (mailto pour MVP). | V1.5 |
-| **White-label per-tenant** (couleurs + logo + favicon par école) | **Décision utilisateur 2026-05-22 : option B — repoussé en V11 hardening**. Indigo unique pour V1.5 → V10. Coût retrofit accepté : **3-4j** (refonte tokens design system + emails Resend déjà envoyés + composants UI déjà codés). Plus tôt = moins cher, mais le scope V2-V10 (mobile + élèves + parents + ...) reste prioritaire. Custom domain par école garde Q3=C (V11 aussi). Voir D19 ci-dessous pour l'implémentation prévue. | V11 |
+| **White-label per-tenant** (couleurs + logo + favicon par école) | **Révision 2026-05-22 PM : décision D20 supersedes D19**. White-label runtime livré dès **V1.6** (fondations ~1.5j AVANT V2, pas après) : `Tenant.brand JSON` + sous-domaine `*.ecole-saas.com` + injection CSS vars + theme provider mobile M1 (1 binaire multi-tenant par persona, écran « code école » au 1er lancement). Premium (custom domain + optionnel M2 EAS Build natif per-tenant) reste en **V11**. Économie nette ~3j vs option B initiale (V11 only, 5-6j) + branding dispo dès démos V2+. Voir D20 ci-dessous pour l'implémentation détaillée. | V1.6 + V11 |
 
 ### Décisions techniques additionnelles (lockées 2026-05-22)
 
@@ -118,7 +119,8 @@ Ces décisions impactent plusieurs vagues. Lockées dans cette roadmap pour évi
 | D16 | Webhook receiver Stripe V7 | Endpoint NestJS `/api/webhooks/stripe` + signature verify | Pas de Vercel Function ; API Railway gère |
 | D17 | App icon + splash mobile | Placeholder V2, design pro en V12 (avant store) | Pas bloquant TestFlight interne |
 | D18 | Throttling sur `/auth/register` | 5 req/min/IP (déjà via Throttler global) + CAPTCHA en V11 | V1 a déjà le throttler; CAPTCHA post-spam |
-| D19 | **White-label per-tenant** (couleurs + logo + favicon par école) | **Repoussé en V11** (décision utilisateur 2026-05-22, option B). Indigo unique en V1.5 → V10. Retrofit V11 = **3-4j accepté** : (1) `Tenant.brand JSON` `{primaryColor, secondaryColor, logoUrl, faviconUrl?}` avec defaults indigo/logo École SaaS, (2) `GET/PATCH /api/admin/tenant/branding` (SCHOOL_ADMIN-only), (3) Web `(app)/layout.tsx` injecte CSS vars `--primary`/`--primary-hover` etc après `getMe()` — Tailwind les pick automatiquement, (4) upload logo via R2 (bucket `ecole-saas-tenant-assets`, public read), (5) refonte des 4 templates @react-email pour utiliser `tenant.brand.logoUrl`, (6) mobile (V12) lit le branding au login via `expo-asset`. Sous-domaine par école (`<slug>.ecole-saas.com`) reste **Q3=C** (V11 + custom OVH). Mobile native white-label per-tenant (Option D : binaires séparés par école au store) **explicitement hors scope** — trop d'ops. | Plus tôt = moins cher (1.5j en V1.6 vs 3-4j en V11) — coût accepté pour préserver le focus V2 (mobile + élèves) ; cohérence indigo sur V1.5-V10 est OK pour les premiers tenants démo ; V11 hardening est de toute façon le moment où on refait passes UX/perf, donc retrofit naturel. |
+| D19 | ~~**White-label per-tenant** (couleurs + logo + favicon par école) — repoussé en V11~~ | **SUPERSEDED par D20 le 2026-05-22 PM**. La décision originale (option B, retrofit 3-4j en V11) est révisée après production de la spec détaillée [`docs/superpowers/specs/2026-05-22-tenant-white-label-app-provisioning.md`](superpowers/specs/2026-05-22-tenant-white-label-app-provisioning.md) qui démontre une économie nette ~3j en faisant les fondations runtime en V1.6 (1.5j) au lieu de tout en V11 (5-6j). | ~~V11~~ |
+| D20 | **White-label runtime + premium hybride** (supersedes D19) | **Décision utilisateur 2026-05-22 PM : option 1 — V1.6 avant V2**. Découpage en 2 vagues : <br/>**V1.6 (~1.5j, runtime fondations)** : (1) `Tenant.brand JSON?` migration additive `{primaryColor, primaryHover, secondaryColor, logoUrl, faviconUrl, emailHeaderColor, customDomain?}` (Zod hex regex + anti-SSRF startsWith R2_PUBLIC_URL), (2) endpoints API `GET /api/public/tenant-brand/:slug` (non-auth, cache CDN 5min), `GET/PATCH /api/admin/tenant/branding` (SCHOOL_ADMIN), `POST /api/admin/tenant/branding/upload-url` (presigned R2 PUT), (3) bucket R2 `ecole-saas-tenant-assets` public-read, (4) DNS wildcard `*.ecole-saas.com → cname.vercel-dns.com` + SSL auto Vercel, (5) middleware Next.js résout sous-domaine → header `x-tenant-slug`, (6) layout web injecte CSS vars `--primary` etc dans `<style>` après chargement brand, (7) page `/settings/branding` (color pickers + upload logo + preview), (8) refonte 4 templates @react-email pour utiliser `tenant.brand.logoUrl` + `emailHeaderColor`, (9) mobile **strategy M1** : 3 apps publiques aux stores, écran « code école » au 1er lancement (`apps/mobile/app/(onboarding)/school-code.tsx`), brand persisté `expo-secure-store`, theme provider expose `colors.primary` à tous les écrans, (10) ADR `0003-tenant-white-label.md`. <br/>**V11 (~1j, premium tier)** : (a) custom domain par école via API Vercel (`POST /api/admin/tenant/custom-domain`), (b) brand audit log dédié, (c) SUPER_ADMIN cross-tenant branding panel. <br/>**Optionnel V11+ (2j si business)** : M2 EAS Build dynamique per-tenant (icône + nom store custom, l'école paie son compte Apple Developer 99 USD/an). <br/>**Hors scope définitif** : M3 builds RN bare per-tenant, per-school marketing site, per-school email domain DKIM/SPF, typo custom, illustrations custom. | Économie ~3j sur durée projet (2.5j total V1.6+V11 vs 5-6j en bloc V11) + branding dispo dès démos V2+ comme argument commercial + V2-V10 naît déjà branded (zéro retrofit). Acceptation du coût d'ordonnancement : V2 (mobile/Élèves) glisse de 1.5j mais V11 raccourcit d'autant. |
 
 ---
 
@@ -265,6 +267,10 @@ Pour chaque vague N :
 - [`docs/adr/`](adr/) — Architecture Decision Records
   - [`0001-auth-strategy.md`](adr/0001-auth-strategy.md) — Vague 1 (HS256, refresh rotation, bcrypt 12)
   - [`0002-v1.5-recovery-invite.md`](adr/0002-v1.5-recovery-invite.md) — Vague 1.5 (invite-only, anti-enum, R2, Sentry, i18n, full session revocation)
+  - `0003-tenant-white-label.md` — Vague 1.6 (à produire après livraison V1.6, voir D20)
+- [`docs/superpowers/specs/`](superpowers/specs/) — Specs design par vague
+  - [`2026-05-22-vague-1.5-recovery-invite-design.md`](superpowers/specs/2026-05-22-vague-1.5-recovery-invite-design.md)
+  - [`2026-05-22-tenant-white-label-app-provisioning.md`](superpowers/specs/2026-05-22-tenant-white-label-app-provisioning.md) — V1.6 white-label (D20)
 
 ---
 
@@ -276,3 +282,4 @@ Pour chaque vague N :
 | 2026-05-22 | Claude Code + ultra3omda | Q3=C (custom domain repoussé V11), Q4=B (invite-only). V1.5 scope étendu (invite tokens + super_admin login + data export). 18 décisions techniques additionnelles lockées (D1-D18). |
 | 2026-05-22 | Claude Code + ultra3omda | V1.5 livrée et mergée sur main (PR #4 `5f2f1421`, PR #5 `7133324`). Politique auto-merge sur CI verte lockée dans CLAUDE.md. |
 | 2026-05-22 | Claude Code + ultra3omda | **D19 white-label per-tenant** lockée — option B (repoussé en V11). V11 effort 2j → 5-6j (retrofit 3-4j accepté). Indigo unique en V1.5 → V10. |
+| 2026-05-22 PM | Claude Code + ultra3omda | **D20 supersedes D19** après production de la spec [tenant-white-label-app-provisioning](superpowers/specs/2026-05-22-tenant-white-label-app-provisioning.md). White-label devient V1.6 (1.5j runtime fondations, AVANT V2) + V11 (1j premium custom domain). V1.5 marquée livrée. Total restant 34-35j → 33-34j. |
