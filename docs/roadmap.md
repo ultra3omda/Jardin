@@ -21,7 +21,7 @@
 |---|---|---|---|---|
 | **0** | Monorepo Turborepo + Next.js Hello World + CI/CD Vercel | 1j | — | ✅ Livrée |
 | **1** | Auth multi-tenant + Backend NestJS + Postgres + Web login/register/dashboard | 3j | V0 | ✅ Livrée prod 2026-05-21 |
-| **1.5** | Password reset email + Email verification + Page profil + DB migrations propre + Custom domain + Sentry boot | 1j | V1 | 📋 Planifiée |
+| **1.5** | Password reset + email verif + page profil + DB migrations + invite-only register + super_admin login + data export RGPD + cookie consent + Sentry boot + i18n infra | ~2.5j | V1 | 📋 Planifiée |
 | **2** | App Mobile Expo (shell + login + dashboard) + Module Élèves (CRUD complet web + mobile) | 3j | V1.5 | 📋 Planifiée |
 | **3** | Module Parents + Relations parent-élève (N-N) + Communication 1:1 (REST + WebSocket Socket.IO) | 2j | V2 | 📋 Planifiée |
 | **4** | Module Enseignants + Classes + Affectations + Emploi du temps (calendrier hebdo) | 3j | V2 | 📋 Planifiée |
@@ -92,6 +92,31 @@ Ces décisions impactent plusieurs vagues. Lockées dans cette roadmap pour évi
 | **Real-time messages V3** | Persistence Postgres + Socket.IO pour les push instantanés. Pas de Redis pubsub avant V9 (YAGNI). | V3 |
 | **Mode offline mobile** | **Hors scope V1-11.** TanStack Query cache offline-light suffit. Vrai mode offline (SQLite local sync) = post-V12 si demande utilisateur. | post-V12 |
 | **Localisation par défaut** | `fr` partout. Tenants peuvent changer leur `locale` à la création. Sélecteur de langue dans la page profil V1.5. | V1.5 |
+| **Custom domain OVH** | **Q3=C** — Repoussé en V11 hardening. On garde `ecole-saas-weld.vercel.app` + `ecole-saasapi-production.up.railway.app` jusque-là. | V11 |
+| **Modèle d'inscription** | **Q4=B** — **Invite-only**. Public `/register` désactivé sans `?token=xxx` valide. Super-admin émet les tokens via endpoint dédié. Page landing remplace "Créer un établissement" par "Demander un accès" (mailto pour MVP). | V1.5 |
+
+### Décisions techniques additionnelles (lockées 2026-05-22)
+
+| # | Décision | Choix | Raison |
+|---|---|---|---|
+| D1 | i18n launch scope | `fr` only en V1.5. EN en V2. AR (RTL) en V8. ES en V10. | YAGNI; ajouter 4 langues d'un coup = 4x effort sans valeur immédiate |
+| D2 | Email verification | **Mandatory** avant 1er login | Industry standard B2B SaaS, anti-spam |
+| D3 | Cookie consent banner | Ship en V1.5, ~50 lignes inline (pas de lib) | RGPD requis dès qu'on ajoute PostHog V2 |
+| D4 | Tenant onboarding wizard | **Pas de wizard** en V1.5, redirect direct `/dashboard`. Wizard en V10. | YAGNI |
+| D5 | Per-tenant tier limits / `Plan` entity | **Pas d'entité `Plan` avant V10** — tous les tenants free unlimited. V10 introduit Stripe Subscriptions + tiers. | YAGNI |
+| D6 | Mobile biometric unlock (FaceID/TouchID) | V11 hardening, pas V2 | Standard mais pas bloquant |
+| D7 | API versioning (`/v1/`, `/v2/`) | Defer — pas de prefix avant V10+ | YAGNI, 0 consommateurs externes |
+| D8 | CSP headers prod | V11 hardening | Helmet désactivé en dev, à whitelister Vercel+R2+Resend+PostHog |
+| D9 | Audit log retention | **2 ans** | Standard RGPD données scolaires |
+| D10 | Neon branching strategy previews | Branche `preview` partagée pour toutes les PRs | Free tier 10 branches max ; 1 par PR = pas scalable |
+| D11 | Search élèves V2 | Postgres `tsvector` full-text natif | Indexable, gratuit. Pas besoin Algolia avant 10K+ élèves/tenant |
+| D12 | Tenant-per-subdomain (`<tenant>.app.com`) | **NON** — slug en query param/path | Wildcard SSL+DNS = complexité énorme, pas de cas d'usage MVP |
+| D13 | Data export RGPD format | **JSON dans ZIP**, email-delivered, link expirant 24h | Lisible machine+humain, simple à implémenter |
+| D14 | Migrations schema breaking change | **Backward-compat toujours** + soft-delete au lieu de drop | Évite downtimes |
+| D15 | Mobile push token storage | Table `DeviceToken (id, userId, tenantId, platform, token, lastActiveAt)` créée en V2 | Stocké au login mobile, utilisé V9 |
+| D16 | Webhook receiver Stripe V7 | Endpoint NestJS `/api/webhooks/stripe` + signature verify | Pas de Vercel Function ; API Railway gère |
+| D17 | App icon + splash mobile | Placeholder V2, design pro en V12 (avant store) | Pas bloquant TestFlight interne |
+| D18 | Throttling sur `/auth/register` | 5 req/min/IP (déjà via Throttler global) + CAPTCHA en V11 | V1 a déjà le throttler; CAPTCHA post-spam |
 
 ---
 
@@ -245,3 +270,4 @@ Pour chaque vague N :
 | Date | Auteur | Changement |
 |---|---|---|
 | 2026-05-22 | Claude Code + ultra3omda | Création initiale après livraison Vague 1 en prod |
+| 2026-05-22 | Claude Code + ultra3omda | Q3=C (custom domain repoussé V11), Q4=B (invite-only). V1.5 scope étendu (invite tokens + super_admin login + data export). 18 décisions techniques additionnelles lockées (D1-D18). |
