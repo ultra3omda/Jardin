@@ -73,6 +73,12 @@ jobs:
       BCRYPT_ROUNDS: '10'
       API_PORT: '4000'
       CORS_ORIGIN: http://localhost:3000
+      # V1.5 — required by AppModule's validateEnv. Tests override ResendService
+      # via Test.createTestingModule(...).overrideProvider() so no real Resend
+      # call is made; the real key is just here to satisfy MinLength validation.
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      WEB_APP_URL: 'http://localhost:3000'
+      EMAIL_FROM: 'onboarding@resend.dev'
     steps:
       - uses: actions/checkout@v4
 
@@ -101,7 +107,10 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter=@ecole-saas/api exec prisma generate
 
-      - name: Apply schema to CI database (no migration files yet — use db push)
+      - name: Apply schema to CI database
+        # V1.5: we have proper migrations now, but db push remains the path
+        # for ephemeral CI databases — it builds the schema directly from
+        # schema.prisma without needing the migration history table.
         run: pnpm --filter=@ecole-saas/api exec prisma db push --skip-generate --accept-data-loss
 
       - name: Run API tests with coverage
@@ -151,6 +160,11 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:4000
       PLAYWRIGHT_BASE_URL: http://localhost:3000
+      # V1.5 — same rationale as test-api: AppModule's validateEnv requires
+      # these to boot. Email send is best-effort and won't block the flow.
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      WEB_APP_URL: 'http://localhost:3000'
+      EMAIL_FROM: 'onboarding@resend.dev'
     steps:
       - uses: actions/checkout@v4
 
