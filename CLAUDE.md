@@ -161,9 +161,20 @@ Le code livré doit être **production-ready**, pas un prototype. Cela signifie 
 4. Attendre validation explicite avant de coder
 5. Coder par sous-tâche avec commits atomiques (Conventional Commits)
 6. Tester localement à chaque étape (pnpm dev, pnpm test, pnpm build)
-7. À la fin : récap des changements + checklist de validation + push
-8. STOP — ne JAMAIS commencer la vague suivante sans validation
+7. À la fin : récap des changements + ouvrir une PR vers main
+8. Attendre que toute la CI passe verte (lint + type + build + tests + e2e)
+9. CI verte → MERGE AUTOMATIQUE de la PR (`gh pr merge <N> --merge`)
+   — ne PAS attendre d'OK explicite pour le merge tant que la CI est verte.
+   Stratégie : merge commit (préserve l'historique granulaire des feature branches).
+10. STOP — ne JAMAIS commencer la vague suivante sans validation utilisateur
+    (le merge auto ferme la vague, mais le scope de la suivante reste à l'utilisateur)
 ```
+
+> **Note (politique locked 2026-05-22)** : la règle 9 (merge auto sur CI verte)
+> remplace l'ancien "attendre l'OK utilisateur pour merger". Exceptions qui
+> nécessitent toujours validation explicite : `git push --force` ou réécriture
+> d'historique public, modif `.github/workflows/`, ajout de dep >100 KB gzipped
+> ou avec poids sécurité, coût récurrent >$50/mois, conflit avec CLAUDE.md.
 
 ### Checkpoints obligatoires (s'ARRÊTER et demander)
 - 🛑 Avant tout `git push --force` ou modification de l'historique
