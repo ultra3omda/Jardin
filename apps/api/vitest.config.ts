@@ -26,5 +26,27 @@ export default defineConfig({
       },
     },
   },
-  plugins: [swc.vite({ module: { type: 'es6' } })],
+  plugins: [
+    swc.vite({
+      module: { type: 'es6' },
+      // V1.5 — email templates are .tsx that use the new JSX runtime
+      // (matches `"jsx": "react-jsx"` in tsconfig.json). Without this,
+      // SWC defaults to classic runtime and emits React.createElement
+      // calls without a React import — vitest blows up with
+      // "ReferenceError: React is not defined".
+      jsc: {
+        parser: {
+          syntax: 'typescript',
+          tsx: true,
+          decorators: true,
+          dynamicImport: true,
+        },
+        transform: {
+          legacyDecorator: true,
+          decoratorMetadata: true,
+          react: { runtime: 'automatic' },
+        },
+      },
+    }),
+  ],
 });
