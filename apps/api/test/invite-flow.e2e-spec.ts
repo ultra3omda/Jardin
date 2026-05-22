@@ -14,9 +14,10 @@ import { createId } from '@paralleldrive/cuid2';
 import { TenantType, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from '../src/app.module';
+import { ResendService } from '../src/common/email/resend.service';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 
 const SUPER_ADMIN_EMAIL = 'invite-flow-super@e2e.test';
@@ -65,7 +66,12 @@ describe('Invite-only register flow (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    // V1.5: no-op Resend so register's verification email doesn't hit prod.
+    const noopResend = { send: vi.fn().mockResolvedValue({ success: true }) };
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ResendService)
+      .useValue(noopResend)
+      .compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
@@ -86,7 +92,10 @@ describe('Invite-only register flow (e2e)', () => {
       superAdminId = existing.id;
       await prisma.user.update({
         where: { id: existing.id },
-        data: { passwordHash: await bcrypt.hash(SUPER_ADMIN_PASSWORD, 4) },
+        data: {
+          passwordHash: await bcrypt.hash(SUPER_ADMIN_PASSWORD, 4),
+          emailVerifiedAt: new Date(),
+        },
       });
     } else {
       const created = await prisma.user.create({
@@ -97,6 +106,7 @@ describe('Invite-only register flow (e2e)', () => {
           firstName: 'Super',
           lastName: 'Invite',
           role: UserRole.SUPER_ADMIN,
+          emailVerifiedAt: new Date(),
         },
       });
       superAdminId = created.id;

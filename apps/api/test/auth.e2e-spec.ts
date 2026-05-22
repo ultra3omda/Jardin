@@ -11,9 +11,10 @@ import { createId } from '@paralleldrive/cuid2';
 import { TenantType, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from '../src/app.module';
+import { ResendService } from '../src/common/email/resend.service';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 
 const SUPER_ADMIN_FIXTURE_EMAIL = 'super-e2e-test@e2e.test';
@@ -52,10 +53,24 @@ describe('Auth (e2e)', () => {
     return plaintext;
   }
 
+  /** V1.5: marks the just-registered user as email-verified so /login succeeds. */
+  async function markEmailVerified(email: string): Promise<void> {
+    await prisma.user.updateMany({
+      where: { email: email.toLowerCase() },
+      data: { emailVerifiedAt: new Date() },
+    });
+  }
+
   beforeAll(async () => {
+    // V1.5: don't actually send emails on this suite — register triggers a
+    // verification mail that we don't care about here. Quota-saver for CI.
+    const noopResend = { send: vi.fn().mockResolvedValue({ success: true }) };
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(ResendService)
+      .useValue(noopResend)
+      .compile();
 
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
@@ -121,6 +136,10 @@ describe('Auth (e2e)', () => {
     expect(registerRes.body.tenant.slug).toBe(tenantPayload.slug);
     expect(registerRes.body.user.email).toBe(adminPayload.email.toLowerCase());
 
+    // V1.5: unblock login by flipping emailVerifiedAt directly.
+    // (Real flow exercised separately in email-verification.e2e-spec.ts)
+    await markEmailVerified(adminPayload.email);
+
     // Login (with the same credentials, mixed-case email to verify normalization)
     const loginRes = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -166,6 +185,7 @@ describe('Auth (e2e)', () => {
       .post('/api/auth/register')
       .send({ inviteToken, tenant: tenantPayload, admin: adminPayload })
       .expect(201);
+    await markEmailVerified(adminPayload.email);
 
     await request(app.getHttpServer())
       .post('/api/auth/login')

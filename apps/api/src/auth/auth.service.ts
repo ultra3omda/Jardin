@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -15,6 +17,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthResponseDto, MeResponseDto, TenantDto, UserDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { EmailVerificationService } from './email-verification.service';
 import type { JwtPayload } from './strategies/jwt.strategy';
 import { parseDurationMs } from './utils/duration.utils';
 import type { RequestMeta } from './utils/request-meta.utils';
@@ -29,6 +32,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly inviteTokens: InviteTokensService,
+    private readonly emailVerification: EmailVerificationService,
   ) {}
 
   // ===== Public API =====
@@ -103,6 +107,10 @@ export class AuthService {
       ...meta,
     });
 
+    // V1.5: trigger verification email. Best-effort — failure logged inside
+    // the service and does NOT block registration.
+    await this.emailVerification.mintAndSend(user, meta);
+
     return this.issueTokensAndBuildResponse(user, tenant, meta);
   }
 
@@ -147,6 +155,21 @@ export class AuthService {
         ...meta,
       });
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // V1.5: block login if email not yet verified. Legacy users (pre-V1.5)
+    // were grandfathered in the 20260522 migration so they are not blocked.
+    if (!user.emailVerifiedAt) {
+      await this.logAudit('auth.login.blocked.email_unverified', {
+        userId: user.id,
+        tenantId: user.tenantId,
+        metadata: { email },
+        ...meta,
+      });
+      throw new ForbiddenException({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Confirmez votre email avant de vous connecter.',
+      });
     }
 
     await this.prisma.user.update({
@@ -244,6 +267,30 @@ export class AuthService {
       });
     }
     // Silently succeed for unknown/already-revoked tokens — avoids leaking info
+  }
+
+  /**
+   * Resend the email-verification email for the current user. Throws if
+   * the user is already verified — avoids spamming on accident.
+   */
+  async resendVerificationEmail(userId: string, meta: RequestMeta): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, emailVerifiedAt: true, deletedAt: true },
+    });
+    if (!user || user.deletedAt) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.emailVerifiedAt) {
+      throw new BadRequestException({
+        code: 'EMAIL_ALREADY_VERIFIED',
+        message: 'Votre email est déjà confirmé.',
+      });
+    }
+    await this.emailVerification.mintAndSend(
+      { id: user.id, email: user.email, firstName: user.firstName },
+      meta,
+    );
   }
 
   async me(userId: string): Promise<MeResponseDto> {

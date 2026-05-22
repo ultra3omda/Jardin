@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
@@ -9,6 +9,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InviteTokensService } from '../admin/invite-tokens.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { EmailVerificationService } from './email-verification.service';
+
+type EmailVerificationMock = {
+  mintAndSend: ReturnType<typeof vi.fn>;
+  consume: ReturnType<typeof vi.fn>;
+};
 
 const VALID_INVITE_TOKEN = 'a-valid-token-string-at-least-20-chars';
 const INVITE_ROW = {
@@ -72,6 +78,8 @@ const baseUser = {
   updatedAt: new Date(),
   deletedAt: null,
   lastLoginAt: null,
+  emailVerifiedAt: new Date(), // V1.5: default verified so login tests aren't blocked
+  passwordChangedAt: null,
 };
 
 const baseTenant = {
@@ -90,6 +98,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let prisma: PrismaMock;
   let inviteTokens: InviteTokensMock;
+  let emailVerification: EmailVerificationMock;
 
   beforeEach(async () => {
     prisma = buildPrismaMock();
@@ -100,11 +109,16 @@ describe('AuthService', () => {
       list: vi.fn(),
       revoke: vi.fn(),
     };
+    emailVerification = {
+      mintAndSend: vi.fn().mockResolvedValue(undefined),
+      consume: vi.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: InviteTokensService, useValue: inviteTokens },
+        { provide: EmailVerificationService, useValue: emailVerification },
         {
           provide: JwtService,
           useValue: {
@@ -203,6 +217,29 @@ describe('AuthService', () => {
       await expect(
         service.login({ email: baseUser.email, password: 'wrong-password' }, {}),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('blocks login with EMAIL_NOT_VERIFIED when emailVerifiedAt is null', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 4);
+      prisma.user.findMany.mockResolvedValueOnce([
+        { ...baseUser, passwordHash, emailVerifiedAt: null, tenant: baseTenant },
+      ]);
+
+      const err = await service
+        .login({ email: baseUser.email, password: 'correct-password' }, {})
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(ForbiddenException);
+      expect((err as ForbiddenException).getResponse()).toMatchObject({
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: 'auth.login.blocked.email_unverified' }),
+        }),
+      );
     });
 
     it('issues tokens on success and updates lastLoginAt', async () => {
@@ -460,6 +497,10 @@ describe('AuthService', () => {
           consumedAt: expect.any(Date),
         }),
       });
+      expect(emailVerification.mintAndSend).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-2' }),
+        expect.any(Object),
+      );
     });
   });
 });

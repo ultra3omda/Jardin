@@ -18,12 +18,17 @@ import { AuthResponseDto, MeResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { EmailVerificationService } from './email-verification.service';
 import { getRequestMeta } from './utils/request-meta.utils';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly emailVerification: EmailVerificationService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -67,5 +72,30 @@ export class AuthController {
   @ApiResponse({ status: 200, type: MeResponseDto })
   async me(@CurrentUser() user: AuthenticatedUser): Promise<MeResponseDto> {
     return this.auth.me(user.id);
+  }
+
+  @Public()
+  @Post('email/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Consume an email verification token (V1.5)' })
+  @ApiResponse({ status: 200 })
+  async verifyEmail(
+    @Body() dto: VerifyEmailDto,
+    @Req() req: Request,
+  ): Promise<{ verified: true; userId: string }> {
+    const { userId } = await this.emailVerification.consume(dto.token, getRequestMeta(req));
+    return { verified: true, userId };
+  }
+
+  @Post('email/resend')
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Resend the email verification email for the current user' })
+  @ApiResponse({ status: 204 })
+  async resendVerificationEmail(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.auth.resendVerificationEmail(user.id, getRequestMeta(req));
   }
 }
