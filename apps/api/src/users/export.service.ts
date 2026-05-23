@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
 import archiver from 'archiver';
 import { createElement } from 'react';
+import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 
 import { R2Service } from '../common/r2/r2.service';
 import { ResendService } from '../common/email/resend.service';
@@ -171,13 +172,19 @@ export class ExportService {
     const downloadUrl = await this.r2.signedGetUrl(objectKey, SIGNED_URL_TTL_S);
     const expiresAt = new Date(generatedAt.getTime() + SIGNED_URL_TTL_S * 1000);
 
+    // V1.6 — brand the email with the user's tenant theme.
+    const storedBrand = (user.tenant?.brand ?? {}) as Partial<TenantBrand>;
+    const brand: TenantBrand = { ...DEFAULT_BRAND, ...storedBrand };
+    const tenantName = user.tenant?.name;
     const emailResult = await this.resend.send({
       to: user.email,
-      subject: 'Votre export de données École SaaS est prêt',
+      subject: `Votre export de données ${tenantName ?? 'École SaaS'} est prêt`,
       template: createElement(ExportReadyEmail, {
         firstName: user.firstName,
         downloadUrl,
         expiresAtIso: expiresAt.toISOString(),
+        brand,
+        tenantName,
       }),
     });
 
