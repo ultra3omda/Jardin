@@ -17,6 +17,7 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { R2Module } from './common/r2/r2.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { HealthModule } from './health/health.module';
+import { TenantBrandModule } from './tenant-brand/tenant-brand.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
     AdminModule,
     UsersModule,
     HealthModule,
+    TenantBrandModule,
   ],
   providers: [
     // V1.5 — Sentry global filter MUST be first so it catches every other
