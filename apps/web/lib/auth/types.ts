@@ -18,6 +18,14 @@ export interface AuthUser {
   locale: Locale;
 }
 
+/**
+ * V1.6 — Loose shape for the brand JSON field. The API returns either a
+ * partial brand (Record<string, unknown>) or a fully-merged TenantBrand
+ * (when served via getMeFromCookies which merges over DEFAULT_BRAND).
+ * Either shape extends Record<string, unknown> structurally.
+ */
+export type AuthTenantBrand = Record<string, unknown> | null;
+
 export interface AuthTenant {
   id: string;
   name: string;
@@ -25,9 +33,9 @@ export interface AuthTenant {
   type: TenantType;
   locale: Locale;
   timezone: string;
-  /** V1.6 — partial TenantBrand JSON (null = use DEFAULT_BRAND).
-   *  Web callers should merge it over DEFAULT_BRAND before consuming. */
-  brand: Record<string, unknown> | null;
+  /** V1.6 — TenantBrand JSON (raw partial from API or fully merged from server-client).
+   *  Pre-auth flows merge it over DEFAULT_BRAND before consuming. */
+  brand: AuthTenantBrand;
 }
 
 export interface AuthResponse {
