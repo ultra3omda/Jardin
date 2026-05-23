@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 
 import { REFRESH_COOKIE_NAME } from '@/lib/auth/cookies';
@@ -26,10 +27,18 @@ export interface ServerSession {
  *
  * Returns null if no cookie / refresh failed (caller redirects to /login).
  * On network/upstream failure we also return null — the (app) layout
- * already gates on this. The actual /login redirect lives in middleware
- * for cookie-less requests, but we double-check here for safety.
+ * already gates on this.
+ *
+ * BUG FIX 2026-05-23 — wrapped in React.cache() so multiple Server Components
+ * in the same request (layout + page) share a single /auth/refresh call.
+ * Without cache(), V1.5's refresh-token-rotation revokes the cookie on the
+ * first call and the second call fails 401 → page redirects /login →
+ * middleware re-redirects /dashboard → infinite-feeling loop on
+ * /settings/branding (and any (app) segment page).
+ *
+ * Cache scope = single request. Across requests, the function re-runs.
  */
-export async function getMeFromCookies(): Promise<ServerSession | null> {
+export const getMeFromCookies = cache(async function getMeFromCookiesImpl(): Promise<ServerSession | null> {
   const cookieStore = await cookies();
   const refresh = cookieStore.get(REFRESH_COOKIE_NAME);
   if (!refresh) return null;
@@ -74,4 +83,4 @@ export async function getMeFromCookies(): Promise<ServerSession | null> {
   } catch {
     return null;
   }
-}
+});
