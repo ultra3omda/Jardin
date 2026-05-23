@@ -1,25 +1,42 @@
-import { redirect } from 'next/navigation';
-import { DEFAULT_BRAND } from '@ecole-saas/shared';
+'use client';
 
-import { getMeFromCookies } from '@/lib/api/server-client';
+import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
+
+import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 import { BrandingForm } from './branding-form';
 
 /**
- * V1.6 — /settings/branding page (SCHOOL_ADMIN | SUPER_ADMIN only).
- * Forwards the live brand from the parent (app) layout's session as the
- * initial form state (BrandingForm refetches on mount as a safety net).
+ * V1.6 révisé 2026-05-23 PM — Client Component (le Server Component pattern
+ * causait une boucle de redirect via refresh-token rotation ; cf
+ * (app)/layout.tsx commentaire).
+ *
+ * Le parent AppShellClient gate déjà sur isHydrated+accessToken+user, donc
+ * quand on monte ici, le store est garanti hydraté avec une session valide.
+ * On vérifie juste le rôle et on délègue au BrandingForm.
  */
-export default async function BrandingSettingsPage() {
-  const session = await getMeFromCookies();
-  if (!session) redirect('/login?next=/settings/branding');
+export default function BrandingSettingsPage() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const tenant = useAuthStore((s) => s.tenant);
 
-  const role = session.user.role;
-  if (role !== 'SCHOOL_ADMIN' && role !== 'SUPER_ADMIN') {
-    redirect('/dashboard');
-  }
+  useEffect(() => {
+    if (!user) return;
+    if (user.role !== 'SCHOOL_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      router.replace('/dashboard' as Route);
+    }
+  }, [user, router]);
 
-  const initial = session.tenant?.brand ?? DEFAULT_BRAND;
+  // Parent layout (AppShellClient) already shows a spinner until user is
+  // hydrated. By the time we render here, user is non-null. Defensive guard:
+  if (!user) return null;
+  if (user.role !== 'SCHOOL_ADMIN' && user.role !== 'SUPER_ADMIN') return null;
+
+  const stored = (tenant?.brand ?? {}) as Partial<TenantBrand>;
+  const initial: TenantBrand = { ...DEFAULT_BRAND, ...stored };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

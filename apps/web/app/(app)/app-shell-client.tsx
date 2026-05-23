@@ -5,66 +5,82 @@ import type { Route } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, type ReactNode } from 'react';
-import { type TenantBrand } from '@ecole-saas/shared';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 
 import { Button } from '@/components/ui/button';
 import { logout, refresh } from '@/lib/api/client';
-import type { AuthSessionResponse } from '@/lib/auth/types';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { buildBrandStyleTag } from '@/lib/tenant/brand-style-tag';
 
-export interface AppShellClientProps {
-  children: ReactNode;
-  /**
-   * V1.6 — Server-rendered session passed in to pre-hydrate the Zustand
-   * store (avoids the loading spinner flash that V1.5 had on every nav).
-   */
-  initialSession: AuthSessionResponse;
-  /** Tenant brand already merged over DEFAULT_BRAND by the parent Server Component. */
-  brand: TenantBrand;
-  /** Tenant display name for the nav. */
-  tenantName: string;
-  /** True iff the user can edit branding (SCHOOL_ADMIN | SUPER_ADMIN). */
-  canEditBranding: boolean;
-}
-
-export function AppShellClient({
-  children,
-  initialSession,
-  brand,
-  tenantName,
-  canEditBranding,
-}: AppShellClientProps) {
+/**
+ * V1.6 révisé 2026-05-23 PM — AppShellClient repris du pattern V1.5 (Client
+ * Component pur). Le brand vient de `user.tenant.brand` (renvoyé par
+ * /api/auth/me + /api/auth/refresh depuis V1.6 API change).
+ *
+ * Pourquoi pas de Server Component prefetch ici :
+ * V1.5 refresh-token rotation = un /auth/refresh server-side revoke le cookie
+ * browser → 2ème nav = 401 → boucle infinie /dashboard ↔ /login. Voir layout.tsx
+ * pour le détail. Trade-off : ~100ms flash de thème indigo défaut au 1er
+ * paint, puis injection client-side dans <style id="tenant-brand-vars-client">.
+ */
+export function AppShellClient({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { accessToken, user, isHydrated, setSession, clear } = useAuthStore();
-  const seededRef = useRef(false);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+  const tenant = useAuthStore((s) => s.tenant);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const setSession = useAuthStore((s) => s.setSession);
+  const clear = useAuthStore((s) => s.clear);
+  const refreshedRef = useRef(false);
 
-  // Seed the Zustand store from the server-rendered session on first mount.
-  useEffect(() => {
-    if (seededRef.current) return;
-    seededRef.current = true;
-    if (!accessToken) setSession(initialSession);
-  }, [accessToken, setSession, initialSession]);
-
-  // Fallback: if the store isn't hydrated by the time render begins
-  // (e.g. after a hard reload with stale localStorage), refresh once.
+  // V1.5 pattern — single refresh on mount if store empty (no rotation race
+  // because this is a Client Component → browser handles the Set-Cookie).
   useEffect(() => {
     if (!isHydrated) return;
-    if (accessToken && user) return;
-    let cancelled = false;
+    if (accessToken || refreshedRef.current) return;
+    refreshedRef.current = true;
     refresh()
-      .then((session) => {
-        if (!cancelled) setSession(session);
-      })
+      .then((session) => setSession(session))
       .catch(() => {
-        if (cancelled) return;
         clear();
         router.replace('/login' as Route);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [isHydrated, accessToken, user, setSession, clear, router]);
+  }, [isHydrated, accessToken, setSession, clear, router]);
+
+  // V1.6 — derive brand from store (tenant.brand may be partial JSON from API
+  // or DEFAULT_BRAND if tenant has no customisation). Merge over DEFAULT_BRAND
+  // so consumers can always read all fields.
+  const brand: TenantBrand = useMemo(() => {
+    const stored = (tenant?.brand ?? {}) as Partial<TenantBrand>;
+    return { ...DEFAULT_BRAND, ...stored };
+  }, [tenant?.brand]);
+
+  const tenantName = tenant?.name ?? 'École SaaS';
+  const canEditBranding = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+
+  // V1.6 — inject CSS vars + favicon client-side after the brand is resolved.
+  // Mutates <head> so child pages get the theme without re-render.
+  useEffect(() => {
+    if (!user) return;
+    let styleEl = document.getElementById('tenant-brand-vars-client');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'tenant-brand-vars-client';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = buildBrandStyleTag(brand);
+
+    if (brand.faviconUrl) {
+      let iconEl = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+      if (!iconEl) {
+        iconEl = document.createElement('link');
+        iconEl.rel = 'icon';
+        document.head.appendChild(iconEl);
+      }
+      iconEl.href = brand.faviconUrl;
+    }
+  }, [brand, user]);
 
   if (!isHydrated || !accessToken || !user) {
     return (
@@ -111,7 +127,7 @@ export function AppShellClient({
           <div className="flex items-center gap-3">
             {canEditBranding && (
               <Link
-                href="/settings/branding"
+                href={'/settings/branding' as Route}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
               >
                 Apparence
