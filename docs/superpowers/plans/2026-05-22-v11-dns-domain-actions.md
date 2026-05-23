@@ -1,8 +1,8 @@
-# V1.6 — Actions manuelles utilisateur · DNS, domaine, R2 public
+# V11 — Actions manuelles utilisateur · DNS, domaine, R2 public
 
-> **Date** : 2026-05-22
-> **Prérequis** : V1.5 livrée en prod (Vercel + Railway + Neon opérationnels)
-> **Public** : utilisateur (ultra3omda) — actions à effectuer en parallèle de l'exécution du plan V1.6 par Claude Code
+> **Date** : 2026-05-22 (rédigé initialement pour V1.6, **renommé pour V11** suite à la décision user PM 2026-05-22 « no-custom-domain en V1.6 ». Contenu intégralement réutilisable quand on achètera le domaine.)
+> **Prérequis** : V1.6 livrée en prod (white-label runtime fonctionnel via post-auth + path-based `/t/[slug]/*`) + décision user d'acheter le domaine `ecole-saas.com`
+> **Public** : utilisateur (ultra3omda) — actions à effectuer EN AMONT de l'exécution du plan V11 (subdomain + custom domain) par Claude Code
 > **Durée totale estimée** : 30-45 min spread sur 2-24h (le SSL Vercel + propagation DNS prennent du temps réel)
 > **Coût** : 10-15 €/an pour le domaine `ecole-saas.com` (registrar) + 0 €/mois additionnel chez Vercel/Cloudflare
 
