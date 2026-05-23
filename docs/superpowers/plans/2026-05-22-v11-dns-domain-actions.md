@@ -1,0 +1,307 @@
+# V11 — Actions manuelles utilisateur · DNS, domaine, R2 public
+
+> **Date** : 2026-05-22 (rédigé initialement pour V1.6, **renommé pour V11** suite à la décision user PM 2026-05-22 « no-custom-domain en V1.6 ». Contenu intégralement réutilisable quand on achètera le domaine.)
+> **Prérequis** : V1.6 livrée en prod (white-label runtime fonctionnel via post-auth + path-based `/t/[slug]/*`) + décision user d'acheter le domaine `ecole-saas.com`
+> **Public** : utilisateur (ultra3omda) — actions à effectuer EN AMONT de l'exécution du plan V11 (subdomain + custom domain) par Claude Code
+> **Durée totale estimée** : 30-45 min spread sur 2-24h (le SSL Vercel + propagation DNS prennent du temps réel)
+> **Coût** : 10-15 €/an pour le domaine `ecole-saas.com` (registrar) + 0 €/mois additionnel chez Vercel/Cloudflare
+
+---
+
+## 🎯 Objectif
+
+Permettre à chaque école d'avoir une URL `https://<son-slug>.ecole-saas.com` qui charge :
+- Le site Next.js (déployé sur Vercel)
+- Avec un certificat SSL valide
+- Et le branding personnalisé de cette école (resolved au runtime)
+
+Plus rendre les assets R2 (`logos`, `favicons`) accessibles publiquement via une URL stable.
+
+**Important** : Claude Code ne peut PAS exécuter ces actions car elles requièrent des accès dashboard humain (registrar, Vercel, Cloudflare). Toute la partie code attend ces actions pour fonctionner en prod.
+
+---
+
+## 1️⃣ Choisir & enregistrer le domaine `ecole-saas.com`
+
+> ⚠️ **Décision préalable** : confirmer auprès de Claude/utilisateur que le domaine cible est bien `ecole-saas.com` (et pas `ecolesaas.com`, `ecole-saas.fr`, `ecolesaas.app`, etc.). La spec D20 utilise `ecole-saas.com` partout.
+
+### A. Vérifier la disponibilité
+
+Aller sur https://www.namecheap.com (ou OVH, Cloudflare Registrar, Gandi — au choix) et chercher `ecole-saas.com`.
+
+### B. Recommandation registrar
+
+| Registrar | Prix annuel | Avantages | Inconvénients |
+|---|---|---|---|
+| **Cloudflare Registrar** ⭐ | ~10 USD/an | Prix au cost ICANN, DNSSEC gratuit, panel intégré au DNS Cloudflare | Pas de support téléphone |
+| OVH | ~12 €/an | Support FR, déjà utilisé par l'utilisateur pour le custom domain V1 | Panel DNS moins ergonomique |
+| Namecheap | ~13 €/an | UX claire, free WhoisGuard | À l'étranger |
+
+**Reco** : **Cloudflare Registrar** car (a) le projet va déjà utiliser Cloudflare pour DNS+R2, (b) prix imbattable. Si Cloudflare Registrar ne propose pas `.com` à cette époque (rare), prendre Namecheap.
+
+### C. Acheter
+
+Suivre le flow d'achat du registrar choisi. Activer la protection WHOIS (par défaut chez Cloudflare).
+
+**Livrable** : domaine `ecole-saas.com` enregistré au nom de l'utilisateur.
+
+---
+
+## 2️⃣ Configurer le DNS via Cloudflare (nameservers + wildcard)
+
+### A. Si registrar = Cloudflare : skip (déjà sur les NS Cloudflare)
+
+### B. Si registrar ≠ Cloudflare :
+
+1. Aller sur https://dash.cloudflare.com → **Add a Site** → entrer `ecole-saas.com` → plan Free.
+2. Cloudflare scanne les DNS existants (vide à ce stade — OK).
+3. Cloudflare donne 2 nameservers du type `xxx.ns.cloudflare.com`.
+4. Aller dans le panel du registrar → Nameservers → remplacer les NS par ceux de Cloudflare.
+5. Attendre la propagation (1h à 24h). Vérifier : `dig NS ecole-saas.com` doit afficher les NS Cloudflare.
+
+**Livrable** : `ecole-saas.com` est géré par Cloudflare DNS.
+
+### C. Ajouter les enregistrements DNS
+
+Dans Cloudflare → DNS → Records, créer :
+
+| Type | Nom | Cible | Proxy | TTL |
+|---|---|---|---|---|
+| `CNAME` | `@` (apex) | `cname.vercel-dns.com.` | 🟠 DNS only (gris) | Auto |
+| `CNAME` | `www` | `cname.vercel-dns.com.` | 🟠 DNS only | Auto |
+| `CNAME` | `*` (wildcard) | `cname.vercel-dns.com.` | 🟠 DNS only | Auto |
+| `CNAME` | `assets` | `<account-id>.r2.cloudflarestorage.com.` | 🟠 DNS only (Cloudflare prendra la suite via custom domain R2) | Auto |
+
+> **Pourquoi DNS only (pas proxy 🟧 orange)** : Vercel doit voir l'IP réelle du visiteur pour la géolocalisation Edge + l'analyse de fraude. Si on active le proxy Cloudflare, tout le trafic transite par Cloudflare CDN avant Vercel CDN → mauvaise UX, conflits SSL, et Vercel rejette parfois la requête (« Invalid SSL »).
+>
+> ⚠️ **Exception R2** : pour `assets.ecole-saas.com` (R2 public access), Cloudflare gère automatiquement la connexion R2↔CDN via la fonctionnalité Custom Domain du bucket. Suivre §4 plutôt que de bricoler le CNAME manuel.
+
+### D. Vérifier la propagation
+
+```bash
+dig +short ecole-saas.com CNAME
+dig +short www.ecole-saas.com CNAME
+dig +short test123.ecole-saas.com CNAME   # doit matcher le wildcard
+```
+
+Toutes les commandes doivent retourner `cname.vercel-dns.com`.
+
+**Livrable** : DNS Cloudflare configuré, wildcard `*.ecole-saas.com` pointe sur Vercel.
+
+---
+
+## 3️⃣ Lier le domaine au projet Vercel `jardin`
+
+### A. Ajouter les domaines
+
+Aller sur https://vercel.com/ultra3omda-6664s-projects/ecole-saas → **Settings** → **Domains** → **Add**.
+
+Ajouter dans cet ordre exact :
+
+1. `ecole-saas.com` (apex)
+2. `www.ecole-saas.com` → cliquer "Redirect to apex" ou laisser deux entrées séparées (au choix)
+3. `*.ecole-saas.com` (wildcard) ⭐ **C'est CET enregistrement qui débloque tout V1.6**
+
+Vercel va vérifier le CNAME pour chaque entrée — comme on a déjà mis les records Cloudflare, ça passe en quelques secondes.
+
+### B. Vérifier les certificats SSL
+
+Vercel provisionne automatiquement les certificats Let's Encrypt. Pour le wildcard, Vercel utilise un certificat **multi-domain** ou un wildcard certificate.
+
+⚠️ **Délai SSL wildcard** : peut prendre **jusqu'à 30 min** pour être actif. Pendant ce délai, `https://test.ecole-saas.com` retourne une erreur SSL.
+
+Vérifier :
+```bash
+curl -sI https://ecole-saas.com | head -3
+curl -sI https://demo.ecole-saas.com | head -3
+```
+
+Doit retourner `HTTP/2 200` (ou redirect 308).
+
+### C. Tester avec un sous-domaine factice
+
+Une fois SSL provisionné, dans le navigateur :
+- `https://test-tenant.ecole-saas.com` → devrait afficher la page d'accueil Next.js (puisque le middleware actuel ne crash pas, juste extrait le slug `test-tenant`). Une fois le code V1.6 mergé + déployé, ce slug ferait un 404 « École introuvable » (logique métier).
+
+**Livrable** : `*.ecole-saas.com` est wired sur Vercel avec SSL OK.
+
+---
+
+## 4️⃣ Configurer le bucket R2 `ecole-saas-tenant-assets` (public read)
+
+### A. Créer le bucket
+
+Aller sur https://dash.cloudflare.com → **R2** → **Create bucket**.
+
+- Nom : `ecole-saas-tenant-assets`
+- Région : automatique (multi-region)
+- Cliquer **Create**
+
+### B. Activer l'accès public via custom domain
+
+Dans le bucket → **Settings** → **Public access** :
+
+1. Section **Custom Domains** → **Connect Domain** → entrer `assets.ecole-saas.com` → confirmer.
+2. Cloudflare va proposer d'ajouter le CNAME automatiquement (puisqu'on est sur Cloudflare DNS) — accepter. Cela remplace / fusionne avec le CNAME `assets` ajouté manuellement en §2.C (les deux pointent vers R2, sans conflit).
+3. ⚠️ **Activer le proxy 🟧 orange** pour `assets.ecole-saas.com` UNIQUEMENT (le CDN Cloudflare est gratuit et utile pour servir les logos).
+4. Attendre que le statut affiche **Active** (1-5 min).
+
+### C. Activer la R2.dev URL (alternative ou complément)
+
+Dans **Public access** :
+- **R2.dev subdomain** → **Allow Access** → URL `https://pub-<hash>.r2.dev` (publique).
+- ⚠️ **Pas recommandé pour la prod** (URL pas brandée, pas de cache CDN). À utiliser uniquement pour debugger.
+
+### D. Politique CORS (autoriser les uploads PUT depuis l'app)
+
+Dans le bucket → **Settings** → **CORS** → ajouter :
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://ecole-saas.com",
+      "https://*.ecole-saas.com",
+      "http://localhost:3000"
+    ],
+    "AllowedMethods": ["PUT", "GET"],
+    "AllowedHeaders": ["Content-Type"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Sans CORS, le navigateur refuse le PUT direct vers R2 (le LogoUploader composant V1.6 ne marchera pas).
+
+### E. Récupérer / créer les credentials API
+
+Si pas déjà fait pour V1.5 :
+- **Manage R2 API Tokens** → **Create API token**
+- Type : **Account API Token** (pas User token — c'est différent et important, cf erreur V1.5)
+- Permissions : **Object Read & Write**
+- Spécifier les buckets : `ecole-saas-exports` (V1.5) + `ecole-saas-tenant-assets` (V1.6)
+- Copier `Access Key ID` + `Secret Access Key` (affichés UNE SEULE FOIS).
+
+### F. Ajouter les env vars sur Railway
+
+Aller sur https://railway.app → projet API → Variables :
+
+```
+R2_PUBLIC_URL=https://assets.ecole-saas.com
+R2_TENANT_ASSETS_BUCKET=ecole-saas-tenant-assets
+```
+
+(`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` devraient déjà être configurés depuis V1.5 — vérifier qu'ils existent et que les permissions du token couvrent le nouveau bucket. Si le token V1.5 était scoped à `ecole-saas-exports` uniquement, le régénérer avec les 2 buckets.)
+
+**Livrable** : Bucket `ecole-saas-tenant-assets` public via `https://assets.ecole-saas.com`, CORS configuré, Railway peut signer des PUT.
+
+---
+
+## 5️⃣ Vercel — env vars pour le web
+
+Aller sur https://vercel.com/ultra3omda-6664s-projects/ecole-saas → **Settings** → **Environment Variables**.
+
+Ajouter (pour les 3 environnements : Production, Preview, Development) :
+
+```
+NEXT_PUBLIC_API_URL=https://ecole-saasapi-production.up.railway.app
+```
+
+(Déjà présent depuis V1.5 normalement — vérifier.)
+
+> Pas besoin d'ajouter `R2_*` côté Vercel : le web ne signe pas directement, il proxy vers l'API qui signe.
+
+**Livrable** : Vercel a les bonnes env vars.
+
+---
+
+## 6️⃣ Sanity checks finaux (à faire AVANT de signaler à Claude « DNS prêt »)
+
+```bash
+# 1. Apex retourne le site
+curl -sI https://ecole-saas.com | grep -i "HTTP\|x-vercel"
+
+# 2. Wildcard SSL OK
+curl -sI https://demo.ecole-saas.com | grep -i "HTTP"
+
+# 3. R2 public domain résolu OK
+curl -sI https://assets.ecole-saas.com  # 404 ou redirect, jamais "could not resolve host"
+
+# 4. R2 CORS preflight
+curl -sI -X OPTIONS https://assets.ecole-saas.com/test.png \
+  -H "Origin: https://ecole-saas.com" \
+  -H "Access-Control-Request-Method: PUT" \
+  -H "Access-Control-Request-Headers: content-type" \
+  | grep -i "access-control-allow"
+# doit voir Access-Control-Allow-Origin et Access-Control-Allow-Methods
+```
+
+Si l'un des 4 échoue → ouvrir un ticket Cloudflare / vérifier les enregistrements DNS / réessayer la config Vercel.
+
+---
+
+## 7️⃣ Tests post-déploiement V1.6 (à faire APRÈS merge de la PR V1.6)
+
+Une fois la PR V1.6 mergée et la prod déployée :
+
+1. **Tenant existant — sous-domaine apex-style** : `https://<un-slug-de-tenant-existant>.ecole-saas.com/login` doit afficher la page de login avec le thème indigo par défaut (le tenant n'a pas encore configuré son brand).
+
+2. **Tenant existant — settings branding** : se logger en SCHOOL_ADMIN → `/settings/branding` → upload un logo PNG → changer la couleur primaire en `#ff0000` → save.
+
+3. **Refresh** : la page se reload, la couleur a basculé en rouge, le logo apparaît.
+
+4. **Email check** : déclencher un email (par exemple via password reset depuis un autre user du même tenant) → l'email reçu utilise le logo + la couleur d'en-tête.
+
+5. **Isolation cross-tenant** : sur `https://<autre-tenant>.ecole-saas.com/login`, la couleur primaire est toujours indigo (le tenant A n'a pas pollué B).
+
+6. **404 slug inconnu** : `https://this-slug-does-not-exist.ecole-saas.com` → la page Next.js décide quoi afficher (selon l'implémentation, soit 404 « École introuvable », soit fallback page apex). À confirmer en QA.
+
+---
+
+## 8️⃣ Coûts récapitulatifs
+
+| Item | Coût | Quand |
+|---|---|---|
+| Domaine `ecole-saas.com` (Cloudflare Registrar) | ~10 USD/an | One-shot à l'enregistrement |
+| Vercel Hobby tier | 0 €/mois | Inchangé — wildcard SSL inclus gratuitement |
+| Cloudflare DNS | 0 €/mois | Free tier suffit |
+| Cloudflare R2 — bucket `tenant-assets` | 0 €/mois jusqu'à 10 GB (~18k logos en moyenne) | Premier euro si on dépasse les 10 GB |
+| R2 egress via Cloudflare CDN | 0 € | Zero-egress R2 |
+| Apple Developer Program | 99 USD/an | V12 only — pas V1.6 |
+| Google Play Developer | 25 USD one-shot | V12 only — pas V1.6 |
+
+**Total V1.6** : **~10 USD/an** (juste le domaine).
+
+---
+
+## 9️⃣ Annexe — actions en cas de problème
+
+### SSL Vercel reste "Pending"
+
+- Vérifier que les CNAME Cloudflare sont en **DNS only** (pas proxy).
+- Vérifier que le record wildcard est bien `*` et pas `*.ecole-saas.com` (selon le panel Cloudflare).
+- Attendre 60 min. Si toujours rien, ouvrir un ticket Vercel.
+
+### `assets.ecole-saas.com` retourne `1014 CNAME Cross-User Banned`
+
+C'est une protection Cloudflare anti-abus. Solution : faire le custom-domain dans le panel R2 (pas en créant un CNAME manuel), Cloudflare l'auto-whitelist.
+
+### Le navigateur affiche un avertissement « Certificat invalide » sur un sous-domaine
+
+Vercel ne fait pas confiance au DNS pour un nouveau sous-domaine immédiatement. Forcer la régénération en :
+1. Vercel → Settings → Domains → cliquer sur le domaine → **Refresh**.
+2. Attendre 5-30 min.
+
+### Le slug d'une école contient un tiret et ne match pas le middleware
+
+Tester `dig +short alpha-beta.ecole-saas.com CNAME` — doit retourner `cname.vercel-dns.com`. Si OK côté DNS, le bug est côté code (`extractTenantSlugFromHost`). Ajuster la regex de parsing.
+
+---
+
+## 🔚 À faire signaler à Claude Code quand prêt
+
+Une fois TOUTES les étapes 1️⃣→6️⃣ validées, dire à Claude Code :
+
+> *« DNS prêt : `ecole-saas.com` enregistré, wildcard `*.ecole-saas.com` → Vercel avec SSL OK, `assets.ecole-saas.com` → R2 bucket `ecole-saas-tenant-assets` avec CORS OK, Railway env vars mises à jour. Tu peux lancer l'exécution V1.6 (Phase A→F). »*
+
+Claude lance alors l'exécution du plan principal [`2026-05-22-v1.6-white-label-runtime.md`](2026-05-22-v1.6-white-label-runtime.md).

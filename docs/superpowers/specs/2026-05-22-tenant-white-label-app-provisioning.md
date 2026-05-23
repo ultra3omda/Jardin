@@ -1,14 +1,46 @@
 # Tenant White-Label — Provisioning de l'app web + mobile par école (design spec)
 
-> **Statut** : Draft pour validation utilisateur. **Aucun code produit tant que l'approche n'est pas validée.**
-> **Date** : 2026-05-22
+> **Statut** : Accepté (D20). Mergé à main 2026-05-22 PM via PR #7. **Révision 2026-05-22 PM — voir encadré ci-dessous.**
+> **Date** : 2026-05-22 (création) · 2026-05-22 PM (révision « no-custom-domain »)
 > **Auteur** : Claude Code
-> **Contexte** : Reprise de la décision D19 (roadmap), initialement reportée à V11 (option B). Le user veut revoir l'approche technique avant de figer le timing (V1.6 vs V11 vs autre).
+> **Contexte** : Reprise de la décision D19 (roadmap), initialement reportée à V11 (option B). Spec produite + validée par le user le 2026-05-22 PM avec choix « V1.6 avant V2 ». Révisée le soir même après contrainte additionnelle utilisateur : pas de domaine custom pour l'instant, on reste sur Vercel free.
 > **Prérequis** : V1.5 livrée en prod (auth multi-tenant, recovery, invite-only, RGPD export, Sentry, i18n FR).
 > **Effort estimé** :
-> - **Option A "runtime" (recommandée)** : ~1.5 j en V1.6 (fondations) + ~1 j en V11 (custom domain). Total ~2.5 j.
+> - **Option A "runtime" (recommandée)** : ~1.5 j en V1.6 (sans subdomain) + ~1.5 j en V11 (subdomain + custom domain). Total ~3 j.
 > - Option B "N déploiements" : 5-8 j initial + coût ops perpétuel. **Rejetée** (voir §1.3).
-> - Option C "hybride" : V1.6 (Option A) + V11 (Option C premium tier). Total ~2.5 j, identique à A en coût initial.
+> - Option C "hybride" : V1.6 (Option A) + V11 (Option C premium tier). Total ~3 j, identique à A.
+
+---
+
+## 🔄 Révision 2026-05-22 PM — « no-custom-domain in V1.6 »
+
+> **Contrainte utilisateur** : pas de domaine custom pour l'instant. On reste sur Vercel free (`ecole-saas-xxx.vercel.app`) jusqu'à nouvel ordre. Zéro DNS, zéro registrar, zéro coût additionnel.
+
+**Ajustements** par rapport à la version originale ci-dessous :
+
+| Sujet | Avant (révision AM) | Après (révision PM) |
+|---|---|---|
+| Pre-auth resolution | Sous-domaine `<slug>.ecole-saas.com` (wildcard DNS Vercel) | **Path-based `/t/[tenantSlug]/login`** (choix (a)) |
+| Post-auth resolution | `JWT.tenantId` → `getMe()` → brand injection | **INCHANGÉ** — c'est le cœur runtime, marche partout |
+| Wildcard DNS `*.ecole-saas.com` | V1.6 | **Repoussé V11** (avec custom domain) |
+| Custom domain par école (`portail.x.fr`) | V11 | V11 (inchangé) |
+| Actions manuelles user (registrar, DNS, Vercel domain) | Bloquantes V1.6 | **Zéro** — V1.6 livrable sans qu'aucune action user ne soit nécessaire |
+| Coût annuel V1.6 | ~10 USD (domaine) | **0 €** |
+| Effort V1.6 | 1.5j | 1.5j (+0.5j path-based pre-auth − 0.5j middleware DNS supprimé) |
+| Effort V11 | 1j (custom domain seul) | ~1.5j (wildcard subdomain + custom domain) |
+
+**Choix tranché pour pages pré-auth (login/register)** : **option (a) path-based**, retenue plutôt que (b) défer pour 5 raisons :
+1. Le backend supporte déjà `tenantSlug` dans le DTO `/auth/login` depuis V1.5 — zéro changement API.
+2. Les nouvelles routes `/t/[slug]/login`, `/t/[slug]/register`, etc. sont de minces wrappers Server Components qui chargent le brand + delegate aux composants V1.5 existants.
+3. URL partageable (parents bookmark `/t/saint-exupery/login` reçu par invite).
+4. Migration future vers subdomain (V11) triviale : `params.slug` → `headers().get('x-tenant-slug')`.
+5. UX cohérente dès V1.6 sans nécessiter de domaine.
+
+`/login` sans slug reste fonctionnel (fallback générique indigo) — le form garde le champ `tenantSlug` saisissable manuellement.
+
+**Lien avec la suite du doc** : §2.1 et §2.2 ci-dessous ont été partiellement réécrites. §5.1 (V1.6 scope) et §5.2 (V11 scope) ont été rééquilibrées. §6 (risques) — R1 (wildcard DNS SSL) reporté en V11. Le reste du doc reste valable (DB, API, mobile, sécurité).
+
+---
 
 ---
 
@@ -326,41 +358,45 @@ export type TenantBrand = z.infer<typeof TenantBrandSchema>;
 
 ## 5. Découpage en vagues
 
-### 5.1 V1.6 — Fondations runtime ⭐ (≈ 1.5 j)
+> Réajusté révision PM (« no-custom-domain ») : wildcard DNS + middleware subdomain quittent V1.6 pour rejoindre V11.
 
-**Scope** :
+### 5.1 V1.6 — Fondations runtime sans DNS ⭐ (≈ 1.5 j)
+
+**Scope (révisé PM)** :
 1. Migration DB `Tenant.brand JSON?` (additive, sans downtime). [0.5h]
-2. Endpoint public `GET /api/public/tenant-brand/:slug` + cache headers. [1h]
-3. Endpoints admin `GET/PATCH /api/admin/tenant/branding`. [1.5h]
-4. Endpoint upload presigned URL R2 + bucket `ecole-saas-tenant-assets` provisionné. [1.5h]
-5. DNS wildcard `*.ecole-saas.com → cname.vercel-dns.com` + Vercel domain config. [0.5h, manuel via dashboards]
-6. Middleware Next.js de résolution sous-domaine → `x-tenant-slug`. [1h]
-7. Layout web `(app)/layout.tsx` + `(auth)/layout.tsx` chargent le brand et injectent les CSS vars. [2h]
+2. `packages/shared` : type `TenantBrand` + `hexToHslTriplet` + `DEFAULT_BRAND` + `RESERVED_TENANT_SLUGS` + tests. [1h]
+3. Endpoint public `GET /api/public/tenant-brand/:slug` + cache headers (utilisé par mobile et par les pages `/t/[slug]/*`). [1h]
+4. Endpoints admin `GET/PATCH/DELETE /api/admin/tenant/branding`. [1.5h]
+5. Endpoint upload presigned URL R2 + bucket `ecole-saas-tenant-assets` provisionné (R2 OK même sans domaine custom — on utilise l'URL `*.r2.dev` ou l'API direct). [1.5h]
+6. **Post-auth** : layout `apps/web/app/(app)/layout.tsx` charge `getMe()` → injecte CSS vars HSL dans `<style>` + logo dans la nav. **Marche immédiatement, peu importe l'URL Vercel.** [1.5h]
+7. **Pre-auth path-based** : nouvelles routes `apps/web/app/(auth)/t/[slug]/login/page.tsx`, `.../register`, `.../forgot-password`, `.../reset-password`, `.../verify-email`. Chacune = Server Component qui appelle `getTenantBrand(slug)` et delegate aux composants V1.5 (avec slug pré-rempli dans le form). Si slug inconnu → 404 brandé générique. [2h]
 8. Page settings UI `/settings/branding`. [2h]
 9. Templates Resend brandés (`EmailLayout` reçoit `brand`). [1h]
-10. Mobile : écran "code école" + persistance brand + theme provider. [3h]
+10. Mobile : préparation type partagé `TenantBrand` consommé en V2 (écran « code école » construit en V2, pas V1.6). [0.5h]
 11. Tests :
-    - E2E web : créer un tenant, set brand, vérifier que le sous-domaine affiche les bonnes couleurs. [1h]
-    - Unit : Zod schema, anti-SSRF logoUrl. [0.5h]
-12. Doc :
-    - Mise à jour `apps/web/README.md` (wildcard DNS).
-    - ADR `0003-tenant-white-label.md`.
+    - E2E web : `/t/[slug]/login` brandé + `/login` fallback générique + isolation cross-tenant sur settings. [1h]
+    - Unit : Zod schema, anti-SSRF logoUrl, hex→HSL. [0.5h]
+12. Doc : ADR `0003-tenant-white-label.md`.
 13. Critères d'acceptation :
-    - [ ] Une nouvelle école `saint-exupery` est créée → `saint-exupery.ecole-saas.com` répond, SSL auto, redirection 404 si slug inconnu.
-    - [ ] SCHOOL_ADMIN se logge → page settings branding → upload logo + 3 couleurs → save → les pages /login et /dashboard affichent les nouvelles couleurs.
-    - [ ] L'app mobile (build dev/Expo Go) demande code-école, accepte `saint-exupery`, affiche le logo dans la nav.
+    - [ ] Migration appliquée sur Neon prod, `tenants.brand` column existe.
+    - [ ] SCHOOL_ADMIN se logge via `/login` → settings branding → upload logo + 3 couleurs → save → `/dashboard` et toutes les pages (app) affichent les nouvelles couleurs.
+    - [ ] `/t/saint-exupery/login` affiche les couleurs + logo de l'école Saint-Exupéry AVANT login (path-based).
+    - [ ] `/login` sans slug affiche le thème indigo générique + le form garde le champ `tenantSlug` manuel.
+    - [ ] `/t/inconnu/login` → 404 brandé (« École introuvable »).
     - [ ] Email de bienvenue / reset password / export RGPD utilise le logo et la couleur header de l'école.
-    - [ ] Isolation : un user de l'école A ne peut JAMAIS éditer le brand de l'école B.
+    - [ ] Isolation : un user de l'école A ne peut JAMAIS éditer le brand de l'école B (test e2e).
     - [ ] CI verte (lint + type + build + tests + e2e).
-    - [ ] Lighthouse mobile ≥ 90 sur `/login` brandée (regression test).
+    - [ ] Lighthouse mobile ≥ 90 sur `/t/[slug]/login` brandée (regression test).
+    - [ ] **Aucune action manuelle DNS/registrar/Vercel-domain de la part de l'utilisateur.**
 
-### 5.2 V11 — Hardening + premium tier (≈ 1 j en plus de A)
+### 5.2 V11 — Subdomain + custom domain + premium (≈ 1.5 j en plus de V1.6)
 
-**Scope** (en plus des fondations V1.6) :
-1. Custom domain : endpoint `POST /api/admin/tenant/custom-domain` qui appelle l'API Vercel pour ajouter `portail.ecole-saint-exupery.fr` au projet `jardin`. Status polling. UI dans settings.
-2. Brand audit log dédié (chaque change → ligne dans `AuditLog`).
-3. SUPER_ADMIN cross-tenant : page `/admin/tenants/:id/branding` pour intervenir si besoin.
-4. (Optionnel — tier premium) M2 EAS Build dynamique par tenant. À évaluer en V11 selon traction commerciale.
+**Scope (révisé PM)** :
+1. **Wildcard subdomain `*.ecole-saas.com`** (l'utilisateur achète enfin le domaine) : DNS wildcard → `cname.vercel-dns.com`, SSL auto Vercel, middleware `apps/web/middleware.ts` ajoute la résolution `host → x-tenant-slug`. Le code de §2.1 du présent doc s'applique alors. Le path-based `/t/[slug]/*` reste compatible (deux chemins valides au choix). [0.5j]
+2. **Custom domain par école** (`portail.ecole-saint-exupery.fr`) : endpoint `POST /api/admin/tenant/custom-domain` qui appelle l'API Vercel pour ajouter le domaine au projet `jardin`. Status polling. UI dans settings. [0.5j]
+3. Brand audit log dédié (chaque change → ligne dans `AuditLog`). [0.25j]
+4. SUPER_ADMIN cross-tenant : page `/admin/tenants/:id/branding` pour intervenir si besoin. [0.25j]
+5. (Optionnel — tier premium) M2 EAS Build dynamique par tenant. À évaluer selon traction commerciale (+2j).
 
 ### 5.3 Hors scope (jamais ou très loin)
 
@@ -378,7 +414,7 @@ export type TenantBrand = z.infer<typeof TenantBrandSchema>;
 
 | ID | Risque | Impact | Mitigation |
 |---|---|---|---|
-| R1 | Wildcard DNS pris en SSL Vercel | Site cassé sur premier hit | Tester avec un sous-domaine de dev (`test.ecole-saas.com`) avant prod |
+| R1 | ~~Wildcard DNS pris en SSL Vercel~~ → reporté V11 (révision PM, pas applicable V1.6 sans domaine custom) | — | Sera mitigé lors de la mise en route V11 : tester avec un sous-domaine de dev (`test.ecole-saas.com`) avant prod |
 | R2 | Mauvaise sanitization couleurs → CSS injection / XSS | XSS via `<style>` | Zod regex stricte `/^#[0-9a-f]{6}$/i` côté serveur ET client ; jamais d'insertion brute |
 | R3 | logoUrl pointant ailleurs que R2 → SSRF si on prefetch côté serveur | Fuite info / RCE | Validation `startsWith(R2_PUBLIC_URL)` côté serveur |
 | R4 | Cache CDN incohérent après PATCH branding | UI montre vieille couleur 5min | `revalidateTag('tenant-brand-' + slug)` sur le PATCH |
@@ -420,23 +456,23 @@ export type TenantBrand = z.infer<typeof TenantBrandSchema>;
 
 ---
 
-## 7. TL;DR (à copier dans le PR)
+## 7. TL;DR (à copier dans le PR) — révisé PM
 
-**Recommandation : Option A (runtime white-label) en V1.6, Option C (premium custom domain) en V11+ si besoin business.**
+**Décision finale : Option A (runtime white-label) en V1.6 SANS domaine custom, choix (a) path-based pour pré-auth, wildcard + custom domain repoussés V11.**
 
-- **Web** : 1 binaire Next.js sur Vercel, sous-domaine `*.ecole-saas.com` (wildcard DNS + SSL Vercel auto), middleware résout le tenant via `request.headers.host`, CSS variables injectées dans `layout.tsx` après lecture de `Tenant.brand` depuis l'API.
-- **Mobile** : 3 apps publiques aux stores (Parent / Teacher / Admin), strategy M1 — écran "code école" au premier lancement, brand persisté local, theme runtime. **Pas de submission per-école**. M2 (EAS Build par tenant pour icône custom + nom store) en V11+ pour tier premium uniquement.
+- **Web V1.6** :
+  - Post-auth → `(app)/layout.tsx` charge `Tenant.brand` depuis `getMe()` JWT context + injecte CSS variables HSL + logo en nav. Marche sur `ecole-saas-xxx.vercel.app` sans aucun DNS.
+  - Pre-auth → nouvelles routes `/t/[tenantSlug]/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`. Server Component charge le brand par slug et delegate aux composants V1.5 existants.
+  - `/login` sans slug → fallback générique indigo (le form garde le champ `tenantSlug` manuel).
+- **Mobile V2+** : strategy M1, 3 apps publiques au store, écran « code école » au 1er lancement → consomme l'endpoint public `GET /api/public/tenant-brand/:slug`. Code construit en V2, pas V1.6 (le shell mobile n'existe pas encore).
 - **DB** : 1 colonne JSON additive `Tenant.brand`, schéma Zod strict (couleurs hex, URLs R2 only, anti-SSRF).
-- **API** : 1 endpoint public cacheable + 3 endpoints admin protégés par RBAC + isolation Prisma extension.
-- **Effort total** : **1.5 j en V1.6** + 1 j en V11 = **2.5 j** (vs 5-6 j si tout V11). Économie ~3 j + branding dispo dès la phase démo V2+.
-- **Coût infra** : **0 €/mois additionnel** en V1.6, optionnellement 20 USD/mois en V11 pour custom domains.
-- **Risques principaux** : XSS via couleurs (mitigé par Zod regex), SSRF via logoUrl (mitigé par check R2 prefix), cache CDN obsolète après update (mitigé par revalidateTag).
+- **API** : 1 endpoint public cacheable (`GET /public/tenant-brand/:slug`) + 3 endpoints admin RBAC + 1 presigned upload R2.
+- **Effort total** : **1.5 j en V1.6** + 1.5 j en V11 (wildcard + custom domain + admin cross-tenant) = **3 j**. (vs 5-6 j si tout V11). Économie ~2.5 j + branding dispo dès démos V2+.
+- **Coût infra V1.6** : **0 €/mois additionnel, 0 USD/an**, aucune action user.
+- **Coût V11** : ~10 USD/an (domaine ecole-saas.com) + 20 USD/mois optionnel Vercel Pro (si plus de 5 custom domains premium).
+- **Risques principaux** : XSS via couleurs (mitigé par regex hex), SSRF via logoUrl (mitigé par check `startsWith(R2_PUBLIC_URL)`), cache CDN obsolète après update (mitigé par `revalidateTag`).
 
-**Question pour le user** : où on l'insère ? Trois choix.
-
-1. **V1.6 avant V2** (recommandé) — White-label livré juste après V1.5, V2 mobile/Élèves naît déjà branded.
-2. **V1.6 après V2** — V2 d'abord pour livrer le module Élèves, white-label en V1.7 / V2.5.
-3. **V11 (statu quo D19)** — On reste sur la décision actuelle, accepte le 3-4 j de retrofit plus tard.
+**Décision tranchée par le user** : V1.6 avant V2 (option 1), **sans domaine custom** (contrainte PM). Path-based pré-auth (choix (a)).
 
 ---
 
