@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "nest start --watch",
     "start": "node dist/main",
+    "prebuild": "pnpm --filter=@ecole-saas/shared build",
     "build": "nest build",
     "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings 0",
     "type-check": "tsc --noEmit",
+    "pretest": "pnpm --filter=@ecole-saas/shared build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
