@@ -94,4 +94,35 @@ export class R2Service {
       { expiresIn: expiresInSeconds },
     );
   }
+
+  /**
+   * V1.6 — Generate a pre-signed PUT URL so the client (browser) can upload
+   * directly to R2 without proxying through our API. Optionally targets
+   * a different bucket than the default (e.g. tenant-assets vs exports).
+   *
+   * Used by TenantBrandService.createUploadUrl for school logos/favicons.
+   * Default TTL: 5 minutes (uploads should happen quickly after URL handoff).
+   */
+  async signedPutUrl(
+    key: string,
+    contentType: string,
+    expiresInSeconds: number = 300,
+    bucket?: string,
+  ): Promise<string> {
+    if (!this.enabled || !this.client) {
+      throw new ServiceUnavailableException({
+        code: 'R2_NOT_CONFIGURED',
+        message: 'Object storage is not configured.',
+      });
+    }
+    return getSignedUrl(
+      this.client,
+      new PutObjectCommand({
+        Bucket: bucket ?? this.bucketName,
+        Key: key,
+        ContentType: contentType,
+      }),
+      { expiresIn: expiresInSeconds },
+    );
+  }
 }
