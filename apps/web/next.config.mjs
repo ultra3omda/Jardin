@@ -10,7 +10,13 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@ecole-saas/shared'],
   experimental: {
-    typedRoutes: true,
+    // V1.6 — typedRoutes désactivé. Les re-exports thin `/t/[slug]/X` →
+    // import de `/X/page` cassent l'inférence du union Route (next-typed-routes
+    // n'attend pas qu'un page.tsx en importe un autre). Trade-off accepté :
+    // on perd la check compile-time des liens internes (catches typos comme
+    // `/dashbaord`). Pourra être réactivé V11 quand on extraira les pages
+    // V1.5 en composants client réutilisables (cross-page imports supprimés).
+    // typedRoutes: true,
   },
 };
 

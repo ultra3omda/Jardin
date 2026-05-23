@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
 import * as bcrypt from 'bcrypt';
 import { createElement } from 'react';
+import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 
 import { ResendService } from '../common/email/resend.service';
 import { ResetPasswordEmail } from '../common/email/templates/reset-password';
@@ -43,7 +44,13 @@ export class PasswordRecoveryService {
         deletedAt: null,
         ...(tenantSlug ? { tenant: { slug: tenantSlug.toLowerCase() } } : {}),
       },
-      select: { id: true, email: true, firstName: true, tenantId: true },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        tenantId: true,
+        tenant: { select: { name: true, slug: true, brand: true } },
+      },
     });
 
     await this.writeAudit('auth.password.forgot', {
@@ -75,11 +82,25 @@ export class PasswordRecoveryService {
           },
         });
 
-        const resetUrl = `${baseUrl}/reset-password?token=${plaintext}`;
+        // V1.6 — pre-auth deep link through /t/[slug]/reset-password so the
+        // landing page is branded. Fall back to generic /reset-password for
+        // users without tenantSlug (super_admin).
+        const slug = u.tenant?.slug;
+        const resetUrl = slug
+          ? `${baseUrl}/t/${slug}/reset-password?token=${plaintext}`
+          : `${baseUrl}/reset-password?token=${plaintext}`;
+        const storedBrand = (u.tenant?.brand ?? {}) as Partial<TenantBrand>;
+        const brand: TenantBrand = { ...DEFAULT_BRAND, ...storedBrand };
+        const tenantName = u.tenant?.name;
         const result = await this.resend.send({
           to: u.email,
-          subject: 'Réinitialisation de votre mot de passe — École SaaS',
-          template: createElement(ResetPasswordEmail, { firstName: u.firstName, resetUrl }),
+          subject: `Réinitialisation de votre mot de passe — ${tenantName ?? 'École SaaS'}`,
+          template: createElement(ResetPasswordEmail, {
+            firstName: u.firstName,
+            resetUrl,
+            brand,
+            tenantName,
+          }),
         });
 
         if (!result.success) {

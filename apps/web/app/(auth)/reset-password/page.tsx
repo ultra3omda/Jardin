@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -86,7 +87,7 @@ function ResetPasswordFormCard({ token }: { token: string }) {
     try {
       await resetPassword({ token: values.token, newPassword: values.newPassword });
       setSuccess(true);
-      setTimeout(() => router.push('/login'), 1800);
+      setTimeout(() => router.push('/login' as Route), 1800);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code && RESET_ERROR_COPY[err.code]) {

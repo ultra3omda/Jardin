@@ -15,7 +15,7 @@ import type { Request } from 'express';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
-import { MeResponseDto } from '../auth/dto/auth-response.dto';
+import { MeResponseDto, TenantDto } from '../auth/dto/auth-response.dto';
 import { getRequestMeta } from '../auth/utils/request-meta.utils';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -56,6 +56,8 @@ export class UsersController {
             type: tenant.type,
             locale: tenant.locale,
             timezone: tenant.timezone,
+            // V1.6 — pass-through raw JSONB brand; web layout merges over DEFAULT_BRAND.
+            brand: (tenant.brand ?? null) as TenantDto['brand'],
           }
         : null,
     };

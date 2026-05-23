@@ -1,5 +1,7 @@
 'use client';
 
+import type { TenantBrand } from '@ecole-saas/shared';
+
 import type { AuthSessionResponse, MeResponse } from '@/lib/auth/types';
 import type {
   ForgotPasswordFormValues,
@@ -210,4 +212,50 @@ export async function deleteAccount(accessToken: string): Promise<void> {
     method: 'DELETE',
     auth: accessToken,
   });
+}
+
+// ============================================================================
+// V1.6 — Tenant branding (admin)
+// ============================================================================
+
+const ADMIN_PROXY_BASE = '/api/admin';
+
+export async function getBranding(accessToken: string): Promise<TenantBrand> {
+  return jsonRequest<TenantBrand>(`${ADMIN_PROXY_BASE}/tenant/branding`, {
+    method: 'GET',
+    auth: accessToken,
+  });
+}
+
+export async function updateBranding(
+  accessToken: string,
+  patch: Partial<TenantBrand>,
+): Promise<TenantBrand> {
+  return jsonRequest<TenantBrand>(`${ADMIN_PROXY_BASE}/tenant/branding`, {
+    method: 'PATCH',
+    auth: accessToken,
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function resetBranding(accessToken: string): Promise<TenantBrand> {
+  return jsonRequest<TenantBrand>(`${ADMIN_PROXY_BASE}/tenant/branding`, {
+    method: 'DELETE',
+    auth: accessToken,
+  });
+}
+
+export async function getBrandingUploadUrl(
+  accessToken: string,
+  kind: 'logo' | 'favicon',
+  contentType: string,
+): Promise<{ uploadUrl: string; finalUrl: string }> {
+  return jsonRequest<{ uploadUrl: string; finalUrl: string }>(
+    `${ADMIN_PROXY_BASE}/tenant/branding/upload-url`,
+    {
+      method: 'POST',
+      auth: accessToken,
+      body: JSON.stringify({ kind, contentType }),
+    },
+  );
 }

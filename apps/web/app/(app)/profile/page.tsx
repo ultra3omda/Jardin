@@ -10,6 +10,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react';
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -277,7 +278,7 @@ function PasswordCard({
         } catch {
           /* ignore */
         }
-        router.push('/login?message=password-changed');
+        router.push('/login?message=password-changed' as Route);
       }, 1500);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -519,7 +520,7 @@ function RgpdCard({
       } catch {
         /* ignore */
       }
-      router.push('/login?message=account-deleted');
+      router.push('/login?message=account-deleted' as Route);
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Erreur réseau.');
       setDeleting(false);

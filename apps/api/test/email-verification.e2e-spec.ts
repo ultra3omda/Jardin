@@ -179,7 +179,10 @@ describe('Email verification flow (e2e)', () => {
       expect(captured).toHaveLength(1);
       expect(captured[0]!.to).toBe(adminPayload.email.toLowerCase());
       const verifyUrl = captured[0]!.verifyUrl;
-      expect(verifyUrl).toMatch(/\/verify-email\?token=[A-Za-z0-9_-]{43}$/);
+      // V1.6 — URL pattern is /t/<slug>/verify-email?token=... for tenant
+      // users (path-based pre-auth) or /verify-email?token=... for super_admin
+      // without tenant. Match either.
+      expect(verifyUrl).toMatch(/(\/t\/[a-z0-9-]+)?\/verify-email\?token=[A-Za-z0-9_-]{43}$/);
       const token = new URL(verifyUrl!).searchParams.get('token')!;
 
       const verifyRes = await request(app.getHttpServer())

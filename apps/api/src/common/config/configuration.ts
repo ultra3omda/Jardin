@@ -22,6 +22,10 @@ export interface AppConfig {
     accessKeyId: string | undefined;
     secretAccessKey: string | undefined;
     bucketName: string;
+    /** V1.6 — public base URL for tenant assets, used for anti-SSRF check */
+    publicUrl: string | undefined;
+    /** V1.6 — bucket for white-label tenant logos/favicons */
+    tenantAssetsBucket: string;
   };
 }
 
@@ -51,6 +55,8 @@ export function configuration(): AppConfig {
       accessKeyId: process.env.R2_ACCESS_KEY_ID,
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
       bucketName: process.env.R2_BUCKET_NAME ?? 'ecole-saas-exports',
+      publicUrl: process.env.R2_PUBLIC_URL,
+      tenantAssetsBucket: process.env.R2_TENANT_ASSETS_BUCKET ?? 'ecole-saas-tenant-assets',
     },
   };
 }

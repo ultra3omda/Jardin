@@ -76,6 +76,13 @@ export class EnvironmentVariables {
   @IsOptional() @IsString() R2_SECRET_ACCESS_KEY?: string;
   @IsOptional() @IsString() R2_BUCKET_NAME?: string;
 
+  // V1.6 — Cloudflare R2 white-label tenant assets bucket (logos/favicons).
+  // R2_PUBLIC_URL is the public base URL (e.g. https://pub-<hash>.r2.dev or
+  // https://assets.ecole-saas.com once V11 lands). TenantBrandService uses it
+  // for anti-SSRF validation: logoUrl/faviconUrl must start with it.
+  @IsOptional() @IsString() @MinLength(10) R2_PUBLIC_URL?: string;
+  @IsOptional() @IsString() R2_TENANT_ASSETS_BUCKET?: string;
+
   // V1.5 — Sentry DSN for server-side error reporting. Optional — if
   // missing, Sentry init is skipped (see src/instrument.ts).
   @IsOptional() @IsString() SENTRY_DSN_API?: string;

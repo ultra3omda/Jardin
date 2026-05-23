@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, ArrowLeft, Loader2, Mail } from 'lucide-react';
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -107,7 +108,7 @@ function RegisterFormCard({ inviteToken }: { inviteToken: string }) {
     try {
       const session = await register(values);
       setSession(session);
-      router.push('/dashboard');
+      router.push('/dashboard' as Route);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === 'TENANT_SLUG_TAKEN') {

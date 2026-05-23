@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
 import { User } from '@prisma/client';
 import { createElement } from 'react';
+import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 
 import { ResendService } from '../common/email/resend.service';
 import { VerifyEmail } from '../common/email/templates/verify-email';
@@ -49,12 +50,23 @@ export class EmailVerificationService {
     });
 
     const baseUrl = this.config.get<string>('webAppUrl', 'https://ecole-saas-weld.vercel.app');
-    const verifyUrl = `${baseUrl}/verify-email?token=${plaintext}`;
+    // V1.6 — pre-auth deep link routes through /t/[slug]/verify-email so the
+    // landing page is branded with the tenant theme. Fallback to generic
+    // /verify-email if the user has no tenantSlug (legacy super_admin).
+    const { brand, tenantName, tenantSlug } = await this.loadBrandForUser(user.id);
+    const verifyUrl = tenantSlug
+      ? `${baseUrl}/t/${tenantSlug}/verify-email?token=${plaintext}`
+      : `${baseUrl}/verify-email?token=${plaintext}`;
 
     const result = await this.resend.send({
       to: user.email,
-      subject: 'Confirmez votre adresse email — École SaaS',
-      template: createElement(VerifyEmail, { firstName: user.firstName, verifyUrl }),
+      subject: `Confirmez votre adresse email — ${tenantName ?? 'École SaaS'}`,
+      template: createElement(VerifyEmail, {
+        firstName: user.firstName,
+        verifyUrl,
+        brand,
+        tenantName,
+      }),
     });
 
     await this.writeAudit('auth.email.verification_sent', {
@@ -130,6 +142,29 @@ export class EmailVerificationService {
       select: { emailVerifiedAt: true },
     });
     return !!u?.emailVerifiedAt;
+  }
+
+  /**
+   * V1.6 — Load the user's tenant brand + name + slug for email templating.
+   * Returns DEFAULT_BRAND with undefined name/slug if the user has no tenant
+   * (super_admin) or the tenant has no stored brand.
+   */
+  private async loadBrandForUser(userId: string): Promise<{
+    brand: TenantBrand;
+    tenantName?: string;
+    tenantSlug?: string;
+  }> {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tenant: { select: { name: true, slug: true, brand: true } } },
+    });
+    if (!u?.tenant) return { brand: DEFAULT_BRAND };
+    const stored = (u.tenant.brand ?? {}) as Partial<TenantBrand>;
+    return {
+      brand: { ...DEFAULT_BRAND, ...stored },
+      tenantName: u.tenant.name,
+      tenantSlug: u.tenant.slug,
+    };
   }
 
   private async writeAudit(

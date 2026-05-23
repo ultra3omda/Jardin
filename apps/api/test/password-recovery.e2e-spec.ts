@@ -177,7 +177,9 @@ describe('Password recovery flow (e2e)', () => {
       const resetEmails = captured.filter((c) => c.resetUrl);
       expect(resetEmails).toHaveLength(1);
       expect(resetEmails[0]!.to).toBe(adminPayload.email.toLowerCase());
-      expect(resetEmails[0]!.resetUrl).toMatch(/\/reset-password\?token=[A-Za-z0-9_-]{43}$/);
+      // V1.6 — URL pattern is /t/<slug>/reset-password?token=... for tenant
+      // users (path-based pre-auth) or /reset-password?token=... for legacy.
+      expect(resetEmails[0]!.resetUrl).toMatch(/(\/t\/[a-z0-9-]+)?\/reset-password\?token=[A-Za-z0-9_-]{43}$/);
     });
   });
 
