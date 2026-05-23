@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "pnpm --filter=@ecole-saas/shared build",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "pretype-check": "pnpm --filter=@ecole-saas/shared build",
     "type-check": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
