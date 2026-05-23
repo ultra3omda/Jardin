@@ -1,6 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
+import type { Route } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -58,7 +59,7 @@ export function AppShellClient({
       .catch(() => {
         if (cancelled) return;
         clear();
-        router.replace('/login');
+        router.replace('/login' as Route);
       });
     return () => {
       cancelled = true;
@@ -76,7 +77,7 @@ export function AppShellClient({
   async function handleLogout() {
     await logout().catch(() => undefined);
     clear();
-    router.replace('/login');
+    router.replace('/login' as Route);
   }
 
   return (
