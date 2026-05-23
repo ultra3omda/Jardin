@@ -25,6 +25,9 @@ export interface AuthTenant {
   type: TenantType;
   locale: Locale;
   timezone: string;
+  /** V1.6 — partial TenantBrand JSON (null = use DEFAULT_BRAND).
+   *  Web callers should merge it over DEFAULT_BRAND before consuming. */
+  brand: Record<string, unknown> | null;
 }
 
 export interface AuthResponse {

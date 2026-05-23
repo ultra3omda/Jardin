@@ -408,6 +408,9 @@ export class AuthService {
       type: tenant.type,
       locale: tenant.locale,
       timezone: tenant.timezone,
+      // V1.6 — pass-through the raw JSONB brand (TenantBrand partial or null).
+      // The web layout merges over DEFAULT_BRAND before injecting CSS vars.
+      brand: (tenant.brand ?? null) as TenantDto['brand'],
     };
   }
 }
