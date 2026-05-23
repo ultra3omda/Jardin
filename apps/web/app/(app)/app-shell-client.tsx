@@ -31,8 +31,18 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   const tenant = useAuthStore((s) => s.tenant);
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const setSession = useAuthStore((s) => s.setSession);
+  const setHydrated = useAuthStore((s) => s.setHydrated);
   const clear = useAuthStore((s) => s.clear);
   const refreshedRef = useRef(false);
+
+  // V1.6 BUG FIX 2026-05-23 22h — Mark store as hydrated on first client mount.
+  // The Zustand store starts isHydrated=false but has no `persist` middleware,
+  // so nothing ever set it to true → the refresh useEffect below was guarded
+  // on `isHydrated` and never fired → spinner perpétuel sur /dashboard après
+  // un hard reload. Pattern standard pour gérer SSR/CSR mismatch sans persist.
+  useEffect(() => {
+    setHydrated(true);
+  }, [setHydrated]);
 
   // V1.5 pattern — single refresh on mount if store empty (no rotation race
   // because this is a Client Component → browser handles the Set-Cookie).
