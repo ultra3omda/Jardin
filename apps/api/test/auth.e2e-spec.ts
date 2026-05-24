@@ -167,7 +167,15 @@ describe('Auth (e2e)', () => {
       .expect(200);
     expect(refreshRes.body.refreshToken).not.toBe(refreshToken);
 
-    // Reusing the OLD refresh token now reports reuse (401) and revokes chain
+    // Reusing the OLD refresh token within the 30s grace window now SUCCEEDS
+    // (legitimate concurrent rotation race — see Test A for full assertions).
+    // To test the original reuse-defense semantics, we push revokedAt outside
+    // the grace window first, then reuse should trigger the chain wipe.
+    await prisma.refreshToken.update({
+      where: { tokenHash: hashRefreshToken(refreshToken) },
+      data: { revokedAt: new Date(Date.now() - 31_000) },
+    });
+
     await request(app.getHttpServer())
       .post('/api/auth/refresh')
       .send({ refreshToken })
