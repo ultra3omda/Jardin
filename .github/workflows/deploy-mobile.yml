@@ -19,10 +19,6 @@ jobs:
     name: Build & Deploy Mobile Web to Vercel
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Guard: no-op until VERCEL_PROJECT_ID_MOBILE is set as a GitHub secret
-    # (prevents red CI during the transition before the secret exists).
-    # NB: `env.*` is not available in job-level `if:` — use `secrets.*` directly.
-    if: ${{ secrets.VERCEL_PROJECT_ID_MOBILE != '' }}
 
     steps:
       - name: Checkout
