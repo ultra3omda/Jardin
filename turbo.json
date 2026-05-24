@@ -23,6 +23,18 @@
     },
     "clean": {
       "cache": false
+    },
+    "@klasso/mobile#start": {
+      "cache": false,
+      "persistent": true
+    },
+    "@klasso/mobile#type-check": {
+      "dependsOn": ["^build", "^type-check"],
+      "outputs": []
+    },
+    "@klasso/mobile#lint": {
+      "dependsOn": [],
+      "outputs": []
     }
   }
 }
