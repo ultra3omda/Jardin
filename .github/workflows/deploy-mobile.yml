@@ -1,0 +1,65 @@
+name: Deploy Mobile Web (Vercel)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-mobile.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy Mobile Web to Vercel
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install monorepo deps (hoisted)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter=@ecole-saas/shared build
+
+      - name: Build mobile web bundle (Expo export)
+        run: pnpm --filter=@klasso/mobile build:web
+
+      - name: Rename dist → klasso-mobile (Vercel auto-names project from dir)
+        run: mv apps/mobile/dist apps/mobile/klasso-mobile
+
+      - name: Copy vercel.json into deploy dir
+        run: cp apps/mobile/vercel.json apps/mobile/klasso-mobile/vercel.json
+
+      - name: Link deploy dir to Vercel project (.vercel/project.json)
+        # Hard-coded team ID `team_yG29YmhWprcc7vjtWOuLN4BN` (ultra3omda-6664s-projects).
+        # NOT a secret — team IDs are public and stable for the team's lifetime.
+        run: |
+          mkdir -p apps/mobile/klasso-mobile/.vercel
+          cat > apps/mobile/klasso-mobile/.vercel/project.json <<EOF
+          {
+            "projectId": "${{ secrets.VERCEL_PROJECT_ID_MOBILE }}",
+            "orgId": "team_yG29YmhWprcc7vjtWOuLN4BN"
+          }
+          EOF
+
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel@latest
+
+      - name: Deploy static bundle to Vercel production
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --scope=ultra3omda-6664s-projects --cwd apps/mobile/klasso-mobile
