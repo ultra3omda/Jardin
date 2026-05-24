@@ -14,6 +14,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from '../src/app.module';
+import { hashRefreshToken } from '../src/auth/utils/token.utils';
 import { ResendService } from '../src/common/email/resend.service';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 
@@ -166,7 +167,15 @@ describe('Auth (e2e)', () => {
       .expect(200);
     expect(refreshRes.body.refreshToken).not.toBe(refreshToken);
 
-    // Reusing the OLD refresh token now reports reuse (401) and revokes chain
+    // Reusing the OLD refresh token within the 30s grace window now SUCCEEDS
+    // (legitimate concurrent rotation race — see Test A for full assertions).
+    // To test the original reuse-defense semantics, we push revokedAt outside
+    // the grace window first, then reuse should trigger the chain wipe.
+    await prisma.refreshToken.update({
+      where: { tokenHash: hashRefreshToken(refreshToken) },
+      data: { revokedAt: new Date(Date.now() - 31_000) },
+    });
+
     await request(app.getHttpServer())
       .post('/api/auth/refresh')
       .send({ refreshToken })
@@ -213,5 +222,171 @@ describe('Auth (e2e)', () => {
 
   it('rejects /me without a token (global JWT guard)', async () => {
     await request(app.getHttpServer()).get('/api/auth/me').expect(401);
+  });
+
+  it('grace window: concurrent refresh within 30s of revocation succeeds', async () => {
+    // Setup: register + verify + login → refreshToken A
+    const inviteToken = await mintInviteToken();
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({ inviteToken, tenant: tenantPayload, admin: adminPayload })
+      .expect(201);
+    await markEmailVerified(adminPayload.email);
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: adminPayload.email, password: adminPassword })
+      .expect(200);
+    const tokenA: string = loginRes.body.refreshToken;
+
+    // First refresh: A → B (legitimate rotation, A is now revoked w/ replacedByTokenId)
+    const refreshOneRes = await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .send({ refreshToken: tokenA })
+      .expect(200);
+    const tokenB: string = refreshOneRes.body.refreshToken;
+    expect(tokenB).not.toBe(tokenA);
+
+    // Second refresh with A IMMEDIATELY (within 30s grace window):
+    // should succeed and issue a NEW token C without revoking anything
+    const refreshTwoRes = await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .send({ refreshToken: tokenA })
+      .expect(200);
+    const tokenC: string = refreshTwoRes.body.refreshToken;
+    expect(tokenC).toBeTypeOf('string');
+    expect(tokenC).not.toBe(tokenA);
+    expect(tokenC).not.toBe(tokenB);
+
+    // DB checks:
+    // — A is still revoked (the grace path does not "unrevoke" it)
+    const aRow = await prisma.refreshToken.findUnique({
+      where: { tokenHash: hashRefreshToken(tokenA) },
+    });
+    expect(aRow?.revokedAt).not.toBeNull();
+
+    // — B is NOT revoked
+    const bRow = await prisma.refreshToken.findUnique({
+      where: { tokenHash: hashRefreshToken(tokenB) },
+    });
+    expect(bRow?.revokedAt).toBeNull();
+
+    // — C is NOT revoked
+    const cRow = await prisma.refreshToken.findUnique({
+      where: { tokenHash: hashRefreshToken(tokenC) },
+    });
+    expect(cRow?.revokedAt).toBeNull();
+
+    // Audit log checks:
+    const userRow = await prisma.user.findFirst({
+      where: { email: adminPayload.email.toLowerCase() },
+    });
+    expect(userRow).not.toBeNull();
+
+    const reuseLogs = await prisma.auditLog.findMany({
+      where: { userId: userRow!.id, action: 'auth.token_reuse_detected' },
+    });
+    expect(reuseLogs).toHaveLength(0);
+
+    const graceLogs = await prisma.auditLog.findMany({
+      where: { userId: userRow!.id, action: 'auth.refresh.grace_window' },
+    });
+    expect(graceLogs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('reuse detection: refresh with token revoked >30s ago revokes all sessions', async () => {
+    // Setup
+    const inviteToken = await mintInviteToken();
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({ inviteToken, tenant: tenantPayload, admin: adminPayload })
+      .expect(201);
+    await markEmailVerified(adminPayload.email);
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: adminPayload.email, password: adminPassword })
+      .expect(200);
+    const tokenA: string = loginRes.body.refreshToken;
+
+    // Rotate A → B (A gets revokedAt + replacedByTokenId set by the service)
+    const refreshOneRes = await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .send({ refreshToken: tokenA })
+      .expect(200);
+    const tokenB: string = refreshOneRes.body.refreshToken;
+
+    // Force A's revokedAt to be 31 seconds in the past (outside grace window)
+    await prisma.refreshToken.update({
+      where: { tokenHash: hashRefreshToken(tokenA) },
+      data: { revokedAt: new Date(Date.now() - 31_000) },
+    });
+
+    // Re-presenting A should now trigger reuse detection (401)
+    await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .send({ refreshToken: tokenA })
+      .expect(401);
+
+    // Audit: reuse-detected log written
+    const userRow = await prisma.user.findFirst({
+      where: { email: adminPayload.email.toLowerCase() },
+    });
+    expect(userRow).not.toBeNull();
+    const reuseLogs = await prisma.auditLog.findMany({
+      where: { userId: userRow!.id, action: 'auth.token_reuse_detected' },
+    });
+    expect(reuseLogs.length).toBeGreaterThanOrEqual(1);
+
+    // All user refresh tokens are now revoked (including B)
+    const liveTokens = await prisma.refreshToken.findMany({
+      where: { userId: userRow!.id, revokedAt: null },
+    });
+    expect(liveTokens).toHaveLength(0);
+
+    // B is also revoked specifically
+    const bRow = await prisma.refreshToken.findUnique({
+      where: { tokenHash: hashRefreshToken(tokenB) },
+    });
+    expect(bRow?.revokedAt).not.toBeNull();
+  });
+
+  it('reuse detection: revoked token without replacedByTokenId triggers reuse (no grace)', async () => {
+    // Setup
+    const inviteToken = await mintInviteToken();
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({ inviteToken, tenant: tenantPayload, admin: adminPayload })
+      .expect(201);
+    await markEmailVerified(adminPayload.email);
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: adminPayload.email, password: adminPassword })
+      .expect(200);
+    const tokenA: string = loginRes.body.refreshToken;
+
+    // Manually revoke A without setting replacedByTokenId (simulates a token
+    // that was revoked outside of a normal rotation chain — e.g. via logout,
+    // admin action, or a legacy code path). No grace window applies.
+    await prisma.refreshToken.update({
+      where: { tokenHash: hashRefreshToken(tokenA) },
+      data: { revokedAt: new Date(), replacedByTokenId: null },
+    });
+
+    // Refresh with A → 401 + reuse detection (because replacedByTokenId is null)
+    await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .send({ refreshToken: tokenA })
+      .expect(401);
+
+    const userRow = await prisma.user.findFirst({
+      where: { email: adminPayload.email.toLowerCase() },
+    });
+    expect(userRow).not.toBeNull();
+    const reuseLogs = await prisma.auditLog.findMany({
+      where: { userId: userRow!.id, action: 'auth.token_reuse_detected' },
+    });
+    expect(reuseLogs.length).toBeGreaterThanOrEqual(1);
   });
 });
