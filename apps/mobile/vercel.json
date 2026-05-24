@@ -1,10 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter=@klasso/mobile build:web",
+  "buildCommand": null,
   "outputDirectory": "dist",
-  "installCommand": "echo 'install handled by buildCommand'",
-  "devCommand": "pnpm start",
+  "installCommand": null,
   "headers": [
     {
       "source": "/(.*)",
