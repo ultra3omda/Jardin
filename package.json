@@ -9,6 +9,8 @@
     "lint": "turbo lint",
     "type-check": "turbo type-check",
     "test": "turbo test",
+    "dev:mobile": "turbo run start --filter=@klasso/mobile",
+    "type-check:mobile": "turbo run type-check --filter=@klasso/mobile",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "clean": "turbo clean && rm -rf node_modules"
   },
