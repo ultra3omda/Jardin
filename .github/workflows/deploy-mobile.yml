@@ -61,4 +61,6 @@ jobs:
         run: pnpm add -g vercel@latest
 
       - name: Deploy static dist to Vercel production
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --cwd apps/mobile/dist
+        # `--scope` explicitly targets the team (bypasses VERCEL_ORG_ID env
+        # which may resolve to personal scope in this repo's existing secrets).
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --scope=ultra3omda-6664s-projects --cwd apps/mobile/dist
