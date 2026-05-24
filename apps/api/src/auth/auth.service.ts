@@ -27,6 +27,23 @@ import { generateRefreshToken, hashRefreshToken } from './utils/token.utils';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  /**
+   * 30s grace window during which a revoked refresh token (with replacedByTokenId)
+   * is treated as a legitimate concurrent rotation race instead of token reuse.
+   *
+   * Background : V1.5+ refresh-token rotation revokes the OLD token on every
+   * successful /refresh call. When two requests race (multi-tab, SSR/CSR
+   * overlap, edge-region fan-out), the second one sees the just-revoked token
+   * and used to trigger reuse-detection → ALL sessions revoked → infinite 401
+   * loop in the browser. This window lets the second request succeed by
+   * issuing a fresh rotation, only logging an audit + debug for observability.
+   *
+   * If a revoked token is presented OUTSIDE this window (or without a
+   * replacedByTokenId), the original defense kicks in: revoke all user tokens
+   * (real theft signal). See IETF OAuth 2.1 §6.1, Auth0/Okta best practices.
+   */
+  private static readonly REFRESH_GRACE_WINDOW_MS = 30_000;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -202,12 +219,53 @@ export class AuthService {
     }
 
     if (stored.revokedAt) {
-      // Token reuse detected — revoke the entire chain (defense against theft).
+      const ageMs = Date.now() - stored.revokedAt.getTime();
+      const withinGrace =
+        ageMs < AuthService.REFRESH_GRACE_WINDOW_MS && !!stored.replacedByTokenId;
+
+      if (withinGrace) {
+        // Legitimate concurrent rotation race (multi-tab, SSR/CSR overlap).
+        // Issue a fresh refresh token WITHOUT revoking all sessions.
+        const newRaw = generateRefreshToken();
+        const newId = createId();
+        await this.prisma.refreshToken.create({
+          data: {
+            id: newId,
+            tenantId: stored.tenantId,
+            userId: stored.userId,
+            tokenHash: hashRefreshToken(newRaw),
+            expiresAt: this.computeRefreshExpiry(),
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          },
+        });
+
+        await this.logAudit('auth.refresh.grace_window', {
+          userId: stored.userId,
+          tenantId: stored.tenantId,
+          metadata: { originalTokenId: stored.id, revokedAgeMs: ageMs },
+          ...meta,
+        });
+        this.logger.debug(
+          `Refresh grace window applied for user=${stored.userId} (age=${ageMs}ms)`,
+        );
+
+        const accessToken = await this.signAccessToken(stored.user);
+        return {
+          accessToken,
+          refreshToken: newRaw,
+          user: this.userToDto(stored.user),
+          tenant: stored.user.tenant ? this.tenantToDto(stored.user.tenant) : null,
+        };
+      }
+
+      // Outside grace window OR never-rotated revoked token → REAL reuse.
+      // Existing defense: revoke all user tokens to defeat token theft.
       await this.revokeAllUserTokens(stored.userId);
       await this.logAudit('auth.token_reuse_detected', {
         userId: stored.userId,
         tenantId: stored.tenantId,
-        metadata: { refreshTokenId: stored.id },
+        metadata: { refreshTokenId: stored.id, revokedAgeMs: ageMs },
         ...meta,
       });
       this.logger.warn(
