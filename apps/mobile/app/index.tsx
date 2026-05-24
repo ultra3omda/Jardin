@@ -49,7 +49,15 @@ export default function Index() {
       router.replace('/(app)/dashboard');
     }
 
-    boot();
+    // V1.7-A2 fix : si boot() throw (ex: storage native cassé sur web), on
+    // doit quand même hydrate + rediriger vers onboarding plutôt que rester
+    // bloqué sur le spinner. Le user pourra retenter depuis l'écran code école.
+    boot().catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('Boot router failed:', err);
+      setHydrated(true);
+      router.replace('/(onboarding)/school-code');
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
