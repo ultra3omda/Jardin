@@ -1,4 +1,5 @@
 import '../global.css';
+import '../lib/i18n'; // initialise i18next au démarrage
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

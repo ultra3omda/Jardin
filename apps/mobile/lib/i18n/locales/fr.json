@@ -1,0 +1,32 @@
+{
+  "onboarding": {
+    "title": "Bienvenue sur Klasso",
+    "subtitle": "Saisissez le code de votre établissement",
+    "placeholder": "Code école (ex: victor-hugo)",
+    "continue": "Continuer",
+    "loading": "Vérification...",
+    "errorNotFound": "Établissement introuvable. Vérifiez le code.",
+    "errorNetwork": "Erreur réseau. Réessayez."
+  },
+  "auth": {
+    "title": "Connexion",
+    "email": "Adresse email",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "loading": "Connexion...",
+    "errorInvalid": "Email ou mot de passe incorrect.",
+    "changeSchool": "Changer d'école",
+    "errorNetwork": "Erreur réseau. Réessayez."
+  },
+  "dashboard": {
+    "greeting": "Bonjour, {{name}}",
+    "role": "Rôle : {{role}}",
+    "persona": "Persona : {{persona}}",
+    "logout": "Se déconnecter"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue.",
+    "retry": "Réessayer"
+  }
+}
