@@ -1,0 +1,24 @@
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native build artefacts
+*.orig.*
+*.jks
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Env
+.env
+.env.local
+.env.*.local
