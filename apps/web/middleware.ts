@@ -59,6 +59,17 @@ export function middleware(request: NextRequest): NextResponse {
   return NextResponse.next();
 }
 
+/**
+ * Matcher notes:
+ * - The first three patterns target the auth redirect logic (V1.5).
+ * - The catch-all `/((?!_next|api|favicon).*)` is required by the V1.7-A
+ *   host-resolver so it can intercept tenant subdomains on ANY public path
+ *   (e.g. `https://victor-hugo.klasso.tn/` or `/about`). Next.js matchers
+ *   are static (evaluated at build time) so we cannot gate the catch-all
+ *   behind `ENABLE_SUBDOMAIN_RESOLVER` — the runtime gate inside `middleware()`
+ *   handles that. The auth logic remains path-scoped via PROTECTED_PREFIXES /
+ *   AUTH_PREFIXES, so the broader match scope does not change auth behaviour.
+ */
 export const config = {
   matcher: ['/dashboard/:path*', '/login', '/register', '/((?!_next|api|favicon).*)'],
 };

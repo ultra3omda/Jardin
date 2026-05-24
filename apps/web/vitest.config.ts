@@ -12,6 +12,13 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['lib/**/*.ts', 'app/**/*.ts', 'app/**/*.tsx'],
       exclude: ['**/*.test.ts', '**/*.test.tsx', 'lib/**/__tests__/**'],
+      // CLAUDE.md mandates 70% min — matches apps/api/vitest.config.ts
+      thresholds: {
+        statements: 70,
+        branches: 70,
+        functions: 70,
+        lines: 70,
+      },
     },
   },
   resolve: {
