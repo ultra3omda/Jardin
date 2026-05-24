@@ -40,17 +40,18 @@ jobs:
       - name: Build mobile web bundle (Expo export)
         run: pnpm --filter=@klasso/mobile build:web
 
-      - name: Copy vercel.json into dist
-        run: cp apps/mobile/vercel.json apps/mobile/dist/vercel.json
+      - name: Rename dist → klasso-mobile (Vercel auto-names project from dir)
+        run: mv apps/mobile/dist apps/mobile/klasso-mobile
 
-      - name: Link dist to Vercel project (.vercel/project.json)
+      - name: Copy vercel.json into deploy dir
+        run: cp apps/mobile/vercel.json apps/mobile/klasso-mobile/vercel.json
+
+      - name: Link deploy dir to Vercel project (.vercel/project.json)
         # Hard-coded team ID `team_yG29YmhWprcc7vjtWOuLN4BN` (ultra3omda-6664s-projects).
         # NOT a secret — team IDs are public and stable for the team's lifetime.
-        # The repo's VERCEL_ORG_ID secret resolves to a stale scope that no longer
-        # holds the klasso-mobile project, so we bypass it.
         run: |
-          mkdir -p apps/mobile/dist/.vercel
-          cat > apps/mobile/dist/.vercel/project.json <<EOF
+          mkdir -p apps/mobile/klasso-mobile/.vercel
+          cat > apps/mobile/klasso-mobile/.vercel/project.json <<EOF
           {
             "projectId": "${{ secrets.VERCEL_PROJECT_ID_MOBILE }}",
             "orgId": "team_yG29YmhWprcc7vjtWOuLN4BN"
@@ -60,7 +61,5 @@ jobs:
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
 
-      - name: Deploy static dist to Vercel production
-        # Reads .vercel/project.json from --cwd; no VERCEL_ORG_ID/PROJECT_ID
-        # env interference at this point (workflow-level env block removed).
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --scope=ultra3omda-6664s-projects --cwd apps/mobile/dist
+      - name: Deploy static bundle to Vercel production
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --scope=ultra3omda-6664s-projects --cwd apps/mobile/klasso-mobile
