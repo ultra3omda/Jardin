@@ -47,8 +47,18 @@ jobs:
       - name: Copy vercel.json into dist
         run: cp apps/mobile/vercel.json apps/mobile/dist/vercel.json
 
+      - name: Link dist to Vercel project (.vercel/project.json)
+        run: |
+          mkdir -p apps/mobile/dist/.vercel
+          cat > apps/mobile/dist/.vercel/project.json <<EOF
+          {
+            "projectId": "${{ secrets.VERCEL_PROJECT_ID_MOBILE }}",
+            "orgId": "${{ secrets.VERCEL_ORG_ID }}"
+          }
+          EOF
+
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
 
       - name: Deploy static dist to Vercel production
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} apps/mobile/dist
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --cwd apps/mobile/dist
