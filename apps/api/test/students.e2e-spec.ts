@@ -17,16 +17,18 @@ import { createId } from '@paralleldrive/cuid2';
 import { Locale, Sex, TenantType, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/common/prisma/prisma.service';
+import { R2Service } from '../src/common/r2/r2.service';
 
 const TENANT_A_SLUG = 'v2-students-a';
 const TENANT_B_SLUG = 'v2-students-b';
 const EMAIL_DOMAIN = 'v2-students-test.fr';
 
 const PASSWORD = 'V2StudentsTest1234!';
+const R2_PUBLIC_URL = 'https://assets.ecole-saas.test';
 
 interface SeedActor {
   email: string;
@@ -48,7 +50,25 @@ describe('Students (e2e)', () => {
   let studentInB: string;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    // R2Service mock: returns deterministic signed URLs so no real R2 creds are
+    // needed in CI. r2.publicUrl + bucket are read from env at module load time
+    // (configuration.ts), so we set them before compile().
+    process.env.R2_PUBLIC_URL = R2_PUBLIC_URL;
+    process.env.R2_TENANT_ASSETS_BUCKET = 'ecole-saas-tenant-assets';
+
+    const fakeR2 = {
+      signedPutUrl: vi
+        .fn()
+        .mockImplementation(
+          async (key: string, _contentType: string, ttl: number) =>
+            `https://signed.r2.example/${key}?ttl=${ttl}&sig=mock`,
+        ),
+    };
+
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(R2Service)
+      .useValue(fakeR2)
+      .compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
@@ -353,6 +373,40 @@ describe('Students (e2e)', () => {
       where: { tenantId: tenantAId, firstName: 'BulkC' },
     });
     expect(inserted).toBe(0);
+  });
+
+  // ==========================================================================
+  // Phase D — Photo upload R2 signed URL
+  // ==========================================================================
+
+  it('SCHOOL_ADMIN gets a signed photo upload URL (200)', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/students/${studentInA_ofParent}/photo-upload-url`)
+      .set('Authorization', `Bearer ${schoolAdminA.accessToken}`)
+      .send({ contentType: 'image/jpeg' })
+      .expect(200);
+    expect(res.body.uploadUrl).toMatch(/^https?:\/\//);
+    expect(res.body.finalUrl).toContain(
+      `${R2_PUBLIC_URL}/students/${tenantAId}/${studentInA_ofParent}/photo-`,
+    );
+    expect(res.body.finalUrl).toMatch(/\.jpg$/);
+    expect(res.body.expiresIn).toBe(300);
+  });
+
+  it('TEACHER cannot get a photo upload URL (403)', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/students/${studentInA_ofParent}/photo-upload-url`)
+      .set('Authorization', `Bearer ${teacherA.accessToken}`)
+      .send({ contentType: 'image/png' })
+      .expect(403);
+  });
+
+  it('Photo upload rejects unauthorized MIME (400)', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/students/${studentInA_ofParent}/photo-upload-url`)
+      .set('Authorization', `Bearer ${schoolAdminA.accessToken}`)
+      .send({ contentType: 'application/pdf' })
+      .expect(400);
   });
 });
 
