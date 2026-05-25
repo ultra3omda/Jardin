@@ -29,6 +29,7 @@ import type { AuthenticatedUser } from '../auth/decorators/current-user.decorato
 import { Roles } from '../auth/decorators/roles.decorator';
 import { getRequestMeta } from '../auth/utils/request-meta.utils';
 import { BulkImportResponseDto } from './dto/bulk-import.dto';
+import { PhotoUploadResponseDto, PhotoUploadUrlDto } from './dto/photo-upload.dto';
 import {
   CreateStudentDto,
   ListStudentsQueryDto,
@@ -37,6 +38,7 @@ import {
   UpdateStudentDto,
 } from './dto/student.dto';
 import { StudentsBulkImportService } from './students-bulk-import.service';
+import { StudentsPhotoService } from './students-photo.service';
 import { StudentsService } from './students.service';
 
 /**
@@ -55,6 +57,7 @@ export class StudentsController {
   constructor(
     private readonly students: StudentsService,
     private readonly bulkImport: StudentsBulkImportService,
+    private readonly photo: StudentsPhotoService,
   ) {}
 
   @Post('bulk-import')
@@ -138,5 +141,18 @@ export class StudentsController {
     @Req() req: Request,
   ): Promise<void> {
     await this.students.softDelete(id, user, getRequestMeta(req));
+  }
+
+  @Post(':id/photo-upload-url')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.SCHOOL_ADMIN)
+  @ApiOperation({ summary: 'Get signed R2 PUT URL for student photo (SCHOOL_ADMIN only)' })
+  @ApiResponse({ status: 200, type: PhotoUploadResponseDto })
+  async getPhotoUploadUrl(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: PhotoUploadUrlDto,
+  ): Promise<PhotoUploadResponseDto> {
+    return this.photo.getPhotoUploadUrl(id, dto.contentType, user);
   }
 }
