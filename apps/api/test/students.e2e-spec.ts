@@ -286,6 +286,74 @@ describe('Students (e2e)', () => {
     expect(ids).toContain(studentInB);
     expect(ids).not.toContain(studentInA_ofParent);
   });
+
+  // --------------------------------------------------------------------------
+  // Phase C — Bulk CSV import
+  // --------------------------------------------------------------------------
+
+  it('Bulk import dry-run returns counts without inserting', async () => {
+    const csv = [
+      'firstName,lastName,dateOfBirth,sex,classroom,parentEmail',
+      `BulkA,One,2017-01-01,M,CM1,bulk1@${EMAIL_DOMAIN}`,
+      `BulkA,Two,2018-05-05,F,CM1,bulk2@${EMAIL_DOMAIN}`,
+    ].join('\n');
+    const beforeCount = await prisma.student.count({
+      where: { tenantId: tenantAId, firstName: 'BulkA' },
+    });
+    const res = await request(app.getHttpServer())
+      .post('/api/students/bulk-import?dryRun=true')
+      .set('Authorization', `Bearer ${schoolAdminA.accessToken}`)
+      .attach('file', Buffer.from(csv), 'students.csv')
+      .expect(200);
+    expect(res.body.imported).toBe(0);
+    expect(res.body.valid).toBe(2);
+    expect(res.body.errors).toHaveLength(0);
+    expect(res.body.dryRun).toBe(true);
+    const afterCount = await prisma.student.count({
+      where: { tenantId: tenantAId, firstName: 'BulkA' },
+    });
+    expect(afterCount).toBe(beforeCount);
+  });
+
+  it('Bulk import commits when dryRun=false and all rows valid', async () => {
+    const csv = [
+      'firstName,lastName,dateOfBirth,sex,classroom,parentEmail',
+      `BulkB,Three,2017-01-01,M,CM2,bulk3@${EMAIL_DOMAIN}`,
+    ].join('\n');
+    const res = await request(app.getHttpServer())
+      .post('/api/students/bulk-import?dryRun=false')
+      .set('Authorization', `Bearer ${schoolAdminA.accessToken}`)
+      .attach('file', Buffer.from(csv), 'students.csv')
+      .expect(200);
+    expect(res.body.imported).toBe(1);
+    expect(res.body.errors).toHaveLength(0);
+    const row = await prisma.student.findFirst({
+      where: { tenantId: tenantAId, firstName: 'BulkB', lastName: 'Three' },
+    });
+    expect(row).not.toBeNull();
+  });
+
+  it('Bulk import reports row-by-row errors and inserts nothing on any failure', async () => {
+    const csv = [
+      'firstName,lastName,dateOfBirth,sex,classroom,parentEmail',
+      `,MissingFirstName,2017-01-01,M,CM1,bulk4@${EMAIL_DOMAIN}`,
+      `BulkC,Four,bad-date,F,CM1,bulk5@${EMAIL_DOMAIN}`,
+    ].join('\n');
+    const res = await request(app.getHttpServer())
+      .post('/api/students/bulk-import?dryRun=false')
+      .set('Authorization', `Bearer ${schoolAdminA.accessToken}`)
+      .attach('file', Buffer.from(csv), 'students.csv')
+      .expect(200);
+    expect(res.body.imported).toBe(0);
+    expect(res.body.errors.length).toBeGreaterThanOrEqual(2);
+    const rows = (res.body.errors as Array<{ row: number }>).map((e) => e.row);
+    expect(rows).toContain(2);
+    expect(rows).toContain(3);
+    const inserted = await prisma.student.count({
+      where: { tenantId: tenantAId, firstName: 'BulkC' },
+    });
+    expect(inserted).toBe(0);
+  });
 });
 
 // ============================================================================
