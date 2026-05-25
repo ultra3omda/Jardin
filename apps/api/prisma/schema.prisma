@@ -36,6 +36,11 @@ enum UserRole {
   STAFF
 }
 
+enum Sex {
+  M
+  F
+}
+
 // ============================================================================
 // Models
 // ============================================================================
@@ -55,6 +60,7 @@ model Tenant {
   users         User[]
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  students      Student[]
 
   @@index([slug])
   @@map("tenants")
@@ -184,4 +190,56 @@ model InviteToken {
 
   @@index([expiresAt])
   @@map("invite_tokens")
+}
+
+// ============================================================================
+// V2 — Module Élèves
+// ============================================================================
+
+model Student {
+  id                String     @id // cuid2 (cohérent avec User, Tenant)
+  tenantId          String
+
+  // — Identité —
+  firstName         String
+  lastName          String
+  dateOfBirth       DateTime   @db.Date
+  sex               Sex
+  nationality       String?    // ISO 3166-1 alpha-2 (ex: 'TN', 'FR', 'DZ')
+
+  // — Scolarité —
+  classroom         String     // V2: string libre (ex: "CP-A"). V4: relation Class
+  enrollmentDate    DateTime   @db.Date @default(now())
+  previousSchooling String?    @db.Text
+
+  // — Famille —
+  parentEmail       String     // V2: string ref. V3: relation Parent N-N
+  siblingsCount     Int        @default(0)
+
+  // — Contact —
+  addressLine       String?
+  city              String?
+  postalCode        String?
+  country           String?    @default("TN")
+
+  // — Langue —
+  motherTongue      String?    // ISO 639-1 (ex: 'ar', 'fr', 'en')
+
+  // — Santé (light V2, médical strict V8) —
+  medicalNotes      String?    @db.Text // warning RGPD côté UI (cf. R4 spec)
+
+  // — Photo —
+  photoUrl          String?    // R2 public URL
+
+  // — Méta —
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?  // soft-delete
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, lastName])
+  @@index([tenantId, classroom])
+  @@index([tenantId, parentEmail])
+  @@map("students")
 }

@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, TouchableOpacity, ScrollView, Pressable } from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/lib/auth/store';
 import { useTenantStore } from '@/lib/tenant/store';
@@ -54,10 +54,23 @@ export default function DashboardScreen() {
           {t('dashboard.persona', { persona: PERSONA })}
         </Text>
 
-        {/* Placeholder modules */}
+        {/* V2 — Tile Élèves (toutes personas, RBAC côté API) */}
+        <Link href="/(app)/students" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Aller à la liste des élèves"
+            className="mb-4 rounded-2xl border border-gray-200 bg-white p-5"
+          >
+            <Text className="text-3xl">👨‍🎓</Text>
+            <Text className="mt-2 text-base font-semibold">Élèves</Text>
+            <Text className="text-xs text-gray-500">Liste et fiches détaillées</Text>
+          </Pressable>
+        </Link>
+
+        {/* Placeholder futurs modules */}
         <View className="mb-6 rounded-2xl bg-gray-50 p-4">
           <Text className="text-center text-gray-400">
-            📚 Modules V1.8+ (Élèves, Classes, Notes...)
+            📚 V3+ : Parents · Enseignants · Notes…
           </Text>
         </View>
 

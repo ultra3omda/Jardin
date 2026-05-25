@@ -152,6 +152,14 @@ export function AppShellClient({ children }: { children: ReactNode }) {
                   Administration
                 </Link>
               )}
+              {user.role !== 'SUPER_ADMIN' && (
+                <Link
+                  href={'/students' as Route}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Élèves
+                </Link>
+              )}
               {canEditBranding && (
                 <Link
                   href={'/settings/branding' as Route}

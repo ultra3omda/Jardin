@@ -49,6 +49,7 @@
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "csv-parse": "^6.2.1",
     "helmet": "^8.0.0",
     "nestjs-pino": "^4.1.0",
     "passport": "^0.7.0",
@@ -58,7 +59,8 @@
     "react": "^18.3.1",
     "reflect-metadata": "^0.2.2",
     "resend": "^4.0.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@ecole-saas/typescript-config": "workspace:*",
@@ -69,6 +71,7 @@
     "@types/archiver": "^6.0.3",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22.7.5",
     "@types/passport-jwt": "^4.0.1",
     "@types/react": "^18.3.0",
