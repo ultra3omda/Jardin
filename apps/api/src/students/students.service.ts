@@ -93,7 +93,12 @@ export class StudentsService {
     const isParent = currentUser.role === UserRole.PARENT;
     const search = query.search?.trim();
 
+    if (!currentUser.tenantId) {
+      throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    }
+
     const where: Prisma.StudentWhereInput = {
+      tenantId: currentUser.tenantId,
       deletedAt: null,
       ...(isParent ? { parentEmail: currentUser.email.toLowerCase() } : {}),
       ...(search
@@ -125,8 +130,11 @@ export class StudentsService {
   }
 
   async getById(id: string, currentUser: AuthenticatedUser): Promise<StudentResponseDto> {
+    if (!currentUser.tenantId) {
+      throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    }
     const student = await this.prisma.student.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, tenantId: currentUser.tenantId, deletedAt: null },
     });
     if (!student) {
       throw new NotFoundException({ code: 'STUDENT_NOT_FOUND' });
@@ -146,8 +154,11 @@ export class StudentsService {
     currentUser: AuthenticatedUser,
     meta: RequestMeta = {},
   ): Promise<StudentResponseDto> {
+    if (!currentUser.tenantId) {
+      throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    }
     const existing = await this.prisma.student.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, tenantId: currentUser.tenantId, deletedAt: null },
     });
     if (!existing) {
       throw new NotFoundException({ code: 'STUDENT_NOT_FOUND' });
@@ -200,8 +211,11 @@ export class StudentsService {
     currentUser: AuthenticatedUser,
     meta: RequestMeta = {},
   ): Promise<void> {
+    if (!currentUser.tenantId) {
+      throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    }
     const existing = await this.prisma.student.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, tenantId: currentUser.tenantId, deletedAt: null },
     });
     if (!existing) {
       throw new NotFoundException({ code: 'STUDENT_NOT_FOUND' });

@@ -52,7 +52,7 @@ export class StudentsPhotoService {
       });
     }
     const student = await this.prisma.student.findFirst({
-      where: { id: studentId, deletedAt: null },
+      where: { id: studentId, tenantId: currentUser.tenantId, deletedAt: null },
     });
     if (!student) {
       throw new NotFoundException({ code: 'STUDENT_NOT_FOUND' });
