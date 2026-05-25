@@ -14,7 +14,7 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createId } from '@paralleldrive/cuid2';
-import { Locale, TenantType, UserRole } from '@prisma/client';
+import { Locale, Sex, TenantType, UserRole } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { configuration } from '../src/common/config/configuration';
@@ -35,6 +35,8 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
   let tenantBId: string;
   let userAId: string;
   let userBId: string;
+  let studentAId: string;
+  let studentBId: string;
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
@@ -65,6 +67,7 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     // Wipe tenant-scoped data, then seed two isolated tenants
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
+    await prisma.student.deleteMany({});
     await prisma.user.deleteMany({});
     await prisma.tenant.deleteMany({});
 
@@ -72,6 +75,8 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     tenantBId = createId();
     userAId = createId();
     userBId = createId();
+    studentAId = createId();
+    studentBId = createId();
 
     await prisma.tenant.createMany({
       data: [
@@ -115,6 +120,32 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
           lastName: 'B',
           role: UserRole.SCHOOL_ADMIN,
           locale: Locale.fr,
+        },
+      ],
+    });
+
+    // V2 — Student model added to TENANT_SCOPED_MODELS (Phase A) : seed one per tenant
+    await prisma.student.createMany({
+      data: [
+        {
+          id: studentAId,
+          tenantId: tenantAId,
+          firstName: 'Alice',
+          lastName: 'Iso-A',
+          dateOfBirth: new Date('2018-09-15'),
+          sex: Sex.F,
+          classroom: 'CP-A',
+          parentEmail: 'parent-a@iso.test',
+        },
+        {
+          id: studentBId,
+          tenantId: tenantBId,
+          firstName: 'Bob',
+          lastName: 'Iso-B',
+          dateOfBirth: new Date('2017-04-10'),
+          sex: Sex.M,
+          classroom: 'CE1-B',
+          parentEmail: 'parent-b@iso.test',
         },
       ],
     });
@@ -212,5 +243,65 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     // tenant context.
     const users = await tenantPrisma.client.user.findMany();
     expect(users).toHaveLength(2);
+  });
+
+  // ==========================================================================
+  // V2 — Student model isolation (R10 extended)
+  // Phase A added `Student` to TENANT_SCOPED_MODELS — these 4 tests prove the
+  // extension scopes Student queries the same way it scopes User queries.
+  // ==========================================================================
+
+  it('Student.findMany returns only tenant A students from tenant A context', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const rows = await tenantPrisma.client.student.findMany();
+        expect(rows).toHaveLength(1);
+        expect(rows[0]!.id).toBe(studentAId);
+        expect(rows[0]!.tenantId).toBe(tenantAId);
+      },
+    );
+  });
+
+  it('Student.findFirst by tenant B id from tenant A context returns null', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const stolen = await tenantPrisma.client.student.findFirst({
+          where: { id: studentBId },
+        });
+        expect(stolen).toBeNull();
+      },
+    );
+  });
+
+  it('Student.updateMany scoped to tenant A does NOT touch tenant B rows', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        const result = await tenantPrisma.client.student.updateMany({
+          data: { classroom: 'HACK' },
+        });
+        expect(result.count).toBe(1);
+      },
+    );
+    const stillTouchedB = await prisma.student.findUnique({ where: { id: studentBId } });
+    expect(stillTouchedB?.classroom).toBe('CE1-B');
+    const touchedA = await prisma.student.findUnique({ where: { id: studentAId } });
+    expect(touchedA?.classroom).toBe('HACK');
+  });
+
+  it('Student.deleteMany scoped to tenant A does NOT delete tenant B rows', async () => {
+    await tenantContext.run(
+      { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+      async () => {
+        await tenantPrisma.client.student.deleteMany({});
+      },
+    );
+    const survivorB = await prisma.student.findUnique({ where: { id: studentBId } });
+    expect(survivorB).not.toBeNull();
+    expect(survivorB?.tenantId).toBe(tenantBId);
+    const goneA = await prisma.student.findUnique({ where: { id: studentAId } });
+    expect(goneA).toBeNull();
   });
 });
