@@ -75,6 +75,7 @@ export function AppShellClient({ children }: { children: ReactNode }) {
 
   const tenantName = tenant?.name ?? 'École SaaS';
   const canEditBranding = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  const canAdmin = user?.role === 'SUPER_ADMIN';
 
   // V1.6 — inject CSS vars + favicon client-side after the brand is resolved.
   // Mutates <head> so child pages get the theme without re-render.
@@ -143,6 +144,14 @@ export function AppShellClient({ children }: { children: ReactNode }) {
               )}
             </Link>
             <div className="flex items-center gap-3">
+              {canAdmin && (
+                <Link
+                  href={'/admin/tenants' as Route}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Administration
+                </Link>
+              )}
               {canEditBranding && (
                 <Link
                   href={'/settings/branding' as Route}
