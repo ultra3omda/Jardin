@@ -11,7 +11,10 @@ import type { NodeEnv } from './env.validation';
  * déploiement.
  */
 const KLASSO_KNOWN_ORIGINS = [
-  'https://ecole-saas.vercel.app',
+  // Note : ecole-saas.vercel.app appartient au projet Klasio (Côte d'Ivoire),
+  // PAS à nous. Notre vraie URL prod = ecole-saas-weld.vercel.app
+  // (confirmé via Vercel get_project pour prj_DsqPNx90qY3R98l71Pr92DHPoE7R).
+  'https://ecole-saas-weld.vercel.app',
   'https://klasso-mobile.vercel.app',
   'https://klasso.tn',
 ];

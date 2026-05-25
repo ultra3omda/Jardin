@@ -35,7 +35,8 @@ export function TenantDetail({ id }: { id: string }) {
   if (error) return <p className="text-sm text-rose-600">Erreur : {(error as Error).message}</p>;
   if (!tenant) return null;
 
-  const webUrl = `https://ecole-saas.vercel.app/t/${tenant.slug}/login`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ecole-saas-weld.vercel.app';
+  const webUrl = `${appUrl}/t/${tenant.slug}/login`;
   const mobileUrl = 'https://klasso-mobile.vercel.app';
   const canResend = tenant.inviteStatus !== 'consumed' && !tenant.adminOnboarded;
 
