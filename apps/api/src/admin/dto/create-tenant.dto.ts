@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Locale, TenantType, UserRole } from '@prisma/client';
+import { Locale, TenantType } from '@prisma/client';
 import {
   IsBoolean,
   IsEmail,
@@ -73,6 +73,4 @@ export class CreateTenantDto {
   @IsOptional()
   @IsBoolean()
   sendInviteEmail?: boolean;
-
-  readonly intendedRole = UserRole.SCHOOL_ADMIN;
 }
