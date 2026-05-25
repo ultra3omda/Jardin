@@ -1,5 +1,6 @@
 'use client';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import type { Route } from 'next';
 import Image from 'next/image';
@@ -12,6 +13,12 @@ import { Button } from '@/components/ui/button';
 import { logout, refresh } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { buildBrandStyleTag } from '@/lib/tenant/brand-style-tag';
+
+// V1.8 — TanStack Query client for the admin section (and any future client
+// data fetching). Module-scope = single instance shared across the app shell.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+});
 
 /**
  * V1.6 révisé 2026-05-23 PM — AppShellClient repris du pattern V1.5 (Client
@@ -107,55 +114,57 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            {brand.logoUrl ? (
-              <Image
-                src={brand.logoUrl}
-                alt={tenantName}
-                width={28}
-                height={28}
-                className="rounded"
-                unoptimized
-              />
-            ) : (
-              <span
-                className="font-semibold tracking-tight"
-                style={{ color: brand.primaryColor }}
-              >
-                {tenantName}
-              </span>
-            )}
-            {brand.logoUrl && (
-              <span className="text-sm font-medium text-muted-foreground">
-                {tenantName}
-              </span>
-            )}
-          </Link>
-          <div className="flex items-center gap-3">
-            {canEditBranding && (
+    <QueryClientProvider client={queryClient}>
+      <div className="flex min-h-screen flex-col">
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container flex h-14 items-center justify-between">
+            <Link href="/dashboard" className="flex items-center gap-3">
+              {brand.logoUrl ? (
+                <Image
+                  src={brand.logoUrl}
+                  alt={tenantName}
+                  width={28}
+                  height={28}
+                  className="rounded"
+                  unoptimized
+                />
+              ) : (
+                <span
+                  className="font-semibold tracking-tight"
+                  style={{ color: brand.primaryColor }}
+                >
+                  {tenantName}
+                </span>
+              )}
+              {brand.logoUrl && (
+                <span className="text-sm font-medium text-muted-foreground">
+                  {tenantName}
+                </span>
+              )}
+            </Link>
+            <div className="flex items-center gap-3">
+              {canEditBranding && (
+                <Link
+                  href={'/settings/branding' as Route}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Apparence
+                </Link>
+              )}
               <Link
-                href={'/settings/branding' as Route}
+                href="/profile"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
               >
-                Apparence
+                {user.firstName} {user.lastName}
               </Link>
-            )}
-            <Link
-              href="/profile"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
-            >
-              {user.firstName} {user.lastName}
-            </Link>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              Déconnexion
-            </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Déconnexion
+              </Button>
+            </div>
           </div>
-        </div>
-      </header>
-      <main className="container flex-1 py-8">{children}</main>
-    </div>
+        </header>
+        <main className="container flex-1 py-8">{children}</main>
+      </div>
+    </QueryClientProvider>
   );
 }
