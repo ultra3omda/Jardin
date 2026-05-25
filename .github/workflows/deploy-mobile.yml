@@ -38,6 +38,12 @@ jobs:
         run: pnpm --filter=@ecole-saas/shared build
 
       - name: Build mobile web bundle (Expo export)
+        # EXPO_PUBLIC_* vars are inlined at build time (like NEXT_PUBLIC_*).
+        # The repo variable VARS.EXPO_PUBLIC_API_URL holds the Railway URL.
+        # If unset, falls back to localhost (broken in prod but harmless locally).
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_PERSONA: ${{ vars.EXPO_PUBLIC_PERSONA || 'dev' }}
         run: pnpm --filter=@klasso/mobile build:web
 
       - name: Rename dist → klasso-mobile (Vercel auto-names project from dir)
