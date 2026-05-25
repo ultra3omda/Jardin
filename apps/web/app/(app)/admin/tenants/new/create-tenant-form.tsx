@@ -155,7 +155,8 @@ function SuccessPanel({
   response,
   onCreateAnother,
 }: { response: CreateTenantResponse; onCreateAnother: () => void }) {
-  const webUrl = `https://ecole-saas.vercel.app/t/${response.tenant.slug}/login`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ecole-saas-weld.vercel.app';
+  const webUrl = `${appUrl}/t/${response.tenant.slug}/login`;
   const mobileUrl = 'https://klasso-mobile.vercel.app';
 
   return (
