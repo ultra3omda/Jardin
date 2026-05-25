@@ -1,5 +1,29 @@
 import type { NodeEnv } from './env.validation';
 
+/**
+ * Origins toujours autorisés en plus de la var d'env `CORS_ORIGIN`.
+ * Évite un CORS-block silencieux quand un nouveau front cloud est livré
+ * et que l'env Railway n'a pas (encore) été mis à jour.
+ *
+ * À étendre quand on ajoute un domaine custom (klasso.tn, *.klasso.tn,
+ * subdomains tenants V1.7-B). Préférer cette liste pour les domaines
+ * STABLES owned par Klasso plutôt que de demander un edit env à chaque
+ * déploiement.
+ */
+const KLASSO_KNOWN_ORIGINS = [
+  'https://ecole-saas.vercel.app',
+  'https://klasso-mobile.vercel.app',
+  'https://klasso.tn',
+];
+
+function buildCorsOrigins(): string[] {
+  const fromEnv = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  return Array.from(new Set([...KLASSO_KNOWN_ORIGINS, ...fromEnv]));
+}
+
 export interface AppConfig {
   nodeEnv: NodeEnv;
   apiPort: number;
@@ -41,10 +65,7 @@ export function configuration(): AppConfig {
       refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '30d',
     },
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS ?? '12', 10),
-    corsOrigin: (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
-      .split(',')
-      .map((o) => o.trim())
-      .filter(Boolean),
+    corsOrigin: buildCorsOrigins(),
     webAppUrl: process.env.WEB_APP_URL ?? 'https://ecole-saas-weld.vercel.app',
     email: {
       resendApiKey: process.env.RESEND_API_KEY ?? '',
