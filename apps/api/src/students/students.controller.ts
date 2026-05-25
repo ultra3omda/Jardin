@@ -10,9 +10,13 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -24,6 +28,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { getRequestMeta } from '../auth/utils/request-meta.utils';
+import { BulkImportResponseDto } from './dto/bulk-import.dto';
 import {
   CreateStudentDto,
   ListStudentsQueryDto,
@@ -31,6 +36,7 @@ import {
   StudentResponseDto,
   UpdateStudentDto,
 } from './dto/student.dto';
+import { StudentsBulkImportService } from './students-bulk-import.service';
 import { StudentsService } from './students.service';
 
 /**
@@ -46,7 +52,30 @@ import { StudentsService } from './students.service';
 @ApiBearerAuth('access-token')
 @Controller('students')
 export class StudentsController {
-  constructor(private readonly students: StudentsService) {}
+  constructor(
+    private readonly students: StudentsService,
+    private readonly bulkImport: StudentsBulkImportService,
+  ) {}
+
+  @Post('bulk-import')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.SCHOOL_ADMIN)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary:
+      'Bulk import students from CSV (SCHOOL_ADMIN only). dryRun=true by default — explicit ?dryRun=false to commit.',
+  })
+  @ApiResponse({ status: 200, type: BulkImportResponseDto })
+  async bulkImportCsv(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File,
+    @Query('dryRun') dryRun: string | undefined,
+    @Req() req: Request,
+  ): Promise<BulkImportResponseDto> {
+    const isDryRun = dryRun !== 'false';
+    return this.bulkImport.importCsv(file.buffer, isDryRun, user, getRequestMeta(req));
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
