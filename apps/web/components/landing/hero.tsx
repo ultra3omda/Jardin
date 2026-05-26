@@ -65,7 +65,7 @@ export function Hero() {
             className={`relative aspect-[4/3] overflow-hidden rounded-2xl ${locale === 'ar' ? 'md:order-1' : ''}`}
           >
             <Image
-              src="/landing/hero.svg"
+              src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=1600&fit=crop&q=80"
               alt={t('photoAlt')}
               fill
               priority

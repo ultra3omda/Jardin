@@ -8,6 +8,18 @@ const withNextIntl = createNextIntlPlugin('./i18n.ts');
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@ecole-saas/shared'],
+  // V0.7 — Allow Unsplash CDN for landing hero + trust accent photos.
+  // Vercel Image Optimizer handles resize/format on its end; we ship no local
+  // photo binary. CC0 license honored per ADR 0008 (Unsplash License).
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+    ],
+  },
   experimental: {
     // V1.6 — typedRoutes désactivé. Les re-exports thin `/t/[slug]/X` →
     // import de `/X/page` cassent l'inférence du union Route (next-typed-routes
