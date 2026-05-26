@@ -35,6 +35,22 @@
     --ring: 238 76% 56%;
 
     --radius: 0.5rem;
+
+    /* Tunisian Editorial palette (V0.5) — OKLCH for perceptual color uniformity */
+    --paper:        0.97 0.012 75;     /* warm cream paper */
+    --paper-2:      0.94 0.018 75;     /* darker cream for alt sections */
+    --paper-edge:   0.88 0.025 70;     /* borders, dividers */
+
+    --ink:          0.20 0.018 60;     /* deep warm black */
+    --ink-2:        0.45 0.025 65;     /* muted earth brown */
+    --ink-mute:     0.60 0.018 70;     /* faded ink */
+
+    --terracotta:   0.58 0.16 38;      /* Tunisian clay (PRIMARY brand on landing) */
+    --terracotta-2: 0.50 0.18 35;      /* darker hover state */
+    --ochre:        0.75 0.12 75;      /* saharan ochre (badges) */
+    --teal-deep:    0.40 0.06 195;     /* Mediterranean deep teal (Pricing featured) */
+    --olive:        0.52 0.08 115;     /* olive (trust/success) */
+    --rose-dust:    0.72 0.08 30;      /* dusty rose (AR accents) */
   }
 
   .dark {
@@ -76,5 +92,52 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+
+  /* Paper grain — subtle SVG noise overlay for landing sections on --paper bg */
+  .paper-grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    z-index: 0;
+  }
+
+  /* Duotone treatment for landing photos */
+  .landing-photo {
+    filter: sepia(0.25) contrast(1.05) saturate(0.75) brightness(0.95);
+  }
+
+  /* ScrollReveal — animation-timeline if supported, transition fallback otherwise */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 50%;
+    }
+  }
+  .reveal[data-revealed='true'] {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  @keyframes reveal-in {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Reduced motion override — applies to all animations site-wide */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
