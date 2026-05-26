@@ -1,40 +1,57 @@
 ﻿import { useTranslations } from 'next-intl';
-import type { Route } from 'next';
 
-import { Link } from '@/i18n/routing';
 import { LanguageSwitcher } from './language-switcher';
+
+interface Chapter {
+  label: string;
+  status: string;
+}
 
 export function Footer() {
   const t = useTranslations('landing.footer');
+  const chapters = t.raw('chapters.items') as Chapter[];
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="border-t bg-background">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
-          <div className="md:col-span-1">
-            <p className="text-lg font-bold">Klasso</p>
-            <p className="mt-2 text-sm text-muted-foreground">{t('tagline')}</p>
-          </div>
+    <footer className="border-t border-paper-edge bg-paper-alt">
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid gap-12 md:grid-cols-3">
           <div>
-            <p className="text-sm font-semibold">{t('links.product')}</p>
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li><Link href={'#pricing' as Route} className="hover:text-foreground">{t('links.pricing')}</Link></li>
-              <li><Link href={'#modules' as Route} className="hover:text-foreground">{t('links.modules')}</Link></li>
-              <li><Link href={'/login' as Route} className="hover:text-foreground">{t('links.contact')}</Link></li>
+            <p className="font-display text-2xl font-semibold text-ink">Klasso</p>
+            <p className="mt-2 text-sm text-ink-muted">{t('tagline')}</p>
+            <p className="mt-6 text-xs text-ink-faded">{t('address')}</p>
+            <p className="mt-1 font-mono text-xs text-ink-faded">{t('edition')}</p>
+          </div>
+
+          <div>
+            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-ink">
+              {t('chapters.title')}
+            </h3>
+            <ul className="mt-4 space-y-2">
+              {chapters.map((c, i) => (
+                <li key={i} className="flex items-baseline justify-between gap-4 text-sm">
+                  <span className="text-ink-muted">{c.label}</span>
+                  <span className="font-mono text-xs uppercase tracking-wider text-ink-faded">
+                    {c.status}
+                  </span>
+                </li>
+              ))}
             </ul>
           </div>
+
           <div>
-            <p className="text-sm font-semibold">{t('links.legal')}</p>
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li><Link href={'/mentions-legales' as Route} className="hover:text-foreground">{t('links.terms')}</Link></li>
-              <li><Link href={'/privacy' as Route} className="hover:text-foreground">{t('links.privacy')}</Link></li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-sm font-semibold">{t('language')}</p>
-            <div className="mt-3"><LanguageSwitcher /></div>
+            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-ink">
+              {t('language')}
+            </h3>
+            <div className="mt-4">
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
-        <div className="mt-10 border-t pt-6 text-center text-xs text-muted-foreground">{t('copyright')}</div>
+
+        <p className="mt-12 border-t border-paper-edge pt-6 text-xs text-ink-faded">
+          {t('copyright', { year })}
+        </p>
       </div>
     </footer>
   );
