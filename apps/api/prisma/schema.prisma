@@ -74,6 +74,9 @@ model Tenant {
   parentRelations  ParentStudent[] // V3-A
   conversations    Conversation[]  // V3-B
   messages         Message[]       // V3-B
+  classes          Class[]         // V4
+  classTeachers    ClassTeacher[]  // V4
+  timeSlots        TimeSlot[]      // V4
 
   @@index([slug])
   @@map("tenants")
@@ -104,6 +107,8 @@ model User {
   parentRelations         ParentStudent[]          @relation("ParentRelations") // V3-A: only when role = PARENT
   conversationParticipations ConversationParticipant[] // V3-B
   sentMessages            Message[]                @relation("MessageSender") // V3-B
+  classAssignments        ClassTeacher[]           @relation("TeacherAssignments") // V4
+  timeSlotAssignments     TimeSlot[]               @relation("SlotTeacher") // V4
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -337,4 +342,75 @@ model Message {
   @@index([tenantId])
   @@index([senderId])
   @@map("messages")
+}
+
+// V4 — Classe scolaire (eg "CP-A", "6e-Bleue"). schoolYear ISO ("2025-2026").
+// La string `classroom` actuelle sur Student reste pour migration progressive ;
+// `classId` FK est ajouté plus tard quand on aura le bulk-assign.
+model Class {
+  id         String   @id // cuid2
+  tenantId   String
+  name       String   // ex. "CP-A"
+  level      String   // ex. "CP", "CE1", "6e"
+  schoolYear String   // ex. "2025-2026"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime? // soft-delete
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teachers     ClassTeacher[]
+  timeSlots    TimeSlot[]
+
+  @@unique([tenantId, schoolYear, name], name: "unique_class_per_year")
+  @@index([tenantId, schoolYear])
+  @@map("classes")
+}
+
+// V4 — Pivot enseignant ↔ classe. Plusieurs profs par classe (un par matière
+// au primaire pas pertinent — un seul prof "main"; au collège/lycée — N profs).
+// `isMainTeacher` distingue le professeur principal (un par classe côté UX).
+model ClassTeacher {
+  id              String   @id // cuid2
+  tenantId        String
+  classId         String
+  teacherUserId   String
+  subject         String   // matière enseignée
+  isMainTeacher   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher User   @relation("TeacherAssignments", fields: [teacherUserId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, teacherUserId, subject], name: "unique_assignment")
+  @@index([tenantId])
+  @@index([classId])
+  @@index([teacherUserId])
+  @@map("class_teachers")
+}
+
+// V4 — Créneau EDT hebdomadaire récurrent (D31). dayOfWeek 1=Lundi..7=Dimanche
+// (ISO-8601). periodStart/End "HH:MM" 24h. teacherUserId nullable pour les
+// créneaux non encore assignés (planification provisionnelle).
+model TimeSlot {
+  id              String   @id // cuid2
+  tenantId        String
+  classId         String
+  dayOfWeek       Int      // 1..7 (ISO Lundi..Dimanche)
+  periodStart     String   // "HH:MM" (24h)
+  periodEnd       String   // "HH:MM"
+  subject         String
+  teacherUserId   String?  // nullable: créneau planifié sans prof
+  room            String?  // ex. "Salle 12"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher User?  @relation("SlotTeacher", fields: [teacherUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([classId, dayOfWeek])
+  @@index([teacherUserId])
+  @@map("time_slots")
 }
