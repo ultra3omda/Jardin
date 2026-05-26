@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 

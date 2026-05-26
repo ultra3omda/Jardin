@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 
 import { listTenants, type TenantSummary } from '@/lib/api/admin-tenants';
 import { useAuthStore } from '@/lib/auth/use-auth-store';

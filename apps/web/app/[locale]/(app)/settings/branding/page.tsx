@@ -1,7 +1,7 @@
 'use client';
 
 import type { Route } from 'next';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { useEffect } from 'react';
 import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 

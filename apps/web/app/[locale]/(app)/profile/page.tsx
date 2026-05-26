@@ -11,7 +11,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { Route } from 'next';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';

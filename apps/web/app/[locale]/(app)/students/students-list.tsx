@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { Route } from 'next';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { useEffect, useState } from 'react';
 
 import { listStudents, type StudentSummary } from '@/lib/api/students';

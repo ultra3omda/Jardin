@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import type { Route } from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link } from '@/i18n/routing';
+import { useRouter } from '@/i18n/routing';
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 

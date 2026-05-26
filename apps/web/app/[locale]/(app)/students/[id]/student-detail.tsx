@@ -3,8 +3,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Route } from 'next';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link } from '@/i18n/routing';
+import { useRouter } from '@/i18n/routing';
 import { useState } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 

@@ -2,7 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query';
 import type { Route } from 'next';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { useState } from 'react';
 
 import {
