@@ -1,75 +1,80 @@
+import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { defaultLocale, locales } from '@/i18n';
 import { REFRESH_COOKIE_NAME } from '@/lib/auth/cookies';
 import { extractTenantSlugFromHost } from '@/lib/tenant/extract-tenant-slug';
 
 const PROTECTED_PREFIXES = ['/dashboard'];
 const AUTH_PREFIXES = ['/login', '/register'];
 
-/**
- * V1.7-A — Bloc host-resolver dormant.
- *
- * Actif uniquement si ENABLE_SUBDOMAIN_RESOLVER=true.
- * En V1.7-A (avant livraison klasso.tn) : inactif.
- * En V1.7-B (après DNS OVH + Vercel domain) : activer via env Vercel.
- *
- * Quand actif, redirige <slug>.klasso.tn/* → /t/<slug>/*
- * afin de rester compatible avec le routage path-based V1.6.
- */
 const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? 'klasso.tn';
-const SUBDOMAIN_RESOLVER_ENABLED =
-  process.env.ENABLE_SUBDOMAIN_RESOLVER === 'true';
+const SUBDOMAIN_RESOLVER_ENABLED = process.env.ENABLE_SUBDOMAIN_RESOLVER === 'true';
+
+const intlMiddleware = createMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: 'always',
+});
+
+/**
+ * Strip locale prefix from a path: `/fr/dashboard` → `/dashboard`.
+ * Returns the original path if no locale prefix present.
+ */
+function stripLocale(path: string): string {
+  for (const locale of locales) {
+    if (path === `/${locale}`) return '/';
+    if (path.startsWith(`/${locale}/`)) return path.slice(locale.length + 1);
+  }
+  return path;
+}
 
 export function middleware(request: NextRequest): NextResponse {
   const host = request.headers.get('host') ?? '';
   const path = request.nextUrl.pathname;
 
-  // ── Bloc host-resolver (dormant en V1.7-A) ──────────────────────────
+  // V1.7-A — Subdomain resolver (dormant, gated by ENABLE_SUBDOMAIN_RESOLVER).
   if (SUBDOMAIN_RESOLVER_ENABLED) {
     const slug = extractTenantSlugFromHost(host, BASE_DOMAIN);
     if (slug) {
-      // Éviter la boucle : /t/<slug> est déjà le path target
-      if (!path.startsWith(`/t/${slug}`)) {
+      const stripped = stripLocale(path);
+      if (!stripped.startsWith(`/t/${slug}`)) {
         const url = request.nextUrl.clone();
-        url.pathname = `/t/${slug}${path}`;
+        const localeMatch = path.match(/^\/(fr|ar)(\/|$)/);
+        const locale = localeMatch ? localeMatch[1] : '';
+        url.pathname = locale ? `/${locale}/t/${slug}${stripped}` : `/t/${slug}${stripped}`;
         return NextResponse.rewrite(url);
       }
     }
   }
-  // ────────────────────────────────────────────────────────────────────
 
-  // ── Auth redirects (V1.5 inchangé) ──────────────────────────────────
+  // V1.5 — Auth redirects, now locale-aware.
   const hasRefreshCookie = !!request.cookies.get(REFRESH_COOKIE_NAME);
+  const stripped = stripLocale(path);
+  const localeMatch = path.match(/^\/(fr|ar)(\/|$)/);
+  const locale = localeMatch ? localeMatch[1] : defaultLocale;
 
   if (
-    PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`)) &&
+    PROTECTED_PREFIXES.some((p) => stripped === p || stripped.startsWith(`${p}/`)) &&
     !hasRefreshCookie
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = `/${locale}/login`;
     url.searchParams.set('next', path);
     return NextResponse.redirect(url);
   }
 
-  if (AUTH_PREFIXES.some((p) => path === p) && hasRefreshCookie) {
+  if (AUTH_PREFIXES.some((p) => stripped === p) && hasRefreshCookie) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = `/${locale}/dashboard`;
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  // V0 — delegate to next-intl for locale detection / redirection.
+  return intlMiddleware(request);
 }
 
-/**
- * Matcher notes:
- * - The first three patterns target the auth redirect logic (V1.5).
- * - The catch-all `/((?!_next|api|favicon).*)` is required by the V1.7-A
- *   host-resolver so it can intercept tenant subdomains on ANY public path
- *   (e.g. `https://victor-hugo.klasso.tn/` or `/about`). Next.js matchers
- *   are static (evaluated at build time) so we cannot gate the catch-all
- *   behind `ENABLE_SUBDOMAIN_RESOLVER` — the runtime gate inside `middleware()`
- *   handles that. The auth logic remains path-scoped via PROTECTED_PREFIXES /
- *   AUTH_PREFIXES, so the broader match scope does not change auth behaviour.
- */
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/register', '/((?!_next|api|favicon).*)'],
+  // Skip _next, api, _vercel, and static files (anything with a dot).
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
 };
