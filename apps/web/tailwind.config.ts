@@ -53,6 +53,25 @@ const config: Config = {
           700: '#4338ca',
           900: '#312e81',
         },
+        // Tunisian Editorial palette (V0.5) — references CSS vars set in globals.css
+        paper: {
+          DEFAULT: 'oklch(var(--paper))',
+          alt: 'oklch(var(--paper-2))',
+          edge: 'oklch(var(--paper-edge))',
+        },
+        ink: {
+          DEFAULT: 'oklch(var(--ink))',
+          muted: 'oklch(var(--ink-2))',
+          faded: 'oklch(var(--ink-mute))',
+        },
+        terracotta: {
+          DEFAULT: 'oklch(var(--terracotta))',
+          dark: 'oklch(var(--terracotta-2))',
+        },
+        ochre: 'oklch(var(--ochre))',
+        'teal-deep': 'oklch(var(--teal-deep))',
+        olive: 'oklch(var(--olive))',
+        'rose-dust': 'oklch(var(--rose-dust))',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -60,7 +79,11 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
+        'sans-ar': ['var(--font-body-ar)', 'system-ui', 'sans-serif'],
+        'display-ar': ['var(--font-display-ar)', 'Amiri', 'serif'],
       },
       keyframes: {
         'accordion-down': {
