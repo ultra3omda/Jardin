@@ -16,16 +16,60 @@
       "title": "L'école à l'ère numérique",
       "subtitle": "— sans complexité",
       "description": "La plateforme SaaS qui gère élèves, parents, enseignants et finances de votre établissement, en un seul endroit.",
+      "descriptionUpgraded": "La plateforme SaaS pensée pour les écoles tunisiennes — élèves, parents, enseignants, finances. En un seul tableau de bord.",
       "ctaPrimary": "Demander une démo gratuite",
-      "ctaSecondary": "Se connecter"
+      "ctaSecondary": "Se connecter",
+      "subtitleAr": "المدرسة في عصر رقمي",
+      "trustStrip": "Hébergement EU + TN · RGPD-ready · Support FR/AR · Sans engagement",
+      "photoAlt": "Salle de classe d'une école primaire tunisienne, lumière dorée"
+    },
+    "stats": {
+      "items": {
+        "rgpd": { "value": "100", "suffix": "%", "label": "Conformité RGPD", "sublabel": "et isolation multi-tenant" },
+        "modules": { "value": "4", "suffix": "", "label": "Modules en roadmap", "sublabel": "livrés en 2026" },
+        "languages": { "value": "2", "suffix": "×2", "label": "Bilingue FR · العربية", "sublabel": "Web · Mobile" }
+      }
+    },
+    "schoolSegments": {
+      "title": "Pour chaque type d'établissement",
+      "subtitle": "Klasso s'adapte à votre structure pédagogique.",
+      "items": {
+        "kindergarten": { "name": "Jardins d'enfants", "ageRange": "Maternelle · 3 à 5 ans", "description": "Inscription souple, adaptée aux rythmes courts. Photos, parents, présences." },
+        "primary": { "name": "Écoles primaires", "ageRange": "CP → CM2 · 6 à 11 ans", "description": "Suivi pédagogique, bulletins trimestriels, carnets de correspondance." },
+        "mixed": { "name": "Établissements mixtes", "ageRange": "Maternelle + Primaire", "description": "Vue d'ensemble consolidée pour groupes scolaires multi-niveaux." }
+      }
     },
     "benefits": {
-      "title": "Pensé pour les écoles tunisiennes",
+      "title": "Pourquoi Klasso",
+      "intro": "Plus de bouts de papier, plus de tableaux Excel oubliés sur clé USB. Klasso rend visible ce qui était dispersé, automatique ce qui était répétitif, et collaboratif ce qui était silencieux.",
       "items": {
-        "students": { "title": "Gestion élèves complète", "description": "Fiches détaillées, photos, classes, suivi scolaire et antécédents — tout dans un seul tableau de bord." },
-        "communication": { "title": "Communication parents transparente", "description": "Les parents voient en temps réel les informations de leurs enfants. Fini les bouts de papier perdus." },
-        "pedagogy": { "title": "Suivi pédagogique simplifié", "description": "Évaluations, bulletins, rapports trimestriels — générés automatiquement, exportables en PDF." }
+        "time": { "title": "Gain de temps", "description": "Les tâches répétitives (appels, présences, bulletins) en quelques clics." },
+        "paperless": { "title": "Zéro papier", "description": "Toutes les fiches élèves et bulletins en ligne. Économie réelle, geste écologique réel." },
+        "mobileParents": { "title": "Mobile-first parents", "description": "Les parents voient les infos sur leur téléphone — disponible dès été 2026." },
+        "rgpd": { "title": "RGPD européen", "description": "Isolation multi-tenant testée, audit logs, export et droit à l'oubli." },
+        "support": { "title": "Support en français et arabe", "description": "Notre équipe répond en moins de 24h ouvrées, dans votre langue." },
+        "migration": { "title": "Migration depuis Excel", "description": "Import CSV en masse. Vos données existantes, intactes, en 1 clic." }
       }
+    },
+    "dashboardMockup": {
+      "title": "Tout votre établissement, en un coup d'œil",
+      "subtitle": "Aperçu fictif — École Primaire Sidi Bou Saïd",
+      "greeting": "Bonjour Mme Hadia 👋",
+      "kpis": {
+        "students": "Élèves inscrits",
+        "classes": "Classes actives",
+        "attendance": "Présence moyenne",
+        "alerts": "Alertes"
+      },
+      "activity": {
+        "title": "Activité récente",
+        "items": [
+          "5 nouveaux élèves inscrits cette semaine",
+          "Bulletin 2e trimestre disponible le 15 mars",
+          "2 absences non justifiées à régulariser"
+        ]
+      },
+      "cta": "Voir tous les élèves →"
     },
     "modules": {
       "title": "Modules disponibles et roadmap",
@@ -42,10 +86,10 @@
     "trust": {
       "title": "Une plateforme de confiance",
       "items": {
-        "rgpd": { "title": "RGPD-ready", "description": "Isolation multi-tenant testée, audit logs, export et suppression des données utilisateurs." },
-        "hosting": { "title": "Hébergement sécurisé", "description": "Serveurs européens (Neon, Vercel) + CDN local. Sauvegardes quotidiennes." },
-        "support": { "title": "Support bilingue", "description": "Équipe FR/AR, réponse sous 24 heures ouvrées." },
-        "updates": { "title": "Mises à jour continues", "description": "Nouvelles fonctionnalités mensuelles, sans intervention de votre part." }
+        "rgpd": { "title": "RGPD-ready", "description": "Isolation multi-tenant testée, audit logs, export et suppression des données utilisateurs.", "proof": "Conforme RGPD · 2026" },
+        "hosting": { "title": "Hébergement sécurisé", "description": "Serveurs européens (Neon, Vercel) + CDN local. Sauvegardes quotidiennes.", "proof": "EU + TN edge · Daily backups" },
+        "support": { "title": "Support bilingue", "description": "Équipe FR/AR, réponse sous 24 heures ouvrées.", "proof": "Lun-Ven · 9h–17h GMT+1" },
+        "updates": { "title": "Mises à jour continues", "description": "Nouvelles fonctionnalités mensuelles, sans intervention de votre part.", "proof": "Dernière màj : il y a 3 jours" }
       }
     },
     "pricing": {
@@ -79,7 +123,10 @@
       },
       "submit": "Envoyer la demande",
       "submitting": "Envoi en cours…",
-      "success": { "title": "Demande reçue ✓", "description": "Nous vous répondrons sous 24 heures ouvrées." },
+      "success": {
+        "title": "Demande reçue ✓",
+        "description": "Vous allez recevoir une confirmation par email. Un membre de notre équipe vous contactera dans les 24 heures ouvrées."
+      },
       "errors": {
         "validation": "Veuillez vérifier les champs en rouge.",
         "turnstile": "Vérification anti-spam échouée. Veuillez réessayer.",
@@ -88,8 +135,37 @@
         "generic": "Une erreur est survenue. Réessayez."
       }
     },
+    "faq": {
+      "title": "Questions fréquentes",
+      "subtitle": "Tout ce que les directeurs nous demandent en démo.",
+      "items": [
+        { "q": "Combien coûte Klasso pour mon école ?", "a": "Le tarif est par élève par mois (5/4/3 TND HT selon le palier). Engagement annuel, 30 jours d'essai gratuit sans carte." },
+        { "q": "Comment migrer depuis mes fichiers Excel actuels ?", "a": "Klasso inclut un import CSV en masse (V2 — déjà livré). Vous téléchargez un modèle, vous le remplissez, vous l'envoyez : tous vos élèves sont créés en quelques secondes." },
+        { "q": "Les parents peuvent-ils accéder à Klasso ?", "a": "Une application parents dédiée arrive à l'été 2026 (V3 de la roadmap). En attendant, vous pouvez exporter des fiches PDF par élève." },
+        { "q": "Mes données restent-elles en Tunisie ?", "a": "Hébergement primaire UE (Neon Postgres + Vercel) + CDN edge avec point de présence local TN. Sauvegardes quotidiennes chiffrées." },
+        { "q": "Comment Klasso protège-t-il les données des mineurs ?", "a": "RGPD strict, isolation multi-tenant testée par tests automatisés, audit logs, et droit à l'oubli implémenté côté API." },
+        { "q": "Y a-t-il un engagement annuel ?", "a": "Les tarifs affichés supposent un engagement annuel (paiement trimestriel possible sur le plan Pro). 30 jours d'essai gratuit avant toute facturation." },
+        { "q": "Klasso fonctionne-t-il en arabe ?", "a": "Oui — interface complète FR + AR avec support RTL natif. Vous basculez de langue à tout moment via le sélecteur dans le footer." },
+        { "q": "Comment formez-vous mon équipe pédagogique ?", "a": "Onboarding personnalisé inclus dans le plan Pro (visio + documentation). Plans Starter/Standard : support email + vidéos tutoriels." }
+      ]
+    },
+    "ctaFinal": {
+      "title": "Prête à essayer Klasso dans votre école ?",
+      "subtitle": "Démo gratuite 30 minutes. Sans engagement.",
+      "ctaPrimary": "Demander une démo →",
+      "ctaSecondary": "Se connecter"
+    },
     "footer": {
       "tagline": "L'école à l'ère numérique",
+      "chapters": {
+        "title": "Chapitres",
+        "items": [
+          { "label": "Chapitre I — Élèves", "status": "Disponible" },
+          { "label": "Chapitre II — Parents", "status": "Été 2026" },
+          { "label": "Chapitre III — Enseignants", "status": "Été 2026" },
+          { "label": "Chapitre IV — Finance", "status": "Automne 2026" }
+        ]
+      },
       "links": {
         "product": "Produit",
         "pricing": "Tarifs",
@@ -101,7 +177,9 @@
         "privacy": "Politique RGPD"
       },
       "language": "Langue",
-      "copyright": "© 2026 Klasso — Tous droits réservés"
+      "address": "ESS Klasso, Tunis · contact@klasso.tn",
+      "edition": "Édition v0.5.0",
+      "copyright": "© {year} Klasso — Tous droits réservés"
     }
   }
 }
