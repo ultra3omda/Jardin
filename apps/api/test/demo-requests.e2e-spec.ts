@@ -19,6 +19,12 @@ describe('POST /public/demo-request (e2e)', () => {
   let resendMock: any;
 
   beforeAll(async () => {
+    // CI doesn't set TURNSTILE_SECRET_KEY — without it the service bypasses
+    // verification and returns success on every request. Set a test value so
+    // the verifyTurnstile path actually executes and the global.fetch mock
+    // gets consulted.
+    process.env.TURNSTILE_SECRET_KEY = 'test-turnstile-secret-ci';
+
     // Mock global fetch (Turnstile verification) to return success by default
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -89,19 +95,21 @@ describe('POST /public/demo-request (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/public/demo-request')
       .send({
-        firstName: 'X',
-        lastName: 'Y',
+        firstName: 'Xavier',
+        lastName: 'Test',
         email: 'x@y.tn',
-        schoolName: 'É',
+        schoolName: 'École Test',
         studentsCount: '<50',
         locale: 'fr',
-        turnstileToken: 'bad-token',
+        turnstileToken: 'bad-token-12345',
       })
       .expect(400);
 
-    // NestJS spreads BadRequestException(object) payload at top-level
-    // (pattern from V2 students.e2e-spec): res.body.code, not res.body.message.code
-    expect(res.body.code).toBe('TURNSTILE_FAILED');
+    // Payload MUST pass DTO validation (MinLength etc.) to actually reach the
+    // Turnstile verification logic. Otherwise ValidationPipe returns its own
+    // 400 with class-validator messages instead of TURNSTILE_FAILED.
+    // Robust assertion : code appears anywhere in the response body shape.
+    expect(JSON.stringify(res.body)).toContain('TURNSTILE_FAILED');
   });
 
   it('rejects malformed body with 400', async () => {
