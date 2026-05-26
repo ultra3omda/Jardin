@@ -89,19 +89,20 @@ describe('POST /public/demo-request (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/public/demo-request')
       .send({
-        firstName: 'X',
-        lastName: 'Y',
+        firstName: 'Xavier',
+        lastName: 'Test',
         email: 'x@y.tn',
-        schoolName: 'É',
+        schoolName: 'École Test',
         studentsCount: '<50',
         locale: 'fr',
-        turnstileToken: 'bad-token',
+        turnstileToken: 'bad-token-12345',
       })
       .expect(400);
 
-    // BadRequestException({code, message}) serialization varies by NestJS exception
-    // filter chain (Sentry global filter may reshape). We assert the error code
-    // appears anywhere in the response body — robust against nesting differences.
+    // Payload MUST pass DTO validation (MinLength etc.) to actually reach the
+    // Turnstile verification logic. Otherwise ValidationPipe returns its own
+    // 400 with class-validator messages instead of TURNSTILE_FAILED.
+    // Robust assertion : code appears anywhere in the response body shape.
     expect(JSON.stringify(res.body)).toContain('TURNSTILE_FAILED');
   });
 
