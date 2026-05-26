@@ -54,6 +54,14 @@ export interface AppConfig {
     /** V1.6 — bucket for white-label tenant logos/favicons */
     tenantAssetsBucket: string;
   };
+  /** Landing page — Cloudflare Turnstile server-side verification */
+  turnstile: {
+    secretKey: string | undefined;
+  };
+  /** Landing page — demo request notification recipient */
+  demoRequest: {
+    toEmail: string | undefined;
+  };
 }
 
 export function configuration(): AppConfig {
@@ -81,6 +89,12 @@ export function configuration(): AppConfig {
       bucketName: process.env.R2_BUCKET_NAME ?? 'ecole-saas-exports',
       publicUrl: process.env.R2_PUBLIC_URL,
       tenantAssetsBucket: process.env.R2_TENANT_ASSETS_BUCKET ?? 'ecole-saas-tenant-assets',
+    },
+    turnstile: {
+      secretKey: process.env.TURNSTILE_SECRET_KEY,
+    },
+    demoRequest: {
+      toEmail: process.env.DEMO_REQUEST_TO_EMAIL,
     },
   };
 }

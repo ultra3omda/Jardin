@@ -1,9 +1,8 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import createNextIntlPlugin from 'next-intl/plugin';
 
-// V1.5 — i18n. Single-locale FR for now; the [locale] segment + locale
-// switcher come in V2.
-const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+// V0 — i18n. Bilingual FR/AR via /fr and /ar sub-paths (next-intl middleware).
+const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
