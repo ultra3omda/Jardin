@@ -1,9 +1,7 @@
 {
-  "app": {
-    "name": "École SaaS",
-    "tagline": "Gestion d'établissement scolaire"
-  },
   "common": {
+    "appName": "Klasso",
+    "tagline": "L'école à l'ère numérique",
     "loading": "Chargement…",
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -12,5 +10,98 @@
     "next": "Suivant",
     "error": "Erreur",
     "success": "Succès"
+  },
+  "landing": {
+    "hero": {
+      "title": "L'école à l'ère numérique",
+      "subtitle": "— sans complexité",
+      "description": "La plateforme SaaS qui gère élèves, parents, enseignants et finances de votre établissement, en un seul endroit.",
+      "ctaPrimary": "Demander une démo gratuite",
+      "ctaSecondary": "Se connecter"
+    },
+    "benefits": {
+      "title": "Pensé pour les écoles tunisiennes",
+      "items": {
+        "students": { "title": "Gestion élèves complète", "description": "Fiches détaillées, photos, classes, suivi scolaire et antécédents — tout dans un seul tableau de bord." },
+        "communication": { "title": "Communication parents transparente", "description": "Les parents voient en temps réel les informations de leurs enfants. Fini les bouts de papier perdus." },
+        "pedagogy": { "title": "Suivi pédagogique simplifié", "description": "Évaluations, bulletins, rapports trimestriels — générés automatiquement, exportables en PDF." }
+      }
+    },
+    "modules": {
+      "title": "Modules disponibles et roadmap",
+      "subtitle": "Klasso s'étend chaque trimestre. Voici ce que vous obtenez aujourd'hui et ce qui arrive bientôt.",
+      "items": {
+        "students": { "name": "Élèves", "status": "Disponible" },
+        "parents": { "name": "Parents", "status": "Été 2026" },
+        "teachers": { "name": "Enseignants", "status": "Été 2026" },
+        "billing": { "name": "Facturation", "status": "Automne 2026" },
+        "cantine": { "name": "Cantine & Transport", "status": "2027" },
+        "health": { "name": "Santé & Bien-être", "status": "2027" }
+      }
+    },
+    "trust": {
+      "title": "Une plateforme de confiance",
+      "items": {
+        "rgpd": { "title": "RGPD-ready", "description": "Isolation multi-tenant testée, audit logs, export et suppression des données utilisateurs." },
+        "hosting": { "title": "Hébergement sécurisé", "description": "Serveurs européens (Neon, Vercel) + CDN local. Sauvegardes quotidiennes." },
+        "support": { "title": "Support bilingue", "description": "Équipe FR/AR, réponse sous 24 heures ouvrées." },
+        "updates": { "title": "Mises à jour continues", "description": "Nouvelles fonctionnalités mensuelles, sans intervention de votre part." }
+      }
+    },
+    "pricing": {
+      "title": "Tarifs simples, par élève",
+      "subtitle": "Tarifs HT en TND. Engagement annuel. Période d'essai 30 jours sans carte bancaire.",
+      "popular": "Le plus populaire",
+      "tiers": {
+        "starter": { "name": "Starter", "price": "5", "unit": "TND / élève / mois", "limit": "Jusqu'à 50 élèves", "features": ["CRUD élèves complet", "Communication basique", "Support par email"] },
+        "standard": { "name": "Standard", "price": "4", "unit": "TND / élève / mois", "limit": "Jusqu'à 200 élèves", "features": ["Tout Starter", "Import CSV en masse", "Photos d'élèves", "Multi-rôles (enseignants, staff, parents)", "Support prioritaire"] },
+        "pro": { "name": "Pro", "price": "3", "unit": "TND / élève / mois", "limit": "Élèves illimités", "features": ["Tout Standard", "Onboarding personnalisé", "SLA 99.9%", "Accès API"] }
+      },
+      "cta": "Demander une démo"
+    },
+    "demoForm": {
+      "title": "Demander une démo",
+      "subtitle": "Un membre de notre équipe vous contactera sous 24 heures ouvrées.",
+      "fields": {
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "email": "Email professionnel",
+        "phone": "Téléphone (optionnel)",
+        "schoolName": "Nom de l'établissement",
+        "studentsCount": "Nombre approximatif d'élèves",
+        "message": "Message (optionnel)"
+      },
+      "studentsCountOptions": {
+        "lt50": "Moins de 50",
+        "50to200": "Entre 50 et 200",
+        "200to500": "Entre 200 et 500",
+        "gt500": "Plus de 500"
+      },
+      "submit": "Envoyer la demande",
+      "submitting": "Envoi en cours…",
+      "success": { "title": "Demande reçue ✓", "description": "Nous vous répondrons sous 24 heures ouvrées." },
+      "errors": {
+        "validation": "Veuillez vérifier les champs en rouge.",
+        "turnstile": "Vérification anti-spam échouée. Veuillez réessayer.",
+        "rateLimit": "Trop de demandes. Réessayez dans une heure.",
+        "network": "Erreur réseau. Vérifiez votre connexion.",
+        "generic": "Une erreur est survenue. Réessayez."
+      }
+    },
+    "footer": {
+      "tagline": "L'école à l'ère numérique",
+      "links": {
+        "product": "Produit",
+        "pricing": "Tarifs",
+        "modules": "Modules",
+        "faq": "FAQ",
+        "contact": "Contact",
+        "legal": "Légal",
+        "terms": "Mentions légales",
+        "privacy": "Politique RGPD"
+      },
+      "language": "Langue",
+      "copyright": "© 2026 Klasso — Tous droits réservés"
+    }
   }
 }
