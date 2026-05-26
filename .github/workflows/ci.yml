@@ -1,5 +1,5 @@
 name: CI
-n# Trigger re-eval after push event silently dropped on feat/landing-bilingue (2026-05-26)
+# Trigger re-eval after push event silently dropped on feat/landing-bilingue (2026-05-26)
 
 on:
   push:
