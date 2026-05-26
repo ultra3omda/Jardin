@@ -5,5 +5,5 @@
  * The login form's manual `tenantSlug` input still works for users
  * who reach here unintentionally.
  */
-import LoginPage from '@/app/(auth)/login/page';
+import LoginPage from '@/app/[locale]/(auth)/login/page';
 export default LoginPage;
