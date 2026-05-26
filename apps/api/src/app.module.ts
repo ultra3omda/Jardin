@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { TenantContextInterceptor } from './auth/interceptors/tenant-context.interceptor';
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
     ]),
     AuthModule,
     AdminModule,
+    DemoRequestsModule,
     UsersModule,
     HealthModule,
     TenantBrandModule,

@@ -86,6 +86,14 @@ export class EnvironmentVariables {
   // V1.5 — Sentry DSN for server-side error reporting. Optional — if
   // missing, Sentry init is skipped (see src/instrument.ts).
   @IsOptional() @IsString() SENTRY_DSN_API?: string;
+
+  // Landing page — Cloudflare Turnstile server-side secret.
+  // Optional: if missing, the service skips verification (DEV ONLY mode).
+  @IsOptional() @IsString() TURNSTILE_SECRET_KEY?: string;
+
+  // Landing page — email address that receives demo request notifications.
+  // Optional: if missing, email sending is skipped and only audit log is written.
+  @IsOptional() @IsString() DEMO_REQUEST_TO_EMAIL?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
