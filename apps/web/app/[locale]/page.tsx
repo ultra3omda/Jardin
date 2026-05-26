@@ -1,10 +1,19 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 
+import { Benefits } from '@/components/landing/benefits';
+import { Footer } from '@/components/landing/footer';
+import { Hero } from '@/components/landing/hero';
+import { ModulesGrid } from '@/components/landing/modules-grid';
+import { Pricing } from '@/components/landing/pricing';
+import { Trust } from '@/components/landing/trust';
+
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Klasso — L\'école à l\'ère numérique',
+  description:
+    'Plateforme SaaS de gestion d\'écoles tunisiennes — élèves, parents, enseignants et finances en un seul endroit.',
 };
 
 interface Props {
@@ -12,24 +21,24 @@ interface Props {
 }
 
 /**
- * V0 Landing — placeholder.
- * Sera composé par 7 sections en P2 (Task 16).
+ * V0 Landing — 6 sections composées (DemoForm rejoint en P3 Task 24).
  */
 export default function LandingPage({ params: { locale } }: Props) {
   setRequestLocale(locale);
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-8">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold">Klasso</h1>
-        <p className="text-lg text-muted-foreground">L&apos;école à l&apos;ère numérique</p>
-        <a
-          href="/login"
-          className="inline-block mt-6 px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium"
-        >
-          Se connecter
-        </a>
-      </div>
-    </main>
+    <>
+      <Hero />
+      <section id="benefits">
+        <Benefits />
+      </section>
+      <section id="modules">
+        <ModulesGrid />
+      </section>
+      <Trust />
+      <Pricing />
+      {/* DemoForm sera inséré ici en P3 Task 24 */}
+      <Footer />
+    </>
   );
 }
