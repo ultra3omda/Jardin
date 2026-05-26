@@ -1,31 +1,43 @@
 ﻿import { useTranslations } from 'next-intl';
-import { Shield, Server, MessageSquare, Sparkles } from 'lucide-react';
+import { Shield, Server, MessageCircle, RefreshCw, type LucideIcon } from 'lucide-react';
 
-const ITEMS = [
+import { Section } from './atoms/section';
+
+interface Item {
+  key: 'rgpd' | 'hosting' | 'support' | 'updates';
+  icon: LucideIcon;
+}
+
+const ITEMS: ReadonlyArray<Item> = [
   { key: 'rgpd', icon: Shield },
   { key: 'hosting', icon: Server },
-  { key: 'support', icon: MessageSquare },
-  { key: 'updates', icon: Sparkles },
-] as const;
+  { key: 'support', icon: MessageCircle },
+  { key: 'updates', icon: RefreshCw },
+];
 
 export function Trust() {
   const t = useTranslations('landing.trust');
   return (
-    <section className="py-20 sm:py-24">
-      <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold tracking-tight text-center sm:text-4xl">{t('title')}</h2>
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {ITEMS.map(({ key, icon: Icon }) => (
-            <div key={key} className="text-center sm:text-start">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" aria-hidden />
-              </div>
-              <h3 className="mt-4 font-semibold">{t(`items.${key}.title`)}</h3>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{t(`items.${key}.description`)}</p>
+    <Section>
+      <h2 className="text-center font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+        {t('title')}
+      </h2>
+      <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        {ITEMS.map(({ key, icon: Icon }) => (
+          <div key={key} className="flex flex-col">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-olive/15 text-olive">
+              <Icon className="h-5 w-5" strokeWidth={1.5} aria-hidden />
             </div>
-          ))}
-        </div>
+            <h3 className="mt-5 font-display text-lg font-semibold text-ink">
+              {t(`items.${key}.title`)}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+              {t(`items.${key}.description`)}
+            </p>
+            <p className="mt-3 font-mono text-xs text-ink-faded">{t(`items.${key}.proof`)}</p>
+          </div>
+        ))}
       </div>
-    </section>
+    </Section>
   );
 }

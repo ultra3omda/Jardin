@@ -1,51 +1,87 @@
 ﻿import { useTranslations } from 'next-intl';
-import type { Route } from 'next';
 import { Check } from 'lucide-react';
+import type { Route } from 'next';
 
 import { Link } from '@/i18n/routing';
+import { DeckleEdge } from './atoms/deckle-edge';
+import { Section } from './atoms/section';
 
-const TIERS = [
-  { key: 'starter', featured: false, featuresCount: 3 },
-  { key: 'standard', featured: true, featuresCount: 5 },
-  { key: 'pro', featured: false, featuresCount: 4 },
-] as const;
+type TierKey = 'starter' | 'standard' | 'pro';
+const TIERS: ReadonlyArray<{ key: TierKey; featured: boolean }> = [
+  { key: 'starter', featured: false },
+  { key: 'standard', featured: true },
+  { key: 'pro', featured: false },
+];
 
 export function Pricing() {
   const t = useTranslations('landing.pricing');
   return (
-    <section id="pricing" className="bg-muted/30 py-20 sm:py-24">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('title')}</h2>
-          <p className="mt-4 text-muted-foreground">{t('subtitle')}</p>
-        </div>
-        <div className="mt-12 grid gap-6 lg:grid-cols-3 lg:gap-8 lg:items-stretch">
-          {TIERS.map(({ key, featured, featuresCount }) => (
-            <div key={key} className={`rounded-2xl border bg-card p-8 ${featured ? 'border-primary shadow-xl lg:scale-105' : 'shadow-sm'}`}>
-              {featured && (
-                <p className="inline-block rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">{t('popular')}</p>
-              )}
-              <h3 className={`${featured ? 'mt-4' : ''} text-2xl font-semibold`}>{t(`tiers.${key}.name`)}</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-5xl font-bold tracking-tight">{t(`tiers.${key}.price`)}</span>
-                <span className="text-sm text-muted-foreground">{t(`tiers.${key}.unit`)}</span>
-              </div>
-              <p className="mt-3 text-sm font-medium text-muted-foreground">{t(`tiers.${key}.limit`)}</p>
-              <ul className="mt-6 space-y-3">
-                {Array.from({ length: featuresCount }, (_, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <Check className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                    <span>{t(`tiers.${key}.features.${i}`)}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link href={'#demo-form' as Route} className={`mt-8 inline-flex h-11 w-full items-center justify-center rounded-md px-6 text-sm font-medium transition ${featured ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'border bg-background hover:bg-accent'}`}>
-                {t('cta')}
-              </Link>
-            </div>
-          ))}
-        </div>
+    <Section id="pricing" alt>
+      <div className="mx-auto max-w-2xl text-center">
+        <h2 className="font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+          {t('title')}
+        </h2>
+        <p className="mt-4 text-lg text-ink-muted">{t('subtitle')}</p>
       </div>
-    </section>
+
+      <div className="mt-14 grid gap-8 lg:grid-cols-3">
+        {TIERS.map(({ key, featured }) => {
+          const features = t.raw(`tiers.${key}.features`) as string[];
+          return (
+            <div
+              key={key}
+              className={
+                featured
+                  ? 'relative flex flex-col rounded-2xl border-2 border-teal-deep bg-paper shadow-xl'
+                  : 'flex flex-col rounded-2xl border border-paper-edge bg-paper'
+              }
+            >
+              {featured && (
+                <>
+                  <DeckleEdge className="-mt-px text-teal-deep" />
+                  <div className="absolute -top-4 start-1/2 -translate-x-1/2 rounded-full bg-ochre px-4 py-1 text-xs font-semibold text-ink shadow rtl:translate-x-1/2">
+                    {t('popular')}
+                  </div>
+                </>
+              )}
+              <div className="flex flex-1 flex-col p-8">
+                <h3 className="font-display text-2xl font-semibold text-ink">
+                  {t(`tiers.${key}.name`)}
+                </h3>
+                <div className="mt-6 flex items-baseline gap-2">
+                  <span className="font-mono text-5xl font-semibold text-terracotta">
+                    {t(`tiers.${key}.price`)}
+                  </span>
+                  <span className="text-sm text-ink-muted">{t(`tiers.${key}.unit`)}</span>
+                </div>
+                <p className="mt-2 text-sm text-ink-faded">{t(`tiers.${key}.limit`)}</p>
+                <ul className="mt-6 space-y-3">
+                  {features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-3 text-ink-muted">
+                      <Check
+                        className="mt-0.5 h-5 w-5 flex-none text-terracotta"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={'#demo-form' as Route}
+                  className={
+                    featured
+                      ? 'mt-8 inline-flex h-11 items-center justify-center rounded-md bg-terracotta px-6 text-sm font-medium text-paper transition hover:bg-terracotta-dark'
+                      : 'mt-8 inline-flex h-11 items-center justify-center rounded-md border border-terracotta px-6 text-sm font-medium text-terracotta transition hover:bg-terracotta hover:text-paper'
+                  }
+                >
+                  {t('cta')}
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
   );
 }

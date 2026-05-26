@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="oklch(0.85 0.04 60)" />
+      <stop offset="100%" stop-color="oklch(0.72 0.08 30)" />
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="oklch(0.58 0.16 38)" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="oklch(0.50 0.18 35)" />
+    </linearGradient>
+    <pattern id="zellige" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="oklch(0.97 0.012 75)" stroke-width="1.5" opacity="0.18">
+        <path d="M40 8 L46 32 L70 26 L50 40 L70 54 L46 48 L40 72 L34 48 L10 54 L30 40 L10 26 L34 32 Z" />
+      </g>
+    </pattern>
+  </defs>
+
+  <!-- Background sky (warm sand) -->
+  <rect width="1200" height="900" fill="url(#sky)" />
+
+  <!-- Distant rooftops (Sidi Bou Saïd silhouette) -->
+  <g fill="oklch(0.40 0.06 195)" opacity="0.55">
+    <rect x="0" y="380" width="180" height="180" />
+    <rect x="160" y="340" width="220" height="220" />
+    <polygon points="270,300 380,300 325,250" />
+    <rect x="360" y="360" width="180" height="200" />
+    <rect x="520" y="320" width="240" height="240" />
+    <polygon points="640,290 760,290 700,240" />
+    <rect x="740" y="380" width="200" height="180" />
+    <rect x="920" y="350" width="240" height="210" />
+    <polygon points="1040,320 1160,320 1100,270" />
+  </g>
+
+  <!-- Window arches (Tunisian style) -->
+  <g fill="oklch(0.97 0.012 75)" opacity="0.7">
+    <path d="M190 420 q15 -25 30 0 v 30 h -30 z" />
+    <path d="M240 420 q15 -25 30 0 v 30 h -30 z" />
+    <path d="M580 410 q15 -25 30 0 v 30 h -30 z" />
+    <path d="M630 410 q15 -25 30 0 v 30 h -30 z" />
+    <path d="M680 410 q15 -25 30 0 v 30 h -30 z" />
+    <path d="M960 430 q15 -25 30 0 v 30 h -30 z" />
+    <path d="M1010 430 q15 -25 30 0 v 30 h -30 z" />
+  </g>
+
+  <!-- Foreground earth / classroom floor -->
+  <rect x="0" y="560" width="1200" height="340" fill="url(#floor)" />
+
+  <!-- Zellige pattern overlay on foreground -->
+  <rect x="0" y="560" width="1200" height="340" fill="url(#zellige)" />
+
+  <!-- Stylized book silhouettes on floor (suggests learning, no people) -->
+  <g fill="oklch(0.97 0.012 75)" opacity="0.85">
+    <rect x="480" y="680" width="180" height="14" />
+    <rect x="490" y="694" width="160" height="14" fill="oklch(0.75 0.12 75)" />
+    <rect x="500" y="708" width="140" height="14" />
+  </g>
+  <g fill="oklch(0.97 0.012 75)" opacity="0.85">
+    <rect x="720" y="700" width="200" height="14" fill="oklch(0.75 0.12 75)" />
+    <rect x="730" y="714" width="180" height="14" />
+    <rect x="740" y="728" width="160" height="14" fill="oklch(0.52 0.08 115)" />
+  </g>
+
+  <!-- Sun/moon orb -->
+  <circle cx="950" cy="180" r="80" fill="oklch(0.75 0.12 75)" opacity="0.75" />
+  <circle cx="950" cy="180" r="80" fill="none" stroke="oklch(0.97 0.012 75)" stroke-width="2" opacity="0.4" />
+</svg>
