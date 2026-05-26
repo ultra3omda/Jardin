@@ -17,6 +17,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { R2Module } from './common/r2/r2.module';
 import { TenantModule } from './common/tenant/tenant.module';
+import { ClassesModule } from './classes/classes.module';
 import { HealthModule } from './health/health.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { ParentRelationsModule } from './parent-relations/parent-relations.module';
@@ -52,6 +53,7 @@ import { UsersModule } from './users/users.module';
     StudentsModule,
     ParentRelationsModule, // V3-A
     MessagingModule, // V3-B
+    ClassesModule, // V4
   ],
   providers: [
     // V1.5 — Sentry global filter MUST be first so it catches every other
