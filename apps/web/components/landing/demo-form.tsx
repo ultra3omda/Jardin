@@ -23,6 +23,7 @@ export function DemoForm() {
   const [errorKey, setErrorKey] = useState<
     'validation' | 'turnstile' | 'rateLimit' | 'network' | 'generic'
   >('generic');
+  const [requestId, setRequestId] = useState<string | null>(null);
 
   const form = useForm<DemoRequestFormValues>({
     resolver: zodResolver(demoRequestSchema),
@@ -52,6 +53,8 @@ export function DemoForm() {
         turnstileRef.current?.reset();
         return;
       }
+      const successBody = (await res.json().catch(() => ({}))) as { requestId?: string };
+      setRequestId(successBody?.requestId ?? null);
       setSubmitState('success');
       form.reset({ locale, turnstileToken: '', studentsCount: '50-200' });
     } catch {
@@ -63,10 +66,28 @@ export function DemoForm() {
 
   if (submitState === 'success') {
     return (
-      <section id="demo-form" className="bg-emerald-50 py-20 sm:py-24">
-        <div className="container mx-auto max-w-2xl px-4 text-center">
-          <h2 className="text-3xl font-bold text-emerald-900">{t('success.title')}</h2>
-          <p className="mt-4 text-lg text-emerald-800">{t('success.description')}</p>
+      <section id="demo-form" className="bg-paper py-20 sm:py-24">
+        <div className="container mx-auto max-w-md px-4 text-center">
+          <svg
+            aria-hidden
+            viewBox="0 0 80 80"
+            className="mx-auto h-20 w-20 text-terracotta"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path d="M10 24 L 40 44 L 70 24" />
+            <path d="M10 24 V 60 H 70 V 24" />
+            <path d="M10 60 L 40 40 L 70 60" />
+            <path d="M52 8 V 24 M 44 14 H 60" strokeLinecap="round" />
+          </svg>
+          <h2 className="mt-6 font-display text-3xl font-semibold text-ink">{t('success.title')}</h2>
+          <p className="mt-4 leading-relaxed text-ink-muted">{t('success.description')}</p>
+          {requestId && (
+            <p className="mt-6 font-mono text-xs uppercase tracking-wider text-ink-faded">
+              ID : <span className="text-ink">{requestId}</span>
+            </p>
+          )}
         </div>
       </section>
     );
@@ -76,11 +97,13 @@ export function DemoForm() {
     form.formState.errors[name]?.message?.toString();
 
   return (
-    <section id="demo-form" className="py-20 sm:py-24">
+    <section id="demo-form" className="bg-paper py-20 sm:py-24">
       <div className="container mx-auto max-w-2xl px-4">
         <div className="mx-auto max-w-xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('title')}</h2>
-          <p className="mt-4 text-muted-foreground">{t('subtitle')}</p>
+          <h2 className="font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+            {t('title')}
+          </h2>
+          <p className="mt-4 text-ink-muted">{t('subtitle')}</p>
         </div>
 
         <form onSubmit={onSubmit} className="mt-10 space-y-4" noValidate>
@@ -228,7 +251,7 @@ export function DemoForm() {
           <button
             type="submit"
             disabled={submitState === 'submitting'}
-            className="h-12 w-full rounded-md bg-primary text-base font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+            className="h-12 w-full rounded-md bg-terracotta text-base font-medium text-paper transition hover:bg-terracotta-dark disabled:opacity-50"
           >
             {submitState === 'submitting' ? t('submitting') : t('submit')}
           </button>
