@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 
 import { Benefits } from '@/components/landing/benefits';
+import { DemoForm } from '@/components/landing/demo-form';
 import { Footer } from '@/components/landing/footer';
 import { Hero } from '@/components/landing/hero';
 import { ModulesGrid } from '@/components/landing/modules-grid';
@@ -37,7 +38,7 @@ export default function LandingPage({ params: { locale } }: Props) {
       </section>
       <Trust />
       <Pricing />
-      {/* DemoForm sera inséré ici en P3 Task 24 */}
+      <DemoForm />
       <Footer />
     </>
   );
