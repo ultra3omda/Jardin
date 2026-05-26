@@ -67,16 +67,21 @@ model Tenant {
   updatedAt DateTime   @updatedAt
   deletedAt DateTime?
 
-  users            User[]
-  refreshTokens    RefreshToken[]
-  auditLogs        AuditLog[]
-  students         Student[]
-  parentRelations  ParentStudent[] // V3-A
-  conversations    Conversation[]  // V3-B
-  messages         Message[]       // V3-B
-  classes          Class[]         // V4
-  classTeachers    ClassTeacher[]  // V4
-  timeSlots        TimeSlot[]      // V4
+  users           User[]
+  refreshTokens   RefreshToken[]
+  auditLogs       AuditLog[]
+  students        Student[]
+  parentRelations ParentStudent[] // V3-A
+  conversations   Conversation[] // V3-B
+  messages        Message[] // V3-B
+  classes         Class[] // V4
+  classTeachers   ClassTeacher[] // V4
+  timeSlots       TimeSlot[] // V4
+  subjects        Subject[] // V6
+  gradePeriods    GradePeriod[] // V6
+  evaluations     Evaluation[] // V6
+  grades          Grade[] // V6
+  bulletins       Bulletin[] // V6
 
   @@index([slug])
   @@map("tenants")
@@ -98,17 +103,19 @@ model User {
   emailVerifiedAt   DateTime? // V1.5: null = not verified, date = verified
   passwordChangedAt DateTime? // V1.5: set on password change to invalidate sessions
 
-  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  refreshTokens           RefreshToken[]
-  auditLogs               AuditLog[]
-  emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens     PasswordResetToken[]
-  createdInviteTokens     InviteToken[]            @relation("InviteTokenCreator")
-  parentRelations         ParentStudent[]          @relation("ParentRelations") // V3-A: only when role = PARENT
+  tenant                     Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens              RefreshToken[]
+  auditLogs                  AuditLog[]
+  emailVerificationTokens    EmailVerificationToken[]
+  passwordResetTokens        PasswordResetToken[]
+  createdInviteTokens        InviteToken[]             @relation("InviteTokenCreator")
+  parentRelations            ParentStudent[]           @relation("ParentRelations") // V3-A: only when role = PARENT
   conversationParticipations ConversationParticipant[] // V3-B
-  sentMessages            Message[]                @relation("MessageSender") // V3-B
-  classAssignments        ClassTeacher[]           @relation("TeacherAssignments") // V4
-  timeSlotAssignments     TimeSlot[]               @relation("SlotTeacher") // V4
+  sentMessages               Message[]                 @relation("MessageSender") // V3-B
+  classAssignments           ClassTeacher[]            @relation("TeacherAssignments") // V4
+  timeSlotAssignments        TimeSlot[]                @relation("SlotTeacher") // V4
+  evaluationsCreated         Evaluation[]              @relation("EvaluationsCreated") // V6
+  bulletinsGenerated         Bulletin[]                @relation("BulletinsGenerated") // V6
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -118,7 +125,7 @@ model User {
 
 model RefreshToken {
   id                String    @id
-  tenantId          String?   // V1.5: nullable to support SUPER_ADMIN (cross-tenant)
+  tenantId          String? // V1.5: nullable to support SUPER_ADMIN (cross-tenant)
   userId            String
   tokenHash         String    @unique
   expiresAt         DateTime
@@ -199,10 +206,10 @@ model PasswordResetToken {
 model InviteToken {
   id               String    @id
   tokenHash        String    @unique // SHA-256 of the token shared with the invitee
-  invitedEmail     String?   // optional pre-fill for /register?token=...
-  intendedRole     UserRole  // SCHOOL_ADMIN for tenant creators (default)
-  createdById      String    // super_admin user who emitted the token
-  consumedByUserId String?   // user created by consuming this token
+  invitedEmail     String? // optional pre-fill for /register?token=...
+  intendedRole     UserRole // SCHOOL_ADMIN for tenant creators (default)
+  createdById      String // super_admin user who emitted the token
+  consumedByUserId String? // user created by consuming this token
   expiresAt        DateTime
   consumedAt       DateTime?
   createdAt        DateTime  @default(now())
@@ -218,66 +225,68 @@ model InviteToken {
 // ============================================================================
 
 model Student {
-  id                String     @id // cuid2 (cohérent avec User, Tenant)
-  tenantId          String
+  id       String @id // cuid2 (cohérent avec User, Tenant)
+  tenantId String
 
   // — Identité —
-  firstName         String
-  lastName          String
-  dateOfBirth       DateTime   @db.Date
-  sex               Sex
-  nationality       String?    // ISO 3166-1 alpha-2 (ex: 'TN', 'FR', 'DZ')
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime @db.Date
+  sex         Sex
+  nationality String? // ISO 3166-1 alpha-2 (ex: 'TN', 'FR', 'DZ')
 
   // — Scolarité —
-  classroom         String     // V2: string libre (ex: "CP-A"). V4: relation Class
-  enrollmentDate    DateTime   @db.Date @default(now())
-  previousSchooling String?    @db.Text
+  classroom         String // V2: string libre (ex: "CP-A"). V4: relation Class
+  enrollmentDate    DateTime @default(now()) @db.Date
+  previousSchooling String?  @db.Text
 
   // — Famille —
-  parentEmail       String     // V2: string ref. V3: relation Parent N-N
-  siblingsCount     Int        @default(0)
+  parentEmail   String // V2: string ref. V3: relation Parent N-N
+  siblingsCount Int    @default(0)
 
   // — Contact —
-  addressLine       String?
-  city              String?
-  postalCode        String?
-  country           String?    @default("TN")
+  addressLine String?
+  city        String?
+  postalCode  String?
+  country     String? @default("TN")
 
   // — Langue —
-  motherTongue      String?    // ISO 639-1 (ex: 'ar', 'fr', 'en')
+  motherTongue String? // ISO 639-1 (ex: 'ar', 'fr', 'en')
 
   // — Santé (light V2, médical strict V8) —
-  medicalNotes      String?    @db.Text // warning RGPD côté UI (cf. R4 spec)
+  medicalNotes String? @db.Text // warning RGPD côté UI (cf. R4 spec)
 
   // — Photo —
-  photoUrl          String?    // R2 public URL
+  photoUrl String? // R2 public URL
 
   // — Méta —
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  deletedAt         DateTime?  // soft-delete
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // soft-delete
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  parentRelations ParentStudent[]
+  grades          Grade[] // V6
+  bulletins       Bulletin[] // V6
 
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
   @@index([tenantId, parentEmail])
   @@map("students")
-
-  parentRelations ParentStudent[]
 }
 
 // V3-A — Lien parent ↔ élève (N-N) via User(role=PARENT). Pivot table.
 // Enforce 1 lien par (parent,élève) au niveau DB. isPrimaryContact reste flag
 // applicatif (un par élève côté UX, non-enforced DB pour permettre transitions).
 model ParentStudent {
-  id                String       @id // cuid2
-  tenantId          String
-  parentUserId      String
-  studentId         String
-  relationType      RelationType
-  isPrimaryContact  Boolean      @default(false)
-  createdAt         DateTime     @default(now())
+  id               String       @id // cuid2
+  tenantId         String
+  parentUserId     String
+  studentId        String
+  relationType     RelationType
+  isPrimaryContact Boolean      @default(false)
+  createdAt        DateTime     @default(now())
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parent  User    @relation("ParentRelations", fields: [parentUserId], references: [id], onDelete: Cascade)
@@ -348,18 +357,19 @@ model Message {
 // La string `classroom` actuelle sur Student reste pour migration progressive ;
 // `classId` FK est ajouté plus tard quand on aura le bulk-assign.
 model Class {
-  id         String   @id // cuid2
+  id         String    @id // cuid2
   tenantId   String
-  name       String   // ex. "CP-A"
-  level      String   // ex. "CP", "CE1", "6e"
-  schoolYear String   // ex. "2025-2026"
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  name       String // ex. "CP-A"
+  level      String // ex. "CP", "CE1", "6e"
+  schoolYear String // ex. "2025-2026"
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime? // soft-delete
 
-  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  teachers     ClassTeacher[]
-  timeSlots    TimeSlot[]
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teachers    ClassTeacher[]
+  timeSlots   TimeSlot[]
+  evaluations Evaluation[] // V6
 
   @@unique([tenantId, schoolYear, name], name: "unique_class_per_year")
   @@index([tenantId, schoolYear])
@@ -370,13 +380,13 @@ model Class {
 // au primaire pas pertinent — un seul prof "main"; au collège/lycée — N profs).
 // `isMainTeacher` distingue le professeur principal (un par classe côté UX).
 model ClassTeacher {
-  id              String   @id // cuid2
-  tenantId        String
-  classId         String
-  teacherUserId   String
-  subject         String   // matière enseignée
-  isMainTeacher   Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  id            String   @id // cuid2
+  tenantId      String
+  classId       String
+  teacherUserId String
+  subject       String // matière enseignée
+  isMainTeacher Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -393,17 +403,17 @@ model ClassTeacher {
 // (ISO-8601). periodStart/End "HH:MM" 24h. teacherUserId nullable pour les
 // créneaux non encore assignés (planification provisionnelle).
 model TimeSlot {
-  id              String   @id // cuid2
-  tenantId        String
-  classId         String
-  dayOfWeek       Int      // 1..7 (ISO Lundi..Dimanche)
-  periodStart     String   // "HH:MM" (24h)
-  periodEnd       String   // "HH:MM"
-  subject         String
-  teacherUserId   String?  // nullable: créneau planifié sans prof
-  room            String?  // ex. "Salle 12"
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id // cuid2
+  tenantId      String
+  classId       String
+  dayOfWeek     Int // 1..7 (ISO Lundi..Dimanche)
+  periodStart   String // "HH:MM" (24h)
+  periodEnd     String // "HH:MM"
+  subject       String
+  teacherUserId String? // nullable: créneau planifié sans prof
+  room          String? // ex. "Salle 12"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -413,4 +423,122 @@ model TimeSlot {
   @@index([classId, dayOfWeek])
   @@index([teacherUserId])
   @@map("time_slots")
+}
+
+// ============================================================================
+// V6 — Pédagogie + Bulletins
+// ============================================================================
+
+// V6 — Matière scolaire (ex. "Mathématiques", "Français"). Tenant-scoped.
+// Indépendante du legacy string `subject` sur ClassTeacher/TimeSlot (FK V6-B).
+model Subject {
+  id        String    @id // cuid2
+  tenantId  String
+  name      String
+  code      String? // ex. "MATH", "FR"
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // soft-delete
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evaluations Evaluation[]
+
+  @@unique([tenantId, name], name: "unique_subject_per_tenant")
+  @@index([tenantId])
+  @@map("subjects")
+}
+
+// V6 — Période de notation (trimestre / semestre). `isClosed` lock l'édition
+// des notes (mais pas la regénération du bulletin).
+model GradePeriod {
+  id         String   @id // cuid2
+  tenantId   String
+  name       String // ex. "T1", "Semestre 1"
+  schoolYear String // ex. "2025-2026"
+  startDate  DateTime @db.Date
+  endDate    DateTime @db.Date
+  isClosed   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evaluations Evaluation[]
+  bulletins   Bulletin[]
+
+  @@unique([tenantId, schoolYear, name], name: "unique_period_per_year")
+  @@index([tenantId, schoolYear])
+  @@map("grade_periods")
+}
+
+// V6 — Évaluation (devoir / contrôle / composition) d'une classe + matière
+// dans une période. `maxScore` = barème (ex. 20, 100). Pas de coefficient V6.
+model Evaluation {
+  id            String   @id // cuid2
+  tenantId      String
+  classId       String
+  subjectId     String
+  gradePeriodId String
+  title         String // ex. "Contrôle chap. 3"
+  date          DateTime @db.Date
+  maxScore      Float // barème (ex. 20.0, 100.0)
+  createdById   String // user (TEACHER or SCHOOL_ADMIN) who created it
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class       Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject     @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradePeriod GradePeriod @relation(fields: [gradePeriodId], references: [id], onDelete: Restrict)
+  createdBy   User        @relation("EvaluationsCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  grades      Grade[]
+
+  @@index([tenantId])
+  @@index([classId, gradePeriodId])
+  @@index([subjectId])
+  @@map("evaluations")
+}
+
+// V6 — Note d'un élève sur une évaluation. Unique (evaluationId, studentId).
+// `score` ∈ [0, evaluation.maxScore] (validation applicatif).
+model Grade {
+  id           String   @id // cuid2
+  tenantId     String
+  evaluationId String
+  studentId    String
+  score        Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, studentId], name: "unique_grade_per_eval_student")
+  @@index([tenantId])
+  @@index([studentId])
+  @@map("grades")
+}
+
+// V6 — Bulletin généré pour un (élève, période). `data` = snapshot Json des
+// moyennes calculées au moment de la génération (idempotent pour re-print).
+// Unique (studentId, gradePeriodId): un seul bulletin actif par couple.
+model Bulletin {
+  id            String   @id // cuid2
+  tenantId      String
+  studentId     String
+  gradePeriodId String
+  data          Json // snapshot complet (subjects, averages, overall)
+  pdfUrl        String? // R2 URL — optional V6, surtout V6-B
+  generatedById String
+  generatedAt   DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  gradePeriod GradePeriod @relation(fields: [gradePeriodId], references: [id], onDelete: Restrict)
+  generatedBy User        @relation("BulletinsGenerated", fields: [generatedById], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, gradePeriodId], name: "unique_bulletin_per_student_period")
+  @@index([tenantId])
+  @@index([gradePeriodId])
+  @@map("bulletins")
 }

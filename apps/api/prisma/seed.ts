@@ -22,6 +22,50 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/**
+ * V6 — Seed 6 default subjects + 3 grade periods (T1/T2/T3) for a tenant.
+ * Idempotent via upsert on the unique constraints.
+ */
+async function seedV6ForTenant(tenantId: string, schoolYear: string): Promise<void> {
+  const subjects = [
+    { name: 'Mathématiques', code: 'MATH' },
+    { name: 'Français', code: 'FR' },
+    { name: 'Sciences', code: 'SCI' },
+    { name: 'Histoire-Géographie', code: 'HG' },
+    { name: 'Anglais', code: 'EN' },
+    { name: 'Éducation Physique', code: 'EPS' },
+  ];
+  for (const s of subjects) {
+    await prisma.subject.upsert({
+      where: { unique_subject_per_tenant: { tenantId, name: s.name } },
+      update: {},
+      create: { id: createId(), tenantId, name: s.name, code: s.code },
+    });
+  }
+
+  const [y1, y2] = schoolYear.split('-');
+  const periods = [
+    { name: 'T1', startDate: new Date(`${y1}-09-01`), endDate: new Date(`${y1}-12-15`) },
+    { name: 'T2', startDate: new Date(`${y2}-01-05`), endDate: new Date(`${y2}-03-31`) },
+    { name: 'T3', startDate: new Date(`${y2}-04-15`), endDate: new Date(`${y2}-06-30`) },
+  ];
+  for (const p of periods) {
+    await prisma.gradePeriod.upsert({
+      where: { unique_period_per_year: { tenantId, schoolYear, name: p.name } },
+      update: {},
+      create: {
+        id: createId(),
+        tenantId,
+        schoolYear,
+        name: p.name,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        isClosed: false,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -91,6 +135,12 @@ async function main(): Promise<void> {
       locale: Locale.fr,
     },
   });
+
+  // -----------------------------------------------------------------------
+  // V6 — Subjects + grade periods for each demo tenant
+  // -----------------------------------------------------------------------
+  await seedV6ForTenant(kindergarten.id, '2025-2026');
+  await seedV6ForTenant(primarySchool.id, '2025-2026');
 
   // Super admin uses a unique-by-email-where-tenantId-is-null lookup.
   // The @@unique([tenantId, email]) covers this thanks to Postgres treating
