@@ -19,6 +19,12 @@ describe('POST /public/demo-request (e2e)', () => {
   let resendMock: any;
 
   beforeAll(async () => {
+    // CI doesn't set TURNSTILE_SECRET_KEY — without it the service bypasses
+    // verification and returns success on every request. Set a test value so
+    // the verifyTurnstile path actually executes and the global.fetch mock
+    // gets consulted.
+    process.env.TURNSTILE_SECRET_KEY = 'test-turnstile-secret-ci';
+
     // Mock global fetch (Turnstile verification) to return success by default
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
