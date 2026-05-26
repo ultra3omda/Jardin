@@ -41,6 +41,16 @@ enum Sex {
   F
 }
 
+// V3-A — Nature du lien parent ↔ élève. LEGAL_GUARDIAN couvre les tuteurs
+// non-parents (oncle, grand-parent, ASE…). OTHER pour cas atypiques (famille
+// d'accueil, contact d'urgence sans autorité parentale légale).
+enum RelationType {
+  FATHER
+  MOTHER
+  LEGAL_GUARDIAN
+  OTHER
+}
+
 // ============================================================================
 // Models
 // ============================================================================
@@ -57,10 +67,11 @@ model Tenant {
   updatedAt DateTime   @updatedAt
   deletedAt DateTime?
 
-  users         User[]
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]
-  students      Student[]
+  users            User[]
+  refreshTokens    RefreshToken[]
+  auditLogs        AuditLog[]
+  students         Student[]
+  parentRelations  ParentStudent[] // V3-A
 
   @@index([slug])
   @@map("tenants")
@@ -88,6 +99,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   createdInviteTokens     InviteToken[]            @relation("InviteTokenCreator")
+  parentRelations         ParentStudent[]          @relation("ParentRelations") // V3-A: only when role = PARENT
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -242,4 +254,29 @@ model Student {
   @@index([tenantId, classroom])
   @@index([tenantId, parentEmail])
   @@map("students")
+
+  parentRelations ParentStudent[]
+}
+
+// V3-A — Lien parent ↔ élève (N-N) via User(role=PARENT). Pivot table.
+// Enforce 1 lien par (parent,élève) au niveau DB. isPrimaryContact reste flag
+// applicatif (un par élève côté UX, non-enforced DB pour permettre transitions).
+model ParentStudent {
+  id                String       @id // cuid2
+  tenantId          String
+  parentUserId      String
+  studentId         String
+  relationType      RelationType
+  isPrimaryContact  Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent  User    @relation("ParentRelations", fields: [parentUserId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, studentId], name: "unique_parent_student")
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([parentUserId])
+  @@map("parent_students")
 }

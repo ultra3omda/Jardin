@@ -5,7 +5,13 @@ import { Prisma } from '@prisma/client';
  * on read by the multi-tenant extension. Keep this list in sync with the
  * Prisma schema — adding a new tenant-scoped model requires adding it here.
  */
-export const TENANT_SCOPED_MODELS = ['User', 'RefreshToken', 'AuditLog', 'Student'] as const;
+export const TENANT_SCOPED_MODELS = [
+  'User',
+  'RefreshToken',
+  'AuditLog',
+  'Student',
+  'ParentStudent', // V3-A
+] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 
 export function isTenantScoped(model: string | undefined): model is TenantScopedModel {
