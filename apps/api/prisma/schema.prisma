@@ -72,6 +72,8 @@ model Tenant {
   auditLogs        AuditLog[]
   students         Student[]
   parentRelations  ParentStudent[] // V3-A
+  conversations    Conversation[]  // V3-B
+  messages         Message[]       // V3-B
 
   @@index([slug])
   @@map("tenants")
@@ -100,6 +102,8 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   createdInviteTokens     InviteToken[]            @relation("InviteTokenCreator")
   parentRelations         ParentStudent[]          @relation("ParentRelations") // V3-A: only when role = PARENT
+  conversationParticipations ConversationParticipant[] // V3-B
+  sentMessages            Message[]                @relation("MessageSender") // V3-B
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -279,4 +283,58 @@ model ParentStudent {
   @@index([studentId])
   @@index([parentUserId])
   @@map("parent_students")
+}
+
+// V3-B — Conversation 1:1 entre deux User d'un même tenant. Multi-party (groupes)
+// reporté V9 (notifications + canaux). Pour l'instant : strictly 2 participants,
+// enforced applicatif lors de la création (pas de contrainte DB).
+model Conversation {
+  id        String   @id // cuid2
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([tenantId])
+  @@map("conversations")
+}
+
+// V3-B — Pivot participant. lastReadAt tracks unread badge per user.
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  joinedAt       DateTime  @default(now())
+  lastReadAt     DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+// V3-B — Message texte. Plain text V3-B, attachments reportés V9. readAt
+// nullable = unread state. tenantId duplicated for isolation queries (sans
+// double join via Conversation).
+model Message {
+  id             String    @id // cuid2
+  tenantId       String
+  conversationId String
+  senderId       String
+  body           String    @db.Text
+  createdAt      DateTime  @default(now())
+  readAt         DateTime?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([tenantId])
+  @@index([senderId])
+  @@map("messages")
 }

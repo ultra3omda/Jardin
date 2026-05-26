@@ -18,6 +18,7 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { R2Module } from './common/r2/r2.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { HealthModule } from './health/health.module';
+import { MessagingModule } from './messaging/messaging.module';
 import { ParentRelationsModule } from './parent-relations/parent-relations.module';
 import { StudentsModule } from './students/students.module';
 import { TenantBrandModule } from './tenant-brand/tenant-brand.module';
@@ -50,6 +51,7 @@ import { UsersModule } from './users/users.module';
     TenantBrandModule,
     StudentsModule,
     ParentRelationsModule, // V3-A
+    MessagingModule, // V3-B
   ],
   providers: [
     // V1.5 — Sentry global filter MUST be first so it catches every other
