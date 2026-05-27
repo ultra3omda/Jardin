@@ -12,7 +12,7 @@ const ITEMS = [
 export function SchoolSegments() {
   const t = useTranslations('landing.schoolSegments');
   return (
-    <Section>
+    <Section id="segments">
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
           {t('title')}

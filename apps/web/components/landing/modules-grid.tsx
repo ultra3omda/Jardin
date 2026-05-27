@@ -37,7 +37,7 @@ const STATUS_CLASS: Record<Status, string> = {
 export function ModulesGrid() {
   const t = useTranslations('landing.modules');
   return (
-    <Section id="modules">
+    <Section id="features">
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
           {t('title')}
