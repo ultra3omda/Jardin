@@ -1,42 +1,37 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  Image,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+
+import { Button, colors, radius } from '@klasso/ui-mobile';
 import { ApiError } from '@/lib/api/client';
 import { login } from '@/lib/api/auth';
+import { demoLogin, type DemoPersona } from '@/lib/api/demo-login';
 import { useAuthStore } from '@/lib/auth/store';
 import { useTenantStore } from '@/lib/tenant/store';
-import { DEFAULT_BRAND } from '@ecole-saas/shared';
+import { MOBILE_DEMO_PERSONAS } from '@/lib/personas';
 
 export default function LoginScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
   const tenantSlug = useTenantStore((s) => s.slug);
-  const tenantName = useTenantStore((s) => s.name);
-  const brand = useTenantStore((s) => s.brand);
-
-  const primaryColor = brand?.primaryColor ?? DEFAULT_BRAND.primaryColor;
-  const logoUrl = brand?.logoUrl;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingPersona, setLoadingPersona] = useState<DemoPersona | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleLogin() {
     if (!email.trim() || !password) return;
-
     setIsLoading(true);
+    setError(null);
     try {
       const session = await login({
         email: email.trim(),
@@ -49,98 +44,193 @@ export default function LoginScreen() {
         tenant: session.tenant,
       });
       router.replace('/(app)/dashboard');
-    } catch (err: unknown) {
-      const status = err instanceof ApiError ? err.status : 0;
-      if (status === 401) {
-        Alert.alert('Erreur', t('auth.errorInvalid'));
-      } else {
-        Alert.alert('Erreur', t('auth.errorNetwork'));
-      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 401
+          ? 'Email ou mot de passe incorrect.'
+          : 'Erreur de connexion.',
+      );
     } finally {
       setIsLoading(false);
     }
   }
 
-  function handleChangeSchool() {
-    router.replace('/(onboarding)/school-code');
+  async function handleDemo(persona: DemoPersona) {
+    if (loadingPersona || isLoading) return;
+    setLoadingPersona(persona);
+    setError(null);
+    try {
+      const session = await demoLogin(persona);
+      setSession({
+        accessToken: session.accessToken,
+        user: session.user,
+        tenant: session.tenant,
+      });
+      router.replace('/(app)/dashboard');
+    } catch {
+      setError('Démo indisponible. Réessaye.');
+      setLoadingPersona(null);
+    }
   }
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, backgroundColor: colors.paper[50] }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View className="flex-1 justify-center px-8">
-        {/* Logo ou nom de l'école */}
-        {logoUrl ? (
-          <Image
-            source={{ uri: logoUrl }}
-            style={{ width: 72, height: 72, alignSelf: 'center', marginBottom: 8, borderRadius: 12 }}
-            resizeMode="contain"
-          />
-        ) : null}
-        <Text
-          className="mb-1 text-center text-2xl font-bold"
-          style={{ color: primaryColor }}
-        >
-          {tenantName ?? 'Klasso'}
-        </Text>
-        <Text className="mb-10 text-center text-base text-gray-500">
-          {t('auth.title')}
-        </Text>
-
-        {/* Email */}
-        <TextInput
-          className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-          placeholder={t('auth.email')}
-          placeholderTextColor="#9ca3af"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          returnKeyType="next"
-          editable={!isLoading}
-        />
-
-        {/* Password */}
-        <TextInput
-          className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-          placeholder={t('auth.password')}
-          placeholderTextColor="#9ca3af"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          returnKeyType="done"
-          onSubmitEditing={handleLogin}
-          editable={!isLoading}
-        />
-
-        {/* Bouton Se connecter (couleur brand) */}
-        <TouchableOpacity
-          className="mb-4 items-center rounded-xl py-4"
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Hero block — navy */}
+        <View
           style={{
-            backgroundColor: primaryColor,
-            opacity: isLoading || !email.trim() || !password ? 0.6 : 1,
+            backgroundColor: colors.navy[900],
+            padding: 24,
+            paddingTop: 64,
+            paddingBottom: 40,
           }}
-          onPress={handleLogin}
-          disabled={isLoading || !email.trim() || !password}
         >
-          {isLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-base font-semibold text-white">
-              {t('auth.submit')}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Changer d'école */}
-        <TouchableOpacity onPress={handleChangeSchool} disabled={isLoading}>
-          <Text className="text-center text-sm text-gray-400">
-            {t('auth.changeSchool')}
+          <Text style={{ color: colors.white, fontSize: 24, fontWeight: '700' }}>
+            📘 Klasso
           </Text>
-        </TouchableOpacity>
-      </View>
+          <Text
+            style={{
+              color: colors.navy[500],
+              fontSize: 12,
+              marginTop: 2,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}
+          >
+            L'école à l'ère numérique
+          </Text>
+          <Text
+            style={{
+              color: colors.white,
+              fontSize: 22,
+              fontWeight: '600',
+              lineHeight: 28,
+              marginTop: 20,
+            }}
+          >
+            La plateforme qui{' '}
+            <Text style={{ color: colors.ambre[500] }}>simplifie</Text> votre
+            établissement.
+          </Text>
+        </View>
+
+        {/* Form block */}
+        <View style={{ padding: 24, gap: 14 }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '700',
+              color: colors.ink[900],
+              textAlign: 'center',
+            }}
+          >
+            Bienvenue
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.ink[500], textAlign: 'center' }}>
+            Connectez-vous à votre espace
+          </Text>
+
+          {error && (
+            <View
+              style={{
+                backgroundColor: '#fee2e2',
+                borderRadius: radius.md,
+                padding: 12,
+              }}
+            >
+              <Text style={{ color: '#991b1b', fontSize: 13 }}>{error}</Text>
+            </View>
+          )}
+
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="vous@etablissement.tn"
+            placeholderTextColor={colors.ink[300]}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: radius.md,
+              padding: 14,
+              fontSize: 14,
+              color: colors.ink[900],
+              borderWidth: 1,
+              borderColor: colors.paper[100],
+            }}
+          />
+
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Mot de passe"
+            placeholderTextColor={colors.ink[300]}
+            secureTextEntry
+            autoComplete="password"
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: radius.md,
+              padding: 14,
+              fontSize: 14,
+              color: colors.ink[900],
+              borderWidth: 1,
+              borderColor: colors.paper[100],
+            }}
+          />
+
+          <Button
+            label="Se connecter"
+            onPress={handleLogin}
+            loading={isLoading}
+            disabled={!email.trim() || !password}
+          />
+
+          {/* Demo accounts block */}
+          <View
+            style={{
+              marginTop: 24,
+              padding: 16,
+              backgroundColor: colors.paper[100],
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.paper[100],
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 1,
+                color: colors.ink[500],
+                textAlign: 'center',
+                textTransform: 'uppercase',
+                marginBottom: 12,
+              }}
+            >
+              Comptes de démonstration
+            </Text>
+            <View style={{ gap: 8 }}>
+              {MOBILE_DEMO_PERSONAS.map((p) => (
+                <Button
+                  key={p.persona}
+                  label={p.label}
+                  variant="secondary"
+                  onPress={() => handleDemo(p.persona)}
+                  loading={loadingPersona === p.persona}
+                  disabled={!!loadingPersona || isLoading}
+                />
+              ))}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
