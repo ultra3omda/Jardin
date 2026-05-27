@@ -26,6 +26,7 @@ export async function POST(request: NextRequest, ctx: Context): Promise<NextResp
   switch (action) {
     case 'login':
     case 'register':
+    case 'demo-login': // V7 — same shape: strip refreshToken into httpOnly cookie
       return proxyAuthAction(request, action);
     case 'refresh':
       return proxyRefresh(request);
