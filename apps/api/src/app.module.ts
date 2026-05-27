@@ -5,6 +5,8 @@ import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AdminModule } from './admin/admin.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
+import { AttendanceModule } from './attendance/attendance.module';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { BulletinsModule } from './bulletins/bulletins.module';
@@ -68,6 +70,8 @@ import { UsersModule } from './users/users.module';
     BulletinsModule, // V6
     DemoLoginModule, // V7
     BillingModule, // V8
+    AnnouncementsModule, // V9
+    AttendanceModule, // V9
   ],
   providers: [
     // V1.5 — Sentry global filter MUST be first so it catches every other

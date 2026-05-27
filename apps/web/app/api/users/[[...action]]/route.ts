@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * V3-A — Passthrough proxy `/api/parent-relations*` → NestJS API.
- * Mirror du pattern V2 `/api/students/[...action]/route.ts`.
- */
+// V1.5 — simple passthrough proxy for /api/users/* endpoints. Unlike the
+// auth proxy, no refresh-cookie management — pure Bearer auth.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 if (!/^https?:\/\//.test(API_URL)) {
@@ -13,7 +11,7 @@ if (!/^https?:\/\//.test(API_URL)) {
 }
 
 interface Context {
-  params: { action: string[] };
+  params: { action?: string[] };
 }
 
 export const dynamic = 'force-dynamic';
@@ -22,12 +20,15 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'GET');
 }
+
 export async function POST(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'POST');
 }
+
 export async function PATCH(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'PATCH');
 }
+
 export async function DELETE(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'DELETE');
 }
@@ -43,21 +44,21 @@ async function passthrough(
     return NextResponse.json({ message: 'Missing Authorization header' }, { status: 401 });
   }
 
+  const init: RequestInit = {
+    method,
+    headers: {
+      Authorization: auth,
+      ...(method !== 'GET' && method !== 'DELETE'
+        ? { 'Content-Type': 'application/json' }
+        : {}),
+    },
+  };
+  if (method !== 'GET' && method !== 'DELETE') {
+    init.body = await request.text();
+  }
+
   const url = new URL(request.url);
-  const suffix = action ? `/${action}` : '';
-  const targetUrl = `${API_URL}/api/parent-relations${suffix}${url.search}`;
-
-  const headers: Record<string, string> = { Authorization: auth };
-  if (method !== 'GET' && method !== 'DELETE') {
-    headers['Content-Type'] = request.headers.get('content-type') ?? 'application/json';
-  }
-
-  let body: BodyInit | undefined;
-  if (method !== 'GET' && method !== 'DELETE') {
-    body = await request.text();
-  }
-
-  const upstream = await fetch(targetUrl, { method, headers, body });
+  const upstream = await fetch(`${API_URL}/api/users${action ? `/${action}` : ''}${url.search}`, init);
   const text = await upstream.text();
   return new NextResponse(text || null, {
     status: upstream.status,

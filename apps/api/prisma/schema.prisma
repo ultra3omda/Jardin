@@ -84,6 +84,8 @@ model Tenant {
   bulletins       Bulletin[] // V6
   invoices        Invoice[] // V8
   notifications   Notification[] // V8
+  announcements   Announcement[] // V9
+  attendances     Attendance[]   // V9
 
   @@index([slug])
   @@map("tenants")
@@ -119,6 +121,8 @@ model User {
   evaluationsCreated         Evaluation[]              @relation("EvaluationsCreated") // V6
   bulletinsGenerated         Bulletin[]                @relation("BulletinsGenerated") // V6
   notifications              Notification[] // V8
+  announcementsAuthored      Announcement[]            @relation("AnnouncementsAuthored") // V9
+  attendanceRecorded         Attendance[]              @relation("AttendanceRecorded") // V9
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -273,6 +277,7 @@ model Student {
   grades          Grade[] // V6
   bulletins       Bulletin[] // V6
   invoices        Invoice[] // V8
+  attendances     Attendance[] // V9
 
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
@@ -374,6 +379,7 @@ model Class {
   teachers    ClassTeacher[]
   timeSlots   TimeSlot[]
   evaluations Evaluation[] // V6
+  attendances Attendance[]   // V9
 
   @@unique([tenantId, schoolYear, name], name: "unique_class_per_year")
   @@index([tenantId, schoolYear])
@@ -643,4 +649,66 @@ model Notification {
   @@index([tenantId])
   @@index([userId])
   @@index([readAt])
+}
+
+// ============================================================================
+// V9 — Announcements + Attendance
+// ============================================================================
+
+enum AnnouncementAudience {
+  ALL
+  PARENTS
+  TEACHERS
+  STAFF
+}
+
+model Announcement {
+  id        String               @id
+  tenantId  String
+  title     String               @db.VarChar(200)
+  body      String               @db.Text
+  audience  AnnouncementAudience @default(ALL)
+  authorId  String
+  publishAt DateTime             @default(now())
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author User   @relation("AnnouncementsAuthored", fields: [authorId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, publishAt])
+  @@map("announcements")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model Attendance {
+  id           String           @id
+  tenantId     String
+  studentId    String
+  classId      String?
+  date         DateTime         @db.Date
+  status       AttendanceStatus @default(PRESENT)
+  notes        String?          @db.VarChar(500)
+  recordedById String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class      Class?  @relation(fields: [classId], references: [id], onDelete: SetNull)
+  recordedBy User    @relation("AttendanceRecorded", fields: [recordedById], references: [id])
+
+  @@unique([tenantId, studentId, date], name: "unique_attendance_per_day")
+  @@index([tenantId])
+  @@index([tenantId, date])
+  @@index([tenantId, classId, date])
+  @@map("attendance")
 }

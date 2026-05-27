@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// V1.5 — simple passthrough proxy for /api/users/* endpoints. Unlike the
-// auth proxy, no refresh-cookie management — pure Bearer auth.
+/**
+ * V2 — Module Élèves : passthrough proxy `/api/students*` → NestJS API.
+ * Handles multipart/form-data (POST /students/bulk-import) by streaming the
+ * body as ArrayBuffer without re-serialising. Uses [[...action]] so the base
+ * path GET /api/students (no sub-segment) also resolves correctly.
+ */
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 if (!/^https?:\/\//.test(API_URL)) {
@@ -11,7 +15,7 @@ if (!/^https?:\/\//.test(API_URL)) {
 }
 
 interface Context {
-  params: { action: string[] };
+  params: { action?: string[] };
 }
 
 export const dynamic = 'force-dynamic';
@@ -38,26 +42,29 @@ async function passthrough(
   ctx: Context,
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
 ): Promise<NextResponse> {
-  const action = ctx.params.action.join('/');
+  const action = ctx.params.action?.join('/') ?? '';
   const auth = request.headers.get('authorization');
   if (!auth) {
     return NextResponse.json({ message: 'Missing Authorization header' }, { status: 401 });
   }
 
-  const init: RequestInit = {
-    method,
-    headers: {
-      Authorization: auth,
-      ...(method !== 'GET' && method !== 'DELETE'
-        ? { 'Content-Type': 'application/json' }
-        : {}),
-    },
-  };
+  const incomingType = request.headers.get('content-type') ?? '';
+  const isMultipart = incomingType.toLowerCase().startsWith('multipart/');
+  const url = new URL(request.url);
+  const suffix = action ? `/${action}` : '';
+  const targetUrl = `${API_URL}/api/students${suffix}${url.search}`;
+
+  const headers: Record<string, string> = { Authorization: auth };
   if (method !== 'GET' && method !== 'DELETE') {
-    init.body = await request.text();
+    headers['Content-Type'] = incomingType || 'application/json';
   }
 
-  const upstream = await fetch(`${API_URL}/api/users/${action}`, init);
+  let body: BodyInit | undefined;
+  if (method !== 'GET' && method !== 'DELETE') {
+    body = isMultipart ? await request.arrayBuffer() : await request.text();
+  }
+
+  const upstream = await fetch(targetUrl, { method, headers, body });
   const text = await upstream.text();
   return new NextResponse(text || null, {
     status: upstream.status,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-/** V6 — Passthrough proxy `/api/evaluations*` → NestJS `/api/evaluations*`. */
+/** V7-E — Passthrough proxy `/api/notifications*` → NestJS `/api/notifications*`. */
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 if (!/^https?:\/\//.test(API_URL)) {
@@ -8,7 +8,7 @@ if (!/^https?:\/\//.test(API_URL)) {
 }
 
 interface Context {
-  params: { action: string[] };
+  params: { action?: string[] };
 }
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +42,7 @@ async function passthrough(
   }
   const url = new URL(req.url);
   const suffix = action ? `/${action}` : '';
-  const target = `${API_URL}/api/evaluations${suffix}${url.search}`;
+  const target = `${API_URL}/api/notifications${suffix}${url.search}`;
 
   const headers: Record<string, string> = { Authorization: auth };
   const hasBody = method !== 'GET' && method !== 'DELETE';
