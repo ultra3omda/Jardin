@@ -83,7 +83,7 @@ export default function ProfileScreen() {
           borderColor: colors.paper[100],
         }}
       >
-        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink[400], textTransform: 'uppercase', letterSpacing: 1 }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink[300], textTransform: 'uppercase', letterSpacing: 1 }}>
           Informations du compte
         </Text>
         <InfoRow label="Email" value={user.email} />
@@ -103,7 +103,7 @@ export default function ProfileScreen() {
           borderColor: colors.paper[100],
         }}
       >
-        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink[400], textTransform: 'uppercase', letterSpacing: 1 }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink[300], textTransform: 'uppercase', letterSpacing: 1 }}>
           Établissement
         </Text>
         <InfoRow label="Nom" value={tenant.name} />
