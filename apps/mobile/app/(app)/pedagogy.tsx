@@ -1,3 +1,4 @@
+import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
@@ -19,7 +20,7 @@ function GradeChip({ value, outOf = 20 }: { value: number; outOf?: number }) {
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <Text style={{ fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: colors.ink[300], marginBottom: 10, marginTop: 4 }}>
       {children}
