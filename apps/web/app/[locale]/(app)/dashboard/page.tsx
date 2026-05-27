@@ -1,112 +1,124 @@
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Sparkles } from 'lucide-react';
+import { useMemo } from 'react';
+
+import { AnnouncementsPanel } from '@/components/dashboard/announcements-panel';
+import { KpiCard } from '@/components/dashboard/kpi-card';
+import { NotesPanel } from '@/components/dashboard/notes-panel';
+import { QuickAction } from '@/components/dashboard/quick-action';
+import { getDashboardConfig } from '@/lib/dashboard/config';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
-const TENANT_TYPE_LABELS: Record<string, string> = {
-  KINDERGARTEN: "Jardin d'enfants / Maternelle",
-  PRIMARY_SCHOOL: 'École primaire',
-  MIXED: 'Établissement mixte',
+export const dynamic = 'force-dynamic';
+
+// Placeholder data — wired to real APIs in subsequent waves (V8+).
+const PLACEHOLDER_DATA = {
+  studentsCount: 45,
+  attendanceRate: 92,
+  overduePayments: 0,
+  globalAverage: 14.2,
+  classesCount: 17,
+  childrenCount: 68,
+  presentToday: 62,
+  photosToday: 24,
+  myStudentsCount: 54,
+  evalsToGrade: 8,
+  todayLessons: 5,
+  newGrades: 5,
+  amountDue: 180,
+  activitiesToday: 2,
+  presenceToday: '✓',
+  canteenToday: 284,
+  busesActive: 3,
+  infirmaryToday: 0,
+  tenantsCount: 17,
+  usersCount: 1200,
+  pendingDemos: 3,
 };
 
-const USER_ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'Super-admin plateforme',
-  SCHOOL_ADMIN: 'Directeur / Directrice',
-  TEACHER: 'Enseignant(e)',
-  PARENT: 'Parent',
-  STAFF: 'Personnel',
-};
-
-export default function DashboardPage() {
-  const { user, tenant } = useAuthStore();
-  if (!user) return null;
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Bienvenue, {user.firstName} 👋
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {tenant
-            ? `Tu es connecté(e) au tableau de bord de ${tenant.name}.`
-            : 'Compte plateforme.'}
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Établissement</CardTitle>
-            <CardDescription>Détails du tenant courant</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2 text-sm">
-              <Row label="Nom" value={tenant?.name} />
-              <Row label="Slug" value={tenant?.slug} mono />
-              <Row
-                label="Type"
-                value={tenant ? TENANT_TYPE_LABELS[tenant.type] ?? tenant.type : null}
-              />
-              <Row label="Locale" value={tenant?.locale?.toUpperCase()} />
-              <Row label="Timezone" value={tenant?.timezone} />
-            </dl>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Profil</CardTitle>
-            <CardDescription>Utilisateur courant</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2 text-sm">
-              <Row label="Email" value={user.email} />
-              <Row label="Rôle" value={USER_ROLE_LABELS[user.role] ?? user.role} />
-              <Row label="Langue" value={user.locale.toUpperCase()} />
-              <Row label="ID" value={user.id} mono />
-            </dl>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Vague 1 ✓</CardTitle>
-            <CardDescription>Auth multi-tenant livrée</CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>Modules en cours de développement :</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>Élèves (Vague 2)</li>
-              <li>Parents (Vague 3)</li>
-              <li>Enseignants &amp; Classes (Vague 4)</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+function interpolate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }
 
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string | null | undefined;
-  mono?: boolean;
-}) {
+export default function DashboardPage() {
+  const user = useAuthStore((s) => s.user);
+  const tenant = useAuthStore((s) => s.tenant);
+
+  const config = useMemo(() => {
+    if (!user) return null;
+    return getDashboardConfig(user.role, tenant?.type ?? null);
+  }, [user, tenant?.type]);
+
+  if (!user || !config) return null;
+
+  const heading = interpolate(config.heading, {
+    firstName: user.firstName ?? '',
+    childFirstName: 'Yasmine',
+    tenantName: tenant?.name ?? '',
+  });
+
+  const subtitle = config.subtitleKey === 'today'
+    ? `Vue d'ensemble · ${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`
+    : config.subtitleKey === 'classesCount'
+      ? `${PLACEHOLDER_DATA.classesCount} classes · ${PLACEHOLDER_DATA.myStudentsCount} élèves`
+      : config.subtitleKey === 'childrenCount'
+        ? `${PLACEHOLDER_DATA.childrenCount} enfants à ${tenant?.name ?? "l'établissement"}`
+        : `${PLACEHOLDER_DATA.tenantsCount} écoles · ${PLACEHOLDER_DATA.pendingDemos} demandes en attente`;
+
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={mono ? 'font-mono text-xs' : 'font-medium'}>{value ?? '—'}</dd>
+    <div className="space-y-5">
+      <header className="flex items-start justify-between pt-2">
+        <div>
+          <h1 className="text-[28px] font-bold leading-tight text-ink-900">{heading}</h1>
+          <p className="mt-1 text-sm text-ink-500">{subtitle}</p>
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-surface px-4 py-2 text-sm text-ink-900 shadow-sm hover:shadow-md"
+        >
+          <Sparkles className="h-4 w-4 text-ambre-500" aria-hidden="true" />
+          Statistiques
+        </button>
+      </header>
+
+      <section className="grid gap-4" style={{ gridTemplateColumns: `repeat(${config.kpis.length}, minmax(0, 1fr))` }}>
+        {config.kpis.map((kpi, i) => {
+          const raw = PLACEHOLDER_DATA[kpi.selectorKey as keyof typeof PLACEHOLDER_DATA];
+          const value = raw === undefined ? '—' : String(raw);
+          const sub = kpi.sub ? interpolate(kpi.sub, { classesCount: String(PLACEHOLDER_DATA.classesCount) }) : undefined;
+          return <KpiCard key={i} label={kpi.label} value={value} variant={kpi.variant} icon={kpi.icon} sub={sub} />;
+        })}
+      </section>
+
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {config.actions.map((a, i) => (
+          <QuickAction key={i} label={a.label} href={a.href} icon={a.icon} />
+        ))}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="md:col-span-2">
+          {config.panels.includes('latestNotes') && (
+            <NotesPanel
+              notes={[
+                { id: 'n1', studentName: 'Ibrahima Ba', subjectName: 'Sciences de la Vie et de la Terre', scaledScore: 10.91, date: '2026-02-06' },
+                { id: 'n2', studentName: 'Ibrahima Ba', subjectName: 'Sciences de la Vie et de la Terre', scaledScore: 11.77, date: '2026-03-13' },
+                { id: 'n3', studentName: 'Ibrahima Ba', subjectName: 'Sciences de la Vie et de la Terre', scaledScore: 11.82, date: '2026-01-04' },
+              ]}
+            />
+          )}
+          {config.panels.includes('journalToday') && (
+            <div className="rounded-2xl bg-surface p-5 shadow-sm">
+              <h2 className="text-sm font-bold text-ink-900">Journal du jour</h2>
+              <p className="mt-2 text-sm text-ink-500">— V7-B implémentation détaillée à venir —</p>
+            </div>
+          )}
+        </div>
+        {config.panels.includes('announcements') && (
+          <AnnouncementsPanel announcements={[]} />
+        )}
+      </section>
     </div>
   );
 }
