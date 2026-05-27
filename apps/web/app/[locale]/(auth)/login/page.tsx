@@ -1,32 +1,17 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Loader2 } from 'lucide-react';
-import type { Route } from 'next';
-import { Link, useRouter } from '@/i18n/routing';
+import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useRouter, Link } from '@/i18n/routing';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { DemoAccountsBlock } from '@/components/auth/demo-accounts-block';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ApiError, login } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { loginSchema, type LoginFormValues } from '@/lib/validation/auth.schemas';
@@ -36,16 +21,12 @@ interface LoginError {
   availableTenantSlugs?: string[];
 }
 
-/**
- * useSearchParams() forces this subtree out of static rendering, so Next.js 14
- * requires it to be wrapped in <Suspense>. The exported page below provides
- * that boundary.
- */
 function LoginPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const setSession = useAuthStore((s) => s.setSession);
   const [error, setError] = useState<LoginError | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -58,10 +39,8 @@ function LoginPageContent() {
       const session = await login(values);
       setSession(session);
       const next = params.get('next');
-      // typedRoutes is enabled in next.config.mjs, so dynamic strings need
-      // a Route cast. The `startsWith('/')` guard still prevents open-redirect.
-      const target = (next && next.startsWith('/') ? next : '/dashboard') as Route;
-      router.push(target);
+      const target = next && next.startsWith('/') ? next : '/dashboard';
+      router.push(target as never);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === 'TENANT_SLUG_REQUIRED') {
@@ -86,117 +65,107 @@ function LoginPageContent() {
   const showTenantField = (error?.availableTenantSlugs?.length ?? 0) > 0;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Connexion</CardTitle>
-        <CardDescription>Accède à ton tableau de bord</CardDescription>
-      </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                <AlertTitle>Connexion impossible</AlertTitle>
-                <AlertDescription>
-                  {error.message}
-                  {error.availableTenantSlugs && error.availableTenantSlugs.length > 0 && (
-                    <ul className="mt-2 list-disc pl-5 text-sm">
-                      {error.availableTenantSlugs.map((s) => (
-                        <li key={s}>
-                          <code>{s}</code>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </AlertDescription>
-              </Alert>
+    <div className="space-y-6">
+      <header className="text-center">
+        <h1 className="font-serif text-2xl font-semibold text-ink-900">Bienvenue</h1>
+        <p className="mt-1 text-sm text-ink-500">Connectez-vous à votre espace</p>
+      </header>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
+          <AlertTitle>Connexion impossible</AlertTitle>
+          <AlertDescription>
+            {error.message}
+            {error.availableTenantSlugs && error.availableTenantSlugs.length > 0 && (
+              <ul className="mt-2 list-disc pl-5 text-sm">
+                {error.availableTenantSlugs.map((s) => (
+                  <li key={s}><code>{s}</code></li>
+                ))}
+              </ul>
             )}
+          </AlertDescription>
+        </Alert>
+      )}
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="vous@etablissement.fr"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="vous@etablissement.tn"
+            {...form.register('email')}
+          />
+          {form.formState.errors.email && (
+            <p className="text-xs text-red-600">{form.formState.errors.email.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Mot de passe</Label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              {...form.register('password')}
             />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mot de passe</FormLabel>
-                  <FormControl>
-                    <Input type="password" autoComplete="current-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {showTenantField && (
-              <FormField
-                control={form.control}
-                name="tenantSlug"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Slug de l&apos;établissement</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ex: demo-maternelle" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-3">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={form.formState.isSubmitting}
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-900"
+              aria-label={showPassword ? 'Cacher le mot de passe' : 'Afficher le mot de passe'}
             >
-              {form.formState.isSubmitting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-              )}
-              Se connecter
-            </Button>
-            <Link
-              href="/forgot-password"
-              className="text-center text-sm text-muted-foreground hover:text-foreground hover:underline"
-            >
-              Mot de passe oublié ?
-            </Link>
-            <p className="text-center text-sm text-muted-foreground">
-              Nouvel établissement ?{' '}
-              <Link href="/register" className="font-medium text-primary hover:underline">
-                Créer un compte
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {form.formState.errors.password && (
+            <p className="text-xs text-red-600">{form.formState.errors.password.message}</p>
+          )}
+        </div>
+
+        {showTenantField && (
+          <div className="space-y-1.5">
+            <Label htmlFor="tenantSlug">Slug de l&apos;établissement</Label>
+            <Input id="tenantSlug" placeholder="ex: demo-ecole" {...form.register('tenantSlug')} />
+          </div>
+        )}
+
+        <div className="flex items-center justify-end text-sm">
+          <Link href="/forgot-password" className="text-ink-500 hover:text-ambre-600">
+            Mot de passe oublié ?
+          </Link>
+        </div>
+
+        <Button
+          type="submit"
+          disabled={form.formState.isSubmitting}
+          className="w-full bg-ambre-500 hover:bg-ambre-600 text-white py-6 rounded-lg font-semibold"
+        >
+          {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Se Connecter
+          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+        </Button>
+
+        <p className="text-center text-sm text-ink-500">
+          Pas encore de compte ?{' '}
+          <Link href="/register" className="font-semibold text-ambre-600 hover:text-ambre-700">
+            Inscrire votre école
+          </Link>
+        </p>
+      </form>
+
+      <DemoAccountsBlock />
+    </div>
   );
 }
 
 function LoginFallback() {
   return (
     <div className="flex min-h-[200px] items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Chargement" />
+      <Loader2 className="h-6 w-6 animate-spin text-ambre-500" aria-label="Chargement" />
     </div>
   );
 }
