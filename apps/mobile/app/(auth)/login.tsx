@@ -5,11 +5,13 @@ import {
   ScrollView,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Button, colors, radius } from '@klasso/ui-mobile';
+import { deleteTenantSlug } from '@/lib/auth/secure-storage';
 import { ApiError } from '@/lib/api/client';
 import { login } from '@/lib/api/auth';
 import { demoLogin, type DemoPersona } from '@/lib/api/demo-login';
@@ -21,6 +23,11 @@ export default function LoginScreen() {
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
   const tenantSlug = useTenantStore((s) => s.slug);
+
+  async function handleChangeSchool() {
+    await deleteTenantSlug();
+    router.replace('/(onboarding)/school-code');
+  }
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -229,6 +236,13 @@ export default function LoginScreen() {
               ))}
             </View>
           </View>
+
+          {/* Change school link */}
+          <TouchableOpacity onPress={handleChangeSchool} style={{ paddingVertical: 8, alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: colors.ink[300] }}>
+              Changer d'établissement →
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
