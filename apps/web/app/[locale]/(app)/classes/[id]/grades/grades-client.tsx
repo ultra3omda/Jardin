@@ -192,7 +192,7 @@ export function GradesClient({ classId }: Props): JSX.Element {
         </label>
         {periodsQ.data && periodsQ.data.items.length === 0 ? (
           <span className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-1.5">
-            Aucune période définie pour l'année {classQ.data?.schoolYear}. Créez des périodes dans{' '}
+            Aucune période définie pour l&apos;année {classQ.data?.schoolYear}. Créez des périodes dans{' '}
             <a href="/fr/administration/grade-periods" className="underline">Paramètres → Périodes</a>.
           </span>
         ) : (
