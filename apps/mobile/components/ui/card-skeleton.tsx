@@ -59,7 +59,7 @@ export function CardSkeleton({ height = 80 }: CardSkeletonProps) {
     >
       {/* Top bar — wide (title) */}
       <View
-        style={{ height: 13, width: '60%', backgroundColor: colors.paper[200], borderRadius: 4 }}
+        style={{ height: 13, width: '60%', backgroundColor: colors.paper[100], borderRadius: 4 }}
       />
       {/* Middle bar — medium (subtitle) */}
       <View
