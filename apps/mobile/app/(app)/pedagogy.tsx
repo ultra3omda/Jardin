@@ -1,9 +1,17 @@
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
+import {
+  useAdminClassPerf,
+  useMyClasses,
+  useMyGrades,
+  type AdminClassPerf,
+  type ChildGrades,
+  type ClassEvalStats,
+} from '@/lib/api/evaluations';
 
-/* ── Shared helpers ─────────────────────────────────────────────── */
+// ─── Shared helpers ──────────────────────────────────────────────────────────
 
 function gradeColor(grade: number): string {
   if (grade >= 14) return '#34d399';
@@ -14,58 +22,185 @@ function gradeColor(grade: number): string {
 function GradeChip({ value, outOf = 20 }: { value: number; outOf?: number }) {
   const color = gradeColor(value);
   return (
-    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: color + '14', borderWidth: 1, borderColor: color + '30' }}>
-      <Text style={{ fontWeight: '700', fontSize: 14, color }}>{value}/{outOf}</Text>
+    <View
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+        backgroundColor: color + '14',
+        borderWidth: 1,
+        borderColor: color + '30',
+      }}
+    >
+      <Text style={{ fontWeight: '700', fontSize: 14, color }}>
+        {value}/{outOf}
+      </Text>
     </View>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <Text style={{ fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: colors.ink[300], marginBottom: 10, marginTop: 4 }}>
+    <Text
+      style={{
+        fontSize: 11,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        color: colors.ink[300],
+        marginBottom: 10,
+        marginTop: 4,
+      }}
+    >
       {children}
     </Text>
   );
 }
 
-/* ── Views per role ─────────────────────────────────────────────── */
+// ─── Skeleton card ───────────────────────────────────────────────────────────
 
-function TeacherView({ isKG }: { isKG: boolean }) {
-  const classes = isKG
-    ? [
-        { name: 'Petite Section',  subject: 'Éveil',     students: 28, done: 28, avg: null },
-        { name: 'Moyenne Section', subject: 'Activités', students: 30, done: 25, avg: null },
-      ]
-    : [
-        { name: 'Classe 5A', subject: 'Mathématiques', students: 32, done: 30, avg: 13.8 },
-        { name: 'Classe 5B', subject: 'Mathématiques', students: 30, done: 30, avg: 14.2 },
-        { name: 'Classe 4A', subject: 'Mathématiques', students: 28, done: 18, avg: null  },
-      ];
+function SkeletonCard() {
+  return (
+    <View
+      style={{
+        height: 80,
+        backgroundColor: colors.paper[100],
+        borderRadius: radius.lg,
+        marginBottom: 10,
+      }}
+    />
+  );
+}
+
+function SkeletonList() {
+  return (
+    <View>
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </View>
+  );
+}
+
+// ─── Error state ─────────────────────────────────────────────────────────────
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={{ alignItems: 'center', paddingVertical: 32, gap: 12 }}>
+      <Text style={{ fontSize: 14, color: colors.ink[500], textAlign: 'center' }}>
+        Impossible de charger les données.
+      </Text>
+      <Pressable
+        onPress={onRetry}
+        style={{
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+          backgroundColor: colors.ink[900],
+          borderRadius: radius.md,
+        }}
+      >
+        <Text style={{ color: colors.white, fontWeight: '600', fontSize: 13 }}>Réessayer</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+      <Text style={{ fontSize: 14, color: colors.ink[300] }}>Aucune donnée disponible</Text>
+    </View>
+  );
+}
+
+// ─── Teacher view ────────────────────────────────────────────────────────────
+
+function TeacherView({
+  classes,
+  isKG,
+}: {
+  classes: ClassEvalStats[];
+  isKG: boolean;
+}) {
+  if (classes.length === 0) return <EmptyState />;
 
   return (
     <>
       <SectionTitle>{isKG ? 'Mes groupes' : 'Mes classes'}</SectionTitle>
       <View style={{ gap: 10 }}>
         {classes.map((cls, i) => {
-          const pct = Math.round((cls.done / cls.students) * 100);
+          const pct =
+            cls.studentCount > 0
+              ? Math.round((cls.doneCount / cls.studentCount) * 100)
+              : 0;
           return (
-            <View key={i} style={{ backgroundColor: colors.white, borderRadius: radius.lg, padding: 14, borderWidth: 1, borderColor: colors.paper[100] }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View
+              key={i}
+              style={{
+                backgroundColor: colors.white,
+                borderRadius: radius.lg,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: colors.paper[100],
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
                 <View>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: colors.ink[900] }}>{cls.name}</Text>
-                  <Text style={{ fontSize: 12, color: colors.ink[500], marginTop: 1 }}>{cls.subject} · {cls.students} élèves</Text>
-                </View>
-                {cls.avg !== null && <GradeChip value={cls.avg} />}
-              </View>
-              <View style={{ marginTop: 10 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 11, color: colors.ink[300] }}>Notes saisies</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: pct === 100 ? '#34d399' : '#fbb13c' }}>
-                    {cls.done}/{cls.students} ({pct}%)
+                  <Text
+                    style={{ fontSize: 15, fontWeight: '700', color: colors.ink[900] }}
+                  >
+                    {cls.className}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: colors.ink[500], marginTop: 1 }}
+                  >
+                    {cls.subjectName} · {cls.studentCount} élèves
                   </Text>
                 </View>
-                <View style={{ height: 4, backgroundColor: colors.paper[100], borderRadius: 2 }}>
-                  <View style={{ height: 4, borderRadius: 2, width: `${pct}%` as `${number}%`, backgroundColor: pct === 100 ? '#34d399' : '#fbb13c' }} />
+                {cls.average !== null && <GradeChip value={cls.average} />}
+              </View>
+              <View style={{ marginTop: 10 }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, color: colors.ink[300] }}>Notes saisies</Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: pct === 100 ? '#34d399' : '#fbb13c',
+                    }}
+                  >
+                    {cls.doneCount}/{cls.studentCount} ({pct}%)
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    height: 4,
+                    backgroundColor: colors.paper[100],
+                    borderRadius: 2,
+                  }}
+                >
+                  <View
+                    style={{
+                      height: 4,
+                      borderRadius: 2,
+                      width: `${pct}%` as `${number}%`,
+                      backgroundColor: pct === 100 ? '#34d399' : '#fbb13c',
+                    }}
+                  />
                 </View>
               </View>
             </View>
@@ -76,43 +211,52 @@ function TeacherView({ isKG }: { isKG: boolean }) {
   );
 }
 
-function ParentView({ isKG }: { isKG: boolean }) {
-  const children = isKG
-    ? [{ name: 'Yasmine', class: 'Moyenne Section', subjects: [
-        { name: 'Éveil musical', note: null as number | null, emoji: '🎵' },
-        { name: 'Motricité',     note: null as number | null, emoji: '🏃' },
-        { name: 'Langage',       note: null as number | null, emoji: '💬' },
-      ]}]
-    : [
-        { name: 'Ahmed', class: '5ème A', subjects: [
-          { name: 'Mathématiques', note: 16 as number | null, emoji: null },
-          { name: 'Français',      note: 13 as number | null, emoji: null },
-          { name: 'Arabe',         note: 17 as number | null, emoji: null },
-          { name: 'Sciences',      note: 14 as number | null, emoji: null },
-          { name: 'Histoire-Géo',  note: 12 as number | null, emoji: null },
-        ]},
-        { name: 'Yasmine', class: '4ème B', subjects: [
-          { name: 'Mathématiques', note: 11 as number | null, emoji: null },
-          { name: 'Français',      note: 15 as number | null, emoji: null },
-          { name: 'Arabe',         note: 13 as number | null, emoji: null },
-        ]},
-      ];
+// ─── Parent view ─────────────────────────────────────────────────────────────
+
+function ParentView({
+  children,
+}: {
+  children: ChildGrades[];
+}) {
+  if (children.length === 0) return <EmptyState />;
 
   return (
     <>
       {children.map((child, ci) => (
         <View key={ci} style={{ marginBottom: 20 }}>
-          <SectionTitle>{child.name} · {child.class}</SectionTitle>
+          <SectionTitle>
+            {child.childName} · {child.className}
+          </SectionTitle>
           <View style={{ gap: 8 }}>
             {child.subjects.map((sub, si) => (
-              <View key={si} style={{ backgroundColor: colors.white, borderRadius: radius.lg, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.paper[100] }}>
+              <View
+                key={si}
+                style={{
+                  backgroundColor: colors.white,
+                  borderRadius: radius.lg,
+                  padding: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderWidth: 1,
+                  borderColor: colors.paper[100],
+                }}
+              >
                 <Text style={{ fontSize: 14, color: colors.ink[700] }}>
-                  {sub.emoji ? `${sub.emoji} ` : ''}{sub.name}
+                  {sub.subjectEmoji ? `${sub.subjectEmoji} ` : ''}
+                  {sub.subjectName}
                 </Text>
-                {sub.note !== null ? (
-                  <GradeChip value={sub.note} />
+                {sub.grade !== null ? (
+                  <GradeChip value={sub.grade} outOf={sub.outOf} />
                 ) : (
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.paper[100] }}>
+                  <View
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      backgroundColor: colors.paper[100],
+                    }}
+                  >
                     <Text style={{ fontSize: 12, color: colors.ink[300] }}>En cours</Text>
                   </View>
                 )}
@@ -125,27 +269,56 @@ function ParentView({ isKG }: { isKG: boolean }) {
   );
 }
 
-function AdminView() {
-  const classStats = [
-    { name: '6ème A', avg: 14.1, top: 'Arabe 16.3',    students: 34 },
-    { name: '6ème B', avg: 13.5, top: 'Maths 15.1',    students: 32 },
-    { name: '5ème A', avg: 13.8, top: 'Maths 15.4',    students: 32 },
-    { name: '5ème B', avg: 12.9, top: 'Français 14.7', students: 30 },
-  ];
+// ─── Admin view ──────────────────────────────────────────────────────────────
+
+function AdminView({ classStats }: { classStats: AdminClassPerf[] }) {
+  if (classStats.length === 0) return <EmptyState />;
 
   return (
     <>
-      <SectionTitle>Performance par classe — 2e trimestre</SectionTitle>
+      <SectionTitle>Performance par classe</SectionTitle>
       <View style={{ gap: 8 }}>
         {classStats.map((cls, i) => (
-          <View key={i} style={{ backgroundColor: colors.white, borderRadius: radius.lg, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.paper[100] }}>
+          <View
+            key={i}
+            style={{
+              backgroundColor: colors.white,
+              borderRadius: radius.lg,
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderWidth: 1,
+              borderColor: colors.paper[100],
+            }}
+          >
             <View>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.ink[900] }}>{cls.name}</Text>
-              <Text style={{ fontSize: 11, color: colors.ink[300], marginTop: 1 }}>
-                {cls.students} élèves · Meilleure : {cls.top}
+              <Text
+                style={{ fontSize: 15, fontWeight: '700', color: colors.ink[900] }}
+              >
+                {cls.className}
+              </Text>
+              <Text
+                style={{ fontSize: 11, color: colors.ink[300], marginTop: 1 }}
+              >
+                {cls.studentCount} élèves
+                {cls.topSubject ? ` · Meilleure : ${cls.topSubject}` : ''}
               </Text>
             </View>
-            <GradeChip value={cls.avg} />
+            {cls.overall !== null ? (
+              <GradeChip value={cls.overall} />
+            ) : (
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  backgroundColor: colors.paper[100],
+                }}
+              >
+                <Text style={{ fontSize: 12, color: colors.ink[300] }}>—</Text>
+              </View>
+            )}
           </View>
         ))}
       </View>
@@ -153,32 +326,72 @@ function AdminView() {
   );
 }
 
-/* ── Main screen ────────────────────────────────────────────────── */
+// ─── Role-specific data containers ───────────────────────────────────────────
+
+function TeacherContainer({ isKG }: { isKG: boolean }) {
+  const { data, isLoading, isError, refetch } = useMyClasses();
+
+  if (isLoading) return <SkeletonList />;
+  if (isError) return <ErrorState onRetry={() => void refetch()} />;
+  return <TeacherView classes={data ?? []} isKG={isKG} />;
+}
+
+function ParentContainer() {
+  const { data, isLoading, isError, refetch } = useMyGrades();
+
+  if (isLoading) return <SkeletonList />;
+  if (isError) return <ErrorState onRetry={() => void refetch()} />;
+  return <ParentView children={data ?? []} />;
+}
+
+function AdminContainer() {
+  const { data, isLoading, isError, refetch } = useAdminClassPerf();
+
+  if (isLoading) return <SkeletonList />;
+  if (isError) return <ErrorState onRetry={() => void refetch()} />;
+  return <AdminView classStats={data ?? []} />;
+}
+
+// ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function PedagogyScreen() {
-  const user   = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
-  const isKG   = tenant?.type === 'KINDERGARTEN';
+  const isKG = tenant?.type === 'KINDERGARTEN';
 
   const title = isKG ? 'Vie scolaire' : 'Pédagogie';
   const subtitle =
-    user?.role === 'TEACHER'      ? 'Mes classes et notes'     :
-    user?.role === 'PARENT'       ? 'Notes de mes enfants'     :
-    user?.role === 'SCHOOL_ADMIN' ? "Vue d'ensemble"           :
-    'Résultats scolaires';
+    user?.role === 'TEACHER'
+      ? 'Mes classes et notes'
+      : user?.role === 'PARENT'
+        ? 'Notes de mes enfants'
+        : user?.role === 'SCHOOL_ADMIN'
+          ? "Vue d'ensemble"
+          : 'Résultats scolaires';
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
       contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
     >
-      <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink[900], marginBottom: 4 }}>{title}</Text>
-      <Text style={{ fontSize: 13, color: colors.ink[500], marginBottom: 20 }}>{subtitle}</Text>
+      <Text
+        style={{
+          fontSize: 22,
+          fontWeight: '700',
+          color: colors.ink[900],
+          marginBottom: 4,
+        }}
+      >
+        {title}
+      </Text>
+      <Text style={{ fontSize: 13, color: colors.ink[500], marginBottom: 20 }}>
+        {subtitle}
+      </Text>
 
-      {user?.role === 'TEACHER'      && <TeacherView isKG={isKG} />}
-      {user?.role === 'PARENT'       && <ParentView  isKG={isKG} />}
-      {user?.role === 'SCHOOL_ADMIN' && <AdminView />}
-      {!user?.role                   && <ParentView  isKG={false} />}
+      {user?.role === 'TEACHER' && <TeacherContainer isKG={isKG} />}
+      {user?.role === 'PARENT' && <ParentContainer />}
+      {user?.role === 'SCHOOL_ADMIN' && <AdminContainer />}
+      {!user?.role && <ParentContainer />}
     </ScrollView>
   );
 }
