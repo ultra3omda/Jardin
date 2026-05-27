@@ -29,6 +29,8 @@ export class SubjectsService {
           tenantId: user.tenantId,
           name: dto.name,
           code: dto.code ?? null,
+          emoji: dto.emoji ?? null,
+          coefficient: dto.coefficient ?? 1,
         },
       });
       return this.toResponse(created);
@@ -60,6 +62,8 @@ export class SubjectsService {
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.code !== undefined ? { code: dto.code } : {}),
+        ...(dto.emoji !== undefined ? { emoji: dto.emoji } : {}),
+        ...(dto.coefficient !== undefined ? { coefficient: dto.coefficient } : {}),
       },
     });
     return this.toResponse(updated);
@@ -77,9 +81,19 @@ export class SubjectsService {
     id: string;
     name: string;
     code: string | null;
+    emoji: string | null;
+    coefficient: number;
     createdAt: Date;
     updatedAt: Date;
   }): SubjectResponseDto {
-    return { id: s.id, name: s.name, code: s.code, createdAt: s.createdAt, updatedAt: s.updatedAt };
+    return {
+      id: s.id,
+      name: s.name,
+      code: s.code,
+      emoji: s.emoji,
+      coefficient: s.coefficient,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    };
   }
 }

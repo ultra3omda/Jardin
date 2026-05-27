@@ -8,11 +8,12 @@ import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { useRouter } from '@/i18n/routing';
 import { SubjectModal, type SubjectFormValues } from './_components/subject-modal';
 
-/** Shape returned by GET /api/subjects */
+/** Shape returned by GET /api/subjects → SubjectResponseDto */
 interface Subject {
   id: string;
   name: string;
-  emoji: string | null;
+  code?: string | null;
+  emoji?: string | null;
   coefficient: number;
 }
 

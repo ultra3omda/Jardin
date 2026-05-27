@@ -33,11 +33,12 @@ test.describe('Billing @smoke', () => {
     // Page heading
     await expect(page.getByRole('heading', { name: /Facturation/i })).toBeVisible();
 
-    // 4 KPI cards identified by their stable label text
-    await expect(page.getByText('Total facturé')).toBeVisible();
-    await expect(page.getByText('Encaissé')).toBeVisible();
-    await expect(page.getByText('En attente')).toBeVisible();
-    await expect(page.getByText('En retard')).toBeVisible();
+    // 4 KPI cards identified by their stable label text.
+    // Use .first() for labels that also appear in filter dropdowns.
+    await expect(page.getByText('Total facturé').first()).toBeVisible();
+    await expect(page.getByText('Encaissé').first()).toBeVisible();
+    await expect(page.getByText('En attente').first()).toBeVisible();
+    await expect(page.getByText('En retard').first()).toBeVisible();
   });
 
   test('create invoice → appears in table with status "En attente"', async ({ page }) => {

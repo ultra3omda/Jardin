@@ -436,13 +436,15 @@ model TimeSlot {
 // V6 — Matière scolaire (ex. "Mathématiques", "Français"). Tenant-scoped.
 // Indépendante du legacy string `subject` sur ClassTeacher/TimeSlot (FK V6-B).
 model Subject {
-  id        String    @id // cuid2
-  tenantId  String
-  name      String
-  code      String? // ex. "MATH", "FR"
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime? // soft-delete
+  id          String    @id // cuid2
+  tenantId    String
+  name        String
+  code        String?   // ex. "MATH", "FR"
+  emoji       String?   // optional emoji icon e.g. "📐"
+  coefficient Float     @default(1) // grade weight 1-10
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // soft-delete
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   evaluations Evaluation[]

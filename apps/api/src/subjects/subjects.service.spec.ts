@@ -43,6 +43,7 @@ describe('SubjectsService', () => {
   it('creates a subject scoped to tenant', async () => {
     prisma.subject.create.mockResolvedValue({
       id: 's1', tenantId: 't_demo', name: 'Math', code: null,
+      emoji: null, coefficient: 1,
       createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
     });
     const res = await service.create({ name: 'Math' }, adminUser);
@@ -63,6 +64,7 @@ describe('SubjectsService', () => {
   it('lists only non-deleted subjects for the tenant', async () => {
     prisma.subject.findMany.mockResolvedValue([{
       id: 's1', tenantId: 't_demo', name: 'Math', code: null,
+      emoji: null, coefficient: 1,
       createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
     }]);
     prisma.subject.count.mockResolvedValue(1);

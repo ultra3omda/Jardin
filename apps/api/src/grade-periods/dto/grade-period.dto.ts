@@ -16,10 +16,11 @@ export class CreateGradePeriodDto {
   @MaxLength(40)
   name!: string;
 
-  @ApiProperty({ example: '2025-2026' })
+  @ApiPropertyOptional({ example: '2025-2026' })
+  @IsOptional()
   @IsString()
   @Matches(/^\d{4}-\d{4}$/, { message: 'schoolYear must match "YYYY-YYYY"' })
-  schoolYear!: string;
+  schoolYear?: string;
 
   @ApiProperty({ example: '2025-09-01' })
   @IsDateString()
