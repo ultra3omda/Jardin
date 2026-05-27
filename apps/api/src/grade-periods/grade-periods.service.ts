@@ -66,7 +66,7 @@ export class GradePeriodsService {
       tenantId: user.tenantId,
       ...(schoolYear ? { schoolYear } : {}),
     };
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.gradePeriod.findMany({
         where,
         orderBy: [{ schoolYear: 'desc' }, { startDate: 'asc' }],

@@ -45,7 +45,7 @@ export class SubjectsService {
   async list(user: AuthenticatedUser): Promise<ListSubjectsResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
     const where: Prisma.SubjectWhereInput = { tenantId: user.tenantId, deletedAt: null };
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.subject.findMany({ where, orderBy: { name: 'asc' } }),
       this.prisma.subject.count({ where }),
     ]);

@@ -92,6 +92,7 @@ export class StudentsService {
     const pageSize = query.pageSize ?? 25;
     const isParent = currentUser.role === UserRole.PARENT;
     const search = query.search?.trim();
+    const classroom = query.classroom?.trim();
 
     if (!currentUser.tenantId) {
       throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
@@ -101,6 +102,7 @@ export class StudentsService {
       tenantId: currentUser.tenantId,
       deletedAt: null,
       ...(isParent ? { parentEmail: currentUser.email.toLowerCase() } : {}),
+      ...(classroom ? { classroom } : {}),
       ...(search
         ? {
             OR: [

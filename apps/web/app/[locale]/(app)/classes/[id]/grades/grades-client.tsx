@@ -104,7 +104,7 @@ export function GradesClient({ classId }: Props): JSX.Element {
     queryKey: ['v6-students-by-classroom', classQ.data?.name],
     enabled: !!accessToken && !!classQ.data?.name,
     queryFn: () =>
-      fetch(`/api/students?classroom=${encodeURIComponent(classQ.data!.name)}`, {
+      fetch(`/api/students?classroom=${encodeURIComponent(classQ.data!.name)}&pageSize=100`, {
         headers: authHeaders(accessToken!),
       }).then(jsonOk<{ items: StudentDto[] }>),
   });
@@ -190,18 +190,25 @@ export function GradesClient({ classId }: Props): JSX.Element {
         <label htmlFor="period" className="font-medium">
           Période :
         </label>
-        <select
-          id="period"
-          value={selectedPeriodId ?? ''}
-          onChange={(e) => setSelectedPeriodId(e.target.value)}
-          className="border rounded px-3 py-1.5"
-        >
-          {periodsQ.data?.items.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({p.schoolYear}) {p.isClosed ? '— clôturée' : ''}
-            </option>
-          ))}
-        </select>
+        {periodsQ.data && periodsQ.data.items.length === 0 ? (
+          <span className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-1.5">
+            Aucune période définie pour l'année {classQ.data?.schoolYear}. Créez des périodes dans{' '}
+            <a href="/fr/administration/grade-periods" className="underline">Paramètres → Périodes</a>.
+          </span>
+        ) : (
+          <select
+            id="period"
+            value={selectedPeriodId ?? ''}
+            onChange={(e) => setSelectedPeriodId(e.target.value)}
+            className="border rounded px-3 py-1.5"
+          >
+            {periodsQ.data?.items.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.schoolYear}) {p.isClosed ? '— clôturée' : ''}
+              </option>
+            ))}
+          </select>
+        )}
 
         <button
           type="button"

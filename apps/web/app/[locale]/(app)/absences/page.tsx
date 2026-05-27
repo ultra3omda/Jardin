@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 interface ClassOption { id: string; name: string }
-interface Student { id: string; firstName: string; lastName: string }
+interface Student { id: string; firstName: string; lastName: string; classroom: string }
 interface AttendanceRecord { studentId: string; status: AttendanceStatus; notes?: string }
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
 
@@ -58,8 +58,12 @@ export default function AbsencesPage() {
     if (!token || !selectedClass) return;
     setLoadingStudents(true); setFetchError(null);
     try {
+      const className = classes.find((c) => c.id === selectedClass)?.name ?? '';
+      const studentsUrl = className
+        ? `/api/students?classroom=${encodeURIComponent(className)}&pageSize=100`
+        : `/api/students?pageSize=100`;
       const [sData, aData] = await Promise.all([
-        apiFetch<{ items: Student[] }>(`/api/students?classId=${selectedClass}&limit=200`, token),
+        apiFetch<{ items: Student[] }>(studentsUrl, token),
         apiFetch<{ items: (AttendanceRecord & { id: string; studentId: string })[] }>(
           `/api/attendance?classId=${selectedClass}&date=${selectedDate}`, token
         ).catch(() => ({ items: [] as (AttendanceRecord & { id: string; studentId: string })[] })),
@@ -71,7 +75,7 @@ export default function AbsencesPage() {
       setRecords(map);
     } catch (e) { setFetchError(e instanceof Error ? e.message : 'Erreur'); }
     finally { setLoadingStudents(false); }
-  }, [token, selectedClass, selectedDate]);
+  }, [token, selectedClass, selectedDate, classes]);
 
   useEffect(() => { void loadStudents(); }, [loadStudents]);
 
