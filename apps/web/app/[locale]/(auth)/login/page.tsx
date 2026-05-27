@@ -116,7 +116,7 @@ function LoginPageContent() {
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-900"
-              aria-label={showPassword ? 'Cacher le mot de passe' : 'Afficher le mot de passe'}
+              aria-label={showPassword ? 'Masquer la saisie' : 'Afficher la saisie'}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -145,7 +145,7 @@ function LoginPageContent() {
           className="w-full bg-ambre-500 hover:bg-ambre-600 text-white py-6 rounded-lg font-semibold"
         >
           {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Se Connecter
+          Se connecter
           <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
         </Button>
 
