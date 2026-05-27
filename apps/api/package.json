@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "start": "node dist/main",
-    "start:prod": "prisma migrate deploy && node dist/main",
+    "start:prod": "prisma migrate resolve --rolled-back 20260527000000_v8_finance_notifications 2>/dev/null; prisma migrate deploy && node dist/main",
     "prebuild": "pnpm --filter=@ecole-saas/shared build",
     "build": "nest build",
     "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings 0",
