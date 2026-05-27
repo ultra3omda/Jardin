@@ -58,11 +58,17 @@ const config: Config = {
           DEFAULT: 'oklch(var(--paper))',
           alt: 'oklch(var(--paper-2))',
           edge: 'oklch(var(--paper-edge))',
+          50: 'var(--paper-50)',
+          100: 'var(--paper-100)',
         },
         ink: {
           DEFAULT: 'oklch(var(--ink))',
           muted: 'oklch(var(--ink-2))',
           faded: 'oklch(var(--ink-mute))',
+          300: 'var(--ink-300)',
+          500: 'var(--ink-500)',
+          700: 'var(--ink-700)',
+          900: 'var(--ink-900)',
         },
         terracotta: {
           DEFAULT: 'oklch(var(--terracotta))',
@@ -72,6 +78,22 @@ const config: Config = {
         'teal-deep': 'oklch(var(--teal-deep))',
         olive: 'oklch(var(--olive))',
         'rose-dust': 'oklch(var(--rose-dust))',
+        // V7 design tokens (Klasio-inspired) — references CSS vars set in globals.css
+        navy: {
+          500: 'var(--navy-500)',
+          600: 'var(--navy-600)',
+          700: 'var(--navy-700)',
+          800: 'var(--navy-800)',
+          900: 'var(--navy-900)',
+        },
+        ambre: {
+          50: 'var(--ambre-50)',
+          100: 'var(--ambre-100)',
+          500: 'var(--ambre-500)',
+          600: 'var(--ambre-600)',
+          700: 'var(--ambre-700)',
+        },
+        surface: 'var(--surface)',
       },
       borderRadius: {
         lg: 'var(--radius)',

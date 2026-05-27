@@ -51,6 +51,38 @@
     --teal-deep:    0.40 0.06 195;     /* Mediterranean deep teal (Pricing featured) */
     --olive:        0.52 0.08 115;     /* olive (trust/success) */
     --rose-dust:    0.72 0.08 30;      /* dusty rose (AR accents) */
+
+    /* ─── V7 sidebar navy (Klasio-inspired) ──────────────── */
+    --navy-900: #0f1419;
+    --navy-800: #1a2028;
+    --navy-700: #4b5563;
+    --navy-600: #6b7280;
+    --navy-500: #94a3b8;
+
+    /* ─── V7 accent ambre ────────────────────────────────── */
+    --ambre-50:  #fff7e0;
+    --ambre-100: #fef3c7;
+    --ambre-500: #fbb13c;
+    --ambre-600: #e89218;
+    --ambre-700: #b45309;
+
+    /* ─── V7 surface ─────────────────────────────────────── */
+    --paper-50:  #f4f4ef;
+    --paper-100: #fafbfc;
+    --surface:   #ffffff;
+
+    /* ─── V7 ink ─────────────────────────────────────────── */
+    --ink-900: #0f1419;
+    --ink-700: #1a1d24;
+    --ink-500: #475569;
+    --ink-300: #94a3b8;
+
+    /* ─── V7 status ──────────────────────────────────────── */
+    --success-500: #16a34a;
+    --success-100: #dcfce7;
+    --info-500:    #1d4ed8;
+    --info-100:    #dbeafe;
+    --danger-500:  #ef4444;
   }
 
   .dark {

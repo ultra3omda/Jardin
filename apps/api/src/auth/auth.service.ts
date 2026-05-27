@@ -389,6 +389,21 @@ export class AuthService {
     return new Date(Date.now() + ms);
   }
 
+  /**
+   * V7 — Public alias used by DemoLoginService. Wraps the private
+   * `issueTokensAndBuildResponse` so callers outside this class can issue
+   * tokens for a (user, tenant) pair without going through password check.
+   */
+  async issueTokens(user: User, ip?: string | null): Promise<AuthResponseDto> {
+    return this.issueTokensAndBuildResponse(
+      user,
+      // We rely on the caller passing a user with `tenant` included or null.
+      // Cast is safe: TypeScript narrows via the cast and runtime accepts null.
+      (user as User & { tenant?: Tenant | null }).tenant ?? null,
+      { ip: ip ?? undefined, userAgent: undefined },
+    );
+  }
+
   private async issueTokensAndBuildResponse(
     user: User,
     tenant: Tenant | null,

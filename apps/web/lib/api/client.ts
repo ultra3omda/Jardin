@@ -78,6 +78,26 @@ export async function login(values: LoginFormValues): Promise<AuthSessionRespons
   });
 }
 
+// V7 — Demo login (1-click auto-login for showcased personas).
+// Rate-limited 60/h/IP on the server. Returns the same session shape as login().
+
+export type DemoPersona =
+  | 'admin-primary'
+  | 'admin-kindergarten'
+  | 'teacher-primary'
+  | 'teacher-kindergarten'
+  | 'parent-primary'
+  | 'parent-kindergarten'
+  | 'staff'
+  | 'super-admin';
+
+export async function demoLogin(persona: DemoPersona): Promise<AuthSessionResponse> {
+  return jsonRequest<AuthSessionResponse>(`${PROXY_BASE}/demo-login`, {
+    method: 'POST',
+    body: JSON.stringify({ persona }),
+  });
+}
+
 export async function register(values: RegisterFormValues): Promise<AuthSessionResponse> {
   return jsonRequest<AuthSessionResponse>(`${PROXY_BASE}/register`, {
     method: 'POST',

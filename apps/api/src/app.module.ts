@@ -7,6 +7,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BulletinsModule } from './bulletins/bulletins.module';
+import { DemoLoginModule } from './demo-login/demo-login.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -62,6 +63,7 @@ import { UsersModule } from './users/users.module';
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6
+    DemoLoginModule, // V7
   ],
   providers: [
     // V1.5 — Sentry global filter MUST be first so it catches every other

@@ -12,6 +12,7 @@ import { ModulesGrid } from '@/components/landing/modules-grid';
 import { Pricing } from '@/components/landing/pricing';
 import { SchoolSegments } from '@/components/landing/school-segments';
 import { Stats } from '@/components/landing/stats';
+import { TopNav } from '@/components/landing/top-nav';
 import { Trust } from '@/components/landing/trust';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,7 @@ export default function LandingPage({ params: { locale } }: Props) {
 
   return (
     <main className="min-h-screen bg-paper text-ink">
+      <TopNav />
       <Hero />
       <Stats />
       <SchoolSegments />
