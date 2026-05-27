@@ -178,6 +178,12 @@ export class ListStudentsQueryDto {
   @IsString()
   @MaxLength(100)
   search?: string;
+
+  @ApiPropertyOptional({ maxLength: 100, description: 'Filtre exact sur le champ classroom' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  classroom?: string;
 }
 
 export class ListStudentsResponseDto {

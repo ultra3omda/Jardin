@@ -39,16 +39,19 @@ export default function EvaluationsPage() {
     if (!token) return;
     setLoading(true); setFetchError(null);
     try {
-      const [evData, clData, subData, perData] = await Promise.all([
+      const [evRes, clRes, subRes, perRes] = await Promise.allSettled([
         apiFetch<{ items: Evaluation[] }>('/api/evaluations', token),
         apiFetch<{ items: ClassOption[] }>('/api/classes', token),
         apiFetch<{ items: SubjectOption[] }>('/api/subjects', token),
         apiFetch<{ items: PeriodOption[] }>('/api/grade-periods', token),
       ]);
-      setEvaluations(evData.items ?? []);
-      setClasses(clData.items ?? []);
-      setSubjects(subData.items ?? []);
-      setPeriods(perData.items ?? []);
+      if (evRes.status === 'fulfilled') setEvaluations(evRes.value.items ?? []);
+      if (clRes.status === 'fulfilled') setClasses(clRes.value.items ?? []);
+      if (subRes.status === 'fulfilled') setSubjects(subRes.value.items ?? []);
+      if (perRes.status === 'fulfilled') setPeriods(perRes.value.items ?? []);
+      const firstError = [evRes, clRes, subRes, perRes]
+        .find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+      if (firstError) setFetchError(firstError.reason instanceof Error ? firstError.reason.message : 'Erreur');
     } catch (e) { setFetchError(e instanceof Error ? e.message : 'Erreur'); }
     finally { setLoading(false); }
   }, [token]);

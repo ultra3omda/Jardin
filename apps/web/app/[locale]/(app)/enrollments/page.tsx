@@ -30,7 +30,7 @@ export default function EnrollmentsPage() {
     if (!token) return;
     setLoading(true); setFetchError(null);
     try {
-      const data = await apiFetch<{ items: Student[] }>('/api/students?limit=200', token);
+      const data = await apiFetch<{ items: Student[] }>('/api/students?pageSize=100', token);
       setStudents(data.items ?? []);
     } catch (e) { setFetchError(e instanceof Error ? e.message : 'Erreur'); }
     finally { setLoading(false); }
