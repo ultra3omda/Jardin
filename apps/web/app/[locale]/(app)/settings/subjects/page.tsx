@@ -70,8 +70,11 @@ export default function SubjectsSettingsPage() {
     setLoading(true);
     setFetchError(null);
     try {
-      const data = await apiFetch<Subject[]>('/api/subjects', accessToken);
-      setSubjects(Array.isArray(data) ? data : []);
+      const data = await apiFetch<{ items: Subject[]; total: number }>(
+        '/api/subjects',
+        accessToken,
+      );
+      setSubjects(data.items ?? []);
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Erreur de chargement.');
     } finally {

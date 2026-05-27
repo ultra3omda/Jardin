@@ -21,6 +21,28 @@ interface GradePeriod {
   status: GradePeriodStatus;
 }
 
+/** Shape returned by the NestJS API (GradePeriodResponseDto). */
+interface ApiGradePeriod {
+  id: string;
+  name: string;
+  schoolYear: string;
+  startDate: string;
+  endDate: string;
+  isClosed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function fromApi(p: ApiGradePeriod): GradePeriod {
+  return {
+    id: p.id,
+    name: p.name,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    status: p.isClosed ? 'CLOSED' : 'OPEN',
+  };
+}
+
 async function apiFetch<T>(
   path: string,
   token: string,
@@ -101,8 +123,11 @@ export default function GradePeriodsSettingsPage() {
     setLoading(true);
     setFetchError(null);
     try {
-      const data = await apiFetch<GradePeriod[]>('/api/grade-periods', accessToken);
-      setPeriods(Array.isArray(data) ? data : []);
+      const data = await apiFetch<{ items: ApiGradePeriod[]; total: number }>(
+        '/api/grade-periods',
+        accessToken,
+      );
+      setPeriods((data.items ?? []).map(fromApi));
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : 'Erreur de chargement.');
     } finally {
@@ -130,18 +155,18 @@ export default function GradePeriodsSettingsPage() {
   async function handleModalSubmit(values: GradePeriodFormValues) {
     if (!accessToken) throw new Error('Session expirée.');
     if (editTarget) {
-      const updated = await apiFetch<GradePeriod>(
+      const updated = await apiFetch<ApiGradePeriod>(
         `/api/grade-periods/${editTarget.id}`,
         accessToken,
         { method: 'PATCH', body: JSON.stringify(values) },
       );
-      setPeriods((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setPeriods((prev) => prev.map((p) => (p.id === updated.id ? fromApi(updated) : p)));
     } else {
-      const created = await apiFetch<GradePeriod>('/api/grade-periods', accessToken, {
+      const created = await apiFetch<ApiGradePeriod>('/api/grade-periods', accessToken, {
         method: 'POST',
         body: JSON.stringify(values),
       });
-      setPeriods((prev) => [...prev, created]);
+      setPeriods((prev) => [...prev, fromApi(created)]);
     }
   }
 
@@ -149,12 +174,12 @@ export default function GradePeriodsSettingsPage() {
     if (!closeTarget || !accessToken) return;
     setCloseError(null);
     try {
-      const updated = await apiFetch<GradePeriod>(
+      const updated = await apiFetch<ApiGradePeriod>(
         `/api/grade-periods/${closeTarget.id}/close`,
         accessToken,
         { method: 'POST', body: '{}' },
       );
-      setPeriods((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setPeriods((prev) => prev.map((p) => (p.id === updated.id ? fromApi(updated) : p)));
       setCloseTarget(null);
     } catch (err) {
       setCloseError(err instanceof Error ? err.message : 'Clôture échouée.');
