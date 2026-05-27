@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-/** V6 — Passthrough proxy `/api/grade-periods*` → NestJS `/api/grade-periods*`. */
+/** V7-E — Passthrough proxy `/api/notifications*` → NestJS `/api/notifications*`. */
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 if (!/^https?:\/\//.test(API_URL)) {
@@ -23,6 +23,9 @@ export async function POST(req: NextRequest, ctx: Context): Promise<NextResponse
 export async function PATCH(req: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(req, ctx, 'PATCH');
 }
+export async function PUT(req: NextRequest, ctx: Context): Promise<NextResponse> {
+  return passthrough(req, ctx, 'PUT');
+}
 export async function DELETE(req: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(req, ctx, 'DELETE');
 }
@@ -30,7 +33,7 @@ export async function DELETE(req: NextRequest, ctx: Context): Promise<NextRespon
 async function passthrough(
   req: NextRequest,
   ctx: Context,
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
 ): Promise<NextResponse> {
   const action = ctx.params.action?.join('/') ?? '';
   const auth = req.headers.get('authorization');
@@ -39,16 +42,14 @@ async function passthrough(
   }
   const url = new URL(req.url);
   const suffix = action ? `/${action}` : '';
-  const target = `${API_URL}/api/grade-periods${suffix}${url.search}`;
+  const target = `${API_URL}/api/notifications${suffix}${url.search}`;
 
   const headers: Record<string, string> = { Authorization: auth };
-  if (method !== 'GET' && method !== 'DELETE') {
+  const hasBody = method !== 'GET' && method !== 'DELETE';
+  if (hasBody) {
     headers['Content-Type'] = req.headers.get('content-type') ?? 'application/json';
   }
-  let body: BodyInit | undefined;
-  if (method !== 'GET' && method !== 'DELETE') {
-    body = await req.text();
-  }
+  const body: BodyInit | undefined = hasBody ? await req.text() : undefined;
 
   const upstream = await fetch(target, { method, headers, body });
   const text = await upstream.text();

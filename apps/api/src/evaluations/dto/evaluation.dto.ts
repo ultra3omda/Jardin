@@ -111,3 +111,35 @@ export class EvaluationWithGradesResponseDto {
   @ApiProperty({ type: [GradeResponseDto] })
   grades!: GradeResponseDto[];
 }
+
+// ─── Mobile aggregation DTOs ───────────────────────────────────────────────
+
+export class SubjectGradeDto {
+  @ApiProperty() subjectName!: string;
+  @ApiPropertyOptional() subjectEmoji?: string;
+  @ApiPropertyOptional({ type: Number, nullable: true }) grade!: number | null;
+  @ApiProperty() outOf!: number;
+  @ApiProperty() coefficient!: number;
+}
+
+export class ChildGradesDto {
+  @ApiProperty() childName!: string;
+  @ApiProperty() className!: string;
+  @ApiProperty({ type: [SubjectGradeDto] }) subjects!: SubjectGradeDto[];
+  @ApiPropertyOptional({ type: Number, nullable: true }) average!: number | null;
+}
+
+export class ClassEvalStatsDto {
+  @ApiProperty() className!: string;
+  @ApiProperty() subjectName!: string;
+  @ApiPropertyOptional({ type: Number, nullable: true }) average!: number | null;
+  @ApiProperty() studentCount!: number;
+  @ApiProperty() doneCount!: number;
+}
+
+export class AdminClassPerfDto {
+  @ApiProperty() className!: string;
+  @ApiPropertyOptional({ type: Number, nullable: true }) overall!: number | null;
+  @ApiProperty() topSubject!: string;
+  @ApiProperty() studentCount!: number;
+}

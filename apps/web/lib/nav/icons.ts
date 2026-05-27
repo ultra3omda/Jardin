@@ -28,6 +28,8 @@ import {
   CalendarCheck,
   Scale,
   HeartHandshake,
+  BookMarked,
+  CalendarRange,
 } from 'lucide-react';
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -54,6 +56,7 @@ export const ICONS: Record<string, LucideIcon> = {
   messages: MessagesSquare,
   announcements: Megaphone,
   payments: CreditCard,
+  billing: CreditCard,
   hrPayroll: Wallet,
   tenants: School,
   audit: Shield,
@@ -61,4 +64,6 @@ export const ICONS: Record<string, LucideIcon> = {
   logout: LogOut,
   bell: Bell,
   search: Search,
+  subjects: BookMarked,
+  gradePeriods: CalendarRange,
 };

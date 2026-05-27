@@ -82,6 +82,8 @@ model Tenant {
   evaluations     Evaluation[] // V6
   grades          Grade[] // V6
   bulletins       Bulletin[] // V6
+  invoices        Invoice[] // V8
+  notifications   Notification[] // V8
 
   @@index([slug])
   @@map("tenants")
@@ -116,6 +118,7 @@ model User {
   timeSlotAssignments        TimeSlot[]                @relation("SlotTeacher") // V4
   evaluationsCreated         Evaluation[]              @relation("EvaluationsCreated") // V6
   bulletinsGenerated         Bulletin[]                @relation("BulletinsGenerated") // V6
+  notifications              Notification[] // V8
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -269,6 +272,7 @@ model Student {
   parentRelations ParentStudent[]
   grades          Grade[] // V6
   bulletins       Bulletin[] // V6
+  invoices        Invoice[] // V8
 
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
@@ -432,13 +436,15 @@ model TimeSlot {
 // V6 — Matière scolaire (ex. "Mathématiques", "Français"). Tenant-scoped.
 // Indépendante du legacy string `subject` sur ClassTeacher/TimeSlot (FK V6-B).
 model Subject {
-  id        String    @id // cuid2
-  tenantId  String
-  name      String
-  code      String? // ex. "MATH", "FR"
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime? // soft-delete
+  id          String    @id // cuid2
+  tenantId    String
+  name        String
+  code        String?   // ex. "MATH", "FR"
+  emoji       String?   // optional emoji icon e.g. "📐"
+  coefficient Float     @default(1) // grade weight 1-10
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // soft-delete
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   evaluations Evaluation[]
@@ -541,4 +547,100 @@ model Bulletin {
   @@index([tenantId])
   @@index([gradePeriodId])
   @@map("bulletins")
+}
+
+// ============================================================================
+// V8 — Finance
+// ============================================================================
+
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id        String        @id @default(cuid())
+  tenantId  String
+  studentId String?
+  title     String
+  amount    Decimal       @db.Decimal(10, 3)
+  currency  String        @default("TND")
+  status    InvoiceStatus @default(PENDING)
+  dueDate   DateTime
+  paidAt    DateTime?
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student  Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  label     String
+  quantity  Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 3)
+  amount    Decimal @db.Decimal(10, 3)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  invoiceId String
+  amount    Decimal  @db.Decimal(10, 3)
+  method    String   // "cash" | "bank_transfer" | "stripe" | "konnect"
+  reference String?
+  notes     String?
+  paidAt    DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+// ============================================================================
+// V8 — Notifications
+// ============================================================================
+
+enum NotificationType {
+  MESSAGE
+  GRADE
+  ATTENDANCE
+  INVOICE
+  ANNOUNCEMENT
+  SYSTEM
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  tenantId  String
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([readAt])
 }

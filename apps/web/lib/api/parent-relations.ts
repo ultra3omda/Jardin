@@ -40,7 +40,9 @@ export interface ListParentRelationsResponse {
 }
 
 export interface CreateParentRelationPayload {
-  parentUserId: string;
+  /** Provide parentUserId (cuid2) OR parentEmail — backend resolves the email lookup. */
+  parentUserId?: string;
+  parentEmail?: string;
   studentId: string;
   relationType: RelationType;
   isPrimaryContact?: boolean;

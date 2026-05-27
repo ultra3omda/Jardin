@@ -109,15 +109,24 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
       id: 'finance',
       label: 'Finance',
       items: [
-        { id: 'payments',  label: 'Paiements',  href: '/payments',   icon: ICONS.payments },
-        { id: 'hrPayroll', label: 'RH / Paie',  href: '/hr',         icon: ICONS.hrPayroll },
+        { id: 'billing',   label: 'Facturation', href: '/billing',    icon: ICONS.billing },
+        { id: 'payments',  label: 'Paiements',   href: '/payments',   icon: ICONS.payments },
+        { id: 'hrPayroll', label: 'RH / Paie',   href: '/hr',         icon: ICONS.hrPayroll },
+      ],
+    },
+    {
+      id: 'parametres',
+      label: 'Paramètres',
+      items: [
+        { id: 'subjects',     label: 'Matières',   href: '/settings/subjects',      icon: ICONS.subjects },
+        { id: 'gradePeriods', label: 'Trimestres', href: '/settings/grade-periods', icon: ICONS.gradePeriods },
       ],
     },
     {
       id: 'compte',
       label: 'Compte',
       items: [
-        { id: 'profile',  label: 'Profil',    href: '/profile',          icon: ICONS.branding },
+        { id: 'profile',  label: 'Profil',    href: '/profile',           icon: ICONS.branding },
         { id: 'branding', label: 'Apparence', href: '/settings/branding', icon: ICONS.branding },
       ],
     },
@@ -219,7 +228,7 @@ function platformNav(): NavSection[] {
       { id: 'dashboard',     label: 'Vue plateforme', href: '/admin',          icon: ICONS.dashboard },
       { id: 'tenants',       label: 'Tenants',        href: '/admin/tenants',  icon: ICONS.tenants },
       { id: 'demoRequests',  label: 'Demandes démo',  href: '/admin/demo',     icon: ICONS.bell },
-      { id: 'inviteTokens',  label: 'Invites tokens', href: '/admin/invites',  icon: ICONS.enrollments },
+      { id: 'inviteTokens',  label: 'Invitations',    href: '/admin/invite-tokens', icon: ICONS.enrollments },
     ]},
     { id: 'systeme', label: 'Système', items: [
       { id: 'audit',     label: 'Audit logs', href: '/admin/audit',     icon: ICONS.audit },

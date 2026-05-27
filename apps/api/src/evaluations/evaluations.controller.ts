@@ -18,6 +18,9 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import {
+  AdminClassPerfDto,
+  ChildGradesDto,
+  ClassEvalStatsDto,
   CreateEvaluationDto,
   EvaluationResponseDto,
   EvaluationWithGradesResponseDto,
@@ -59,6 +62,34 @@ export class EvaluationsController {
   ): Promise<EvaluationResponseDto> {
     return this.service.createEvaluation(dto, user);
   }
+
+  // ─── Mobile aggregation routes (must be declared before /:id) ───────────
+
+  @Get('my-grades')
+  @Roles(UserRole.PARENT)
+  @ApiOperation({ summary: 'PARENT — grades for all linked children (current period)' })
+  @ApiResponse({ status: 200, type: [ChildGradesDto] })
+  myGrades(@CurrentUser() user: AuthenticatedUser): Promise<ChildGradesDto[]> {
+    return this.service.getMyGrades(user.tenantId!, user.id);
+  }
+
+  @Get('my-classes')
+  @Roles(UserRole.TEACHER)
+  @ApiOperation({ summary: 'TEACHER — evaluation progress per assigned class/subject' })
+  @ApiResponse({ status: 200, type: [ClassEvalStatsDto] })
+  myClasses(@CurrentUser() user: AuthenticatedUser): Promise<ClassEvalStatsDto[]> {
+    return this.service.getMyClassesStats(user.tenantId!, user.id);
+  }
+
+  @Get('admin-perf')
+  @Roles(UserRole.SCHOOL_ADMIN)
+  @ApiOperation({ summary: 'SCHOOL_ADMIN — class performance overview for current period' })
+  @ApiResponse({ status: 200, type: [AdminClassPerfDto] })
+  adminPerf(@CurrentUser() user: AuthenticatedUser): Promise<AdminClassPerfDto[]> {
+    return this.service.getAdminPerf(user.tenantId!);
+  }
+
+  // ─── Standard CRUD routes ─────────────────────────────────────────────────
 
   @Get(':id')
   @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)

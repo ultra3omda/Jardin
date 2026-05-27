@@ -20,15 +20,24 @@ import type {
 export class GradePeriodsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Derive school year from start date: months ≥ 7 (July) → "Y/Y+1", otherwise "(Y-1)/Y". */
+  private deriveSchoolYear(startDate: Date): string {
+    const y = startDate.getFullYear();
+    const m = startDate.getMonth() + 1; // 1-12
+    return m >= 7 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+  }
+
   async create(dto: CreateGradePeriodDto, user: AuthenticatedUser): Promise<GradePeriodResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
-    if (!/^\d{4}-\d{4}$/.test(dto.schoolYear)) {
-      throw new BadRequestException({ code: 'INVALID_SCHOOL_YEAR' });
-    }
     const start = new Date(dto.startDate);
     const end = new Date(dto.endDate);
     if (end <= start) {
       throw new BadRequestException({ code: 'INVALID_DATE_RANGE' });
+    }
+    // schoolYear is optional — auto-derive from startDate when absent.
+    const schoolYear = dto.schoolYear ?? this.deriveSchoolYear(start);
+    if (!/^\d{4}-\d{4}$/.test(schoolYear)) {
+      throw new BadRequestException({ code: 'INVALID_SCHOOL_YEAR' });
     }
     try {
       const created = await this.prisma.gradePeriod.create({
@@ -36,7 +45,7 @@ export class GradePeriodsService {
           id: createId(),
           tenantId: user.tenantId,
           name: dto.name,
-          schoolYear: dto.schoolYear,
+          schoolYear,
           startDate: start,
           endDate: end,
           isClosed: false,
