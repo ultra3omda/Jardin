@@ -1,98 +1,199 @@
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { Button, colors, radius } from '@klasso/ui-mobile';
 import { ApiError } from '@/lib/api/client';
 import { getTenantBrand } from '@/lib/api/tenant';
 import { saveTenantSlug } from '@/lib/auth/secure-storage';
 import { useTenantStore } from '@/lib/tenant/store';
 
+const DEMO_SHORTCUTS = [
+  { slug: 'demo-ecole', label: 'École primaire (démo)' },
+  { slug: 'demo-maternelle', label: "Jardin d'enfants (démo)" },
+] as const;
+
 export default function SchoolCodeScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
   const setTenant = useTenantStore((s) => s.setTenant);
 
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingShortcut, setLoadingShortcut] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleContinue() {
-    const slug = code.trim().toLowerCase();
-    if (!slug) return;
-
-    setIsLoading(true);
+  async function submitSlug(slug: string) {
+    setError(null);
     try {
       const data = await getTenantBrand(slug);
-      // Persister le slug pour les prochains démarrages
       await saveTenantSlug(slug);
-      // Mettre à jour le store
       setTenant(data.slug, data.name, data.brand);
-      // Naviguer vers le login
       router.replace('/(auth)/login');
     } catch (err: unknown) {
       const status = err instanceof ApiError ? err.status : 0;
-      if (status === 404) {
-        Alert.alert('Introuvable', t('onboarding.errorNotFound'));
-      } else {
-        Alert.alert('Erreur', t('onboarding.errorNetwork'));
-      }
-    } finally {
-      setIsLoading(false);
+      setError(
+        status === 404
+          ? 'Code école introuvable. Vérifiez et réessayez.'
+          : 'Erreur réseau. Vérifiez votre connexion.',
+      );
     }
+  }
+
+  async function handleContinue() {
+    const slug = code.trim().toLowerCase();
+    if (!slug || isLoading || loadingShortcut) return;
+    setIsLoading(true);
+    await submitSlug(slug);
+    setIsLoading(false);
+  }
+
+  async function handleShortcut(slug: string) {
+    if (isLoading || loadingShortcut) return;
+    setLoadingShortcut(slug);
+    await submitSlug(slug);
+    setLoadingShortcut(null);
   }
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, backgroundColor: colors.paper[50] }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View className="flex-1 justify-center px-8">
-        {/* Logo / Titre */}
-        <Text className="mb-2 text-center text-3xl font-bold text-indigo-600">
-          Klasso
-        </Text>
-        <Text className="mb-10 text-center text-base text-gray-500">
-          {t('onboarding.subtitle')}
-        </Text>
-
-        {/* Input code école */}
-        <TextInput
-          className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
-          placeholder={t('onboarding.placeholder')}
-          placeholderTextColor="#9ca3af"
-          value={code}
-          onChangeText={setCode}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="done"
-          onSubmitEditing={handleContinue}
-          editable={!isLoading}
-        />
-
-        {/* Bouton */}
-        <TouchableOpacity
-          className="items-center rounded-xl bg-indigo-600 py-4"
-          onPress={handleContinue}
-          disabled={isLoading || !code.trim()}
-          style={{ opacity: isLoading || !code.trim() ? 0.6 : 1 }}
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Hero block — navy */}
+        <View
+          style={{
+            backgroundColor: colors.navy[900],
+            padding: 24,
+            paddingTop: 64,
+            paddingBottom: 40,
+          }}
         >
-          {isLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-base font-semibold text-white">
-              {t('onboarding.continue')}
-            </Text>
+          <Text style={{ color: colors.white, fontSize: 24, fontWeight: '700' }}>
+            📘 Klasso
+          </Text>
+          <Text
+            style={{
+              color: colors.navy[500],
+              fontSize: 12,
+              marginTop: 2,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}
+          >
+            L'école à l'ère numérique
+          </Text>
+          <Text
+            style={{
+              color: colors.white,
+              fontSize: 22,
+              fontWeight: '600',
+              lineHeight: 28,
+              marginTop: 20,
+            }}
+          >
+            Bienvenue sur{' '}
+            <Text style={{ color: colors.ambre[500] }}>Klasso</Text>
+          </Text>
+        </View>
+
+        {/* Form block */}
+        <View style={{ padding: 24, gap: 14 }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '700',
+              color: colors.ink[900],
+              textAlign: 'center',
+            }}
+          >
+            Code de votre établissement
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.ink[500], textAlign: 'center' }}>
+            Entrez le code fourni par votre école
+          </Text>
+
+          {error && (
+            <View
+              style={{
+                backgroundColor: '#fee2e2',
+                borderRadius: radius.md,
+                padding: 12,
+              }}
+            >
+              <Text style={{ color: '#991b1b', fontSize: 13 }}>{error}</Text>
+            </View>
           )}
-        </TouchableOpacity>
-      </View>
+
+          <TextInput
+            value={code}
+            onChangeText={setCode}
+            placeholder="ex : mon-ecole"
+            placeholderTextColor={colors.ink[300]}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={handleContinue}
+            editable={!isLoading && !loadingShortcut}
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: radius.md,
+              padding: 14,
+              fontSize: 14,
+              color: colors.ink[900],
+              borderWidth: 1,
+              borderColor: colors.paper[100],
+            }}
+          />
+
+          <Button
+            label="Continuer"
+            onPress={handleContinue}
+            loading={isLoading}
+            disabled={!code.trim() || !!loadingShortcut}
+          />
+
+          {/* Demo shortcuts */}
+          <View
+            style={{
+              marginTop: 24,
+              padding: 16,
+              backgroundColor: colors.paper[100],
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.paper[100],
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 1,
+                color: colors.ink[500],
+                textAlign: 'center',
+                textTransform: 'uppercase',
+                marginBottom: 12,
+              }}
+            >
+              Accès rapide démonstration
+            </Text>
+            <View style={{ gap: 8 }}>
+              {DEMO_SHORTCUTS.map((s) => (
+                <Button
+                  key={s.slug}
+                  label={s.label}
+                  variant="secondary"
+                  onPress={() => handleShortcut(s.slug)}
+                  loading={loadingShortcut === s.slug}
+                  disabled={isLoading || !!loadingShortcut}
+                />
+              ))}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
