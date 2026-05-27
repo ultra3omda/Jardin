@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { AppShellClient } from './app-shell-client';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 /**
  * V1.6 (révisé 2026-05-23 PM) — (app) layout est un Server Component MINCE
@@ -23,5 +24,9 @@ import { AppShellClient } from './app-shell-client';
  * /auth/verify sans rotation.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
-  return <AppShellClient>{children}</AppShellClient>;
+  return (
+    <AppShellClient>
+      <ErrorBoundary>{children}</ErrorBoundary>
+    </AppShellClient>
+  );
 }

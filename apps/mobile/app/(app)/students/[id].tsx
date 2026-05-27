@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { Link, useLocalSearchParams } from 'expo-router';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { getStudent } from '@/lib/api/students';
 
@@ -108,6 +108,19 @@ export default function StudentDetailScreen() {
           <Text className="text-sm text-amber-900">{s.medicalNotes}</Text>
         </View>
       ) : null}
+
+      <Link
+        href={{ pathname: '/(app)/bulletin/[id]', params: { id: s.id } }}
+        asChild
+      >
+        <Pressable
+          className="mb-6 items-center rounded-xl bg-gray-900 py-4"
+          accessibilityRole="button"
+          accessibilityLabel="Voir le bulletin scolaire"
+        >
+          <Text className="text-base font-bold text-white">Voir le bulletin</Text>
+        </Pressable>
+      </Link>
     </ScrollView>
   );
 }

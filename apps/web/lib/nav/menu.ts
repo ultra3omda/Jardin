@@ -228,7 +228,7 @@ function platformNav(): NavSection[] {
       { id: 'dashboard',     label: 'Vue plateforme', href: '/admin',          icon: ICONS.dashboard },
       { id: 'tenants',       label: 'Tenants',        href: '/admin/tenants',  icon: ICONS.tenants },
       { id: 'demoRequests',  label: 'Demandes démo',  href: '/admin/demo',     icon: ICONS.bell },
-      { id: 'inviteTokens',  label: 'Invites tokens', href: '/admin/invites',  icon: ICONS.enrollments },
+      { id: 'inviteTokens',  label: 'Invitations',    href: '/admin/invite-tokens', icon: ICONS.enrollments },
     ]},
     { id: 'systeme', label: 'Système', items: [
       { id: 'audit',     label: 'Audit logs', href: '/admin/audit',     icon: ICONS.audit },

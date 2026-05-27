@@ -11,13 +11,16 @@
     },
     "ios": {
       "bundleIdentifier": "tn.klasso.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
-      "package": "tn.klasso.app"
+      "package": "tn.klasso.app",
+      "versionCode": 1,
+      "versionName": "1.0.0"
     },
     "web": {
       "bundler": "metro"

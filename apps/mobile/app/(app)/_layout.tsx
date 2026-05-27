@@ -2,9 +2,12 @@ import { Tabs } from 'expo-router';
 
 import { colors } from '@klasso/ui-mobile';
 import { getMobileTabs } from '@/lib/tabs';
+import { useUnreadCount } from '@/lib/api/notifications';
 
 export default function AppLayout() {
   const tabs = getMobileTabs();
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.count ?? 0;
 
   return (
     <Tabs
@@ -20,7 +23,15 @@ export default function AppLayout() {
       }}
     >
       {tabs.map((tab) => (
-        <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.label }} />
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.label,
+            tabBarBadge:
+              tab.name === 'notifications' && unreadCount > 0 ? unreadCount : undefined,
+          }}
+        />
       ))}
     </Tabs>
   );

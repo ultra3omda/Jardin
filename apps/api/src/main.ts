@@ -24,7 +24,30 @@ async function bootstrap(): Promise<void> {
 
   app.use(
     helmet({
-      contentSecurityPolicy: isProduction ? undefined : false,
+      // In development, disable CSP so the Swagger UI inline scripts work.
+      // In production, use an explicit policy rather than relying on Helmet's
+      // opinionated default — this makes the intent auditable.
+      contentSecurityPolicy: isProduction
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: ["'self'", 'data:', 'https:'],
+              fontSrc: ["'self'"],
+              connectSrc: ["'self'"],
+              frameSrc: ["'none'"],
+              objectSrc: ["'none'"],
+              upgradeInsecureRequests: [],
+            },
+          }
+        : false,
+      // Prevent clickjacking.
+      frameguard: { action: 'deny' },
+      // Prevent MIME-type sniffing.
+      noSniff: true,
+      // Only send the origin (no path) as Referer header.
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     }),
   );
 

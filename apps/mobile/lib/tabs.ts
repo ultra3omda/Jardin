@@ -7,8 +7,9 @@ export interface MobileTab {
 }
 
 /**
- * V7-B — Resolve the bottom tab bar items per persona.
+ * V7-E — Resolve the bottom tab bar items per persona.
  * Defaults to `parent` if EXPO_PUBLIC_PERSONA is unset or invalid.
+ * All personas include the notifications tab before profile.
  */
 export function getMobileTabs(): MobileTab[] {
   const raw = (process.env.EXPO_PUBLIC_PERSONA as string | undefined)?.toLowerCase();
@@ -19,14 +20,17 @@ export function getMobileTabs(): MobileTab[] {
       return [
         { name: 'dashboard', label: 'Tableau' },
         { name: 'students', label: 'Élèves' },
+        { name: 'classes', label: 'Classes' },
         { name: 'pedagogy', label: 'Pédagogie' },
+        { name: 'notifications', label: 'Notifs' },
         { name: 'profile', label: 'Profil' },
       ];
     case 'teacher':
       return [
         { name: 'dashboard', label: 'Accueil' },
-        { name: 'students', label: 'Mes classes' },
+        { name: 'classes', label: 'Mes classes' },
         { name: 'messages', label: 'Messages' },
+        { name: 'notifications', label: 'Notifs' },
         { name: 'profile', label: 'Profil' },
       ];
     case 'parent':
@@ -35,6 +39,7 @@ export function getMobileTabs(): MobileTab[] {
         { name: 'dashboard', label: 'Accueil' },
         { name: 'students', label: 'Mon enfant' },
         { name: 'messages', label: 'Messages' },
+        { name: 'notifications', label: 'Notifs' },
         { name: 'profile', label: 'Profil' },
       ];
   }

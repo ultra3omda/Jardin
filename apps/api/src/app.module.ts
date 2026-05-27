@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { BillingModule } from './billing/billing.module';
 import { BulletinsModule } from './bulletins/bulletins.module';
 import { DemoLoginModule } from './demo-login/demo-login.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
@@ -24,6 +25,7 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
 import { GradePeriodsModule } from './grade-periods/grade-periods.module';
 import { HealthModule } from './health/health.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { ParentRelationsModule } from './parent-relations/parent-relations.module';
 import { StudentsModule } from './students/students.module';
 import { SubjectsModule } from './subjects/subjects.module';
@@ -58,12 +60,14 @@ import { UsersModule } from './users/users.module';
     StudentsModule,
     ParentRelationsModule, // V3-A
     MessagingModule, // V3-B
+    NotificationsModule, // V8
     ClassesModule, // V4
     SubjectsModule, // V6
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6
     DemoLoginModule, // V7
+    BillingModule, // V8
   ],
   providers: [
     // V1.5 — Sentry global filter MUST be first so it catches every other

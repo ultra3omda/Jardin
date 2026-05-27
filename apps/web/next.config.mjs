@@ -4,10 +4,59 @@ import createNextIntlPlugin from 'next-intl/plugin';
 // V0 — i18n. Bilingual FR/AR via /fr and /ar sub-paths (next-intl middleware).
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
+/**
+ * Security headers applied to every response served by Next.js.
+ * CSP is intentionally permissive on script/style to accommodate
+ * shadcn/ui inline styles and next-intl; tighten per-route as needed.
+ */
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      // Next.js requires 'unsafe-eval' in dev; 'unsafe-inline' covers
+      // shadcn/ui CSS-in-JS and Tailwind inline styles.
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self' https://fonts.gstatic.com",
+      // API (Railway prod) + Vercel preview URLs + Sentry tunnel.
+      "connect-src 'self' https://api-klasso.railway.app https://*.vercel.app https://o4505000000000000.ingest.sentry.io",
+      "frame-src 'none'",
+      "object-src 'none'",
+    ].join('; '),
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=()',
+  },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@ecole-saas/shared'],
+  async headers() {
+    return [
+      {
+        // Apply security headers to all routes.
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
+  },
   // V0.7 — Allow Unsplash CDN for landing hero + trust accent photos.
   // Vercel Image Optimizer handles resize/format on its end; we ship no local
   // photo binary. CC0 license honored per ADR 0008 (Unsplash License).
