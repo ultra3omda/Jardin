@@ -1,0 +1,92 @@
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { createId } from '@paralleldrive/cuid2';
+import { UserRole } from '@prisma/client';
+
+import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
+import { PrismaService } from '../common/prisma/prisma.service';
+import {
+  AnnouncementResponseDto,
+  CreateAnnouncementDto,
+  ListAnnouncementsResponseDto,
+  UpdateAnnouncementDto,
+} from './dto/announcement.dto';
+
+@Injectable()
+export class AnnouncementsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private toDto(a: {
+    id: string; title: string; body: string; audience: string;
+    authorId: string; publishAt: Date; createdAt: Date; updatedAt: Date;
+    author: { firstName: string; lastName: string };
+  }): AnnouncementResponseDto {
+    return {
+      id: a.id, title: a.title, body: a.body,
+      audience: a.audience as AnnouncementResponseDto['audience'],
+      authorId: a.authorId, authorName: `${a.author.firstName} ${a.author.lastName}`,
+      publishAt: a.publishAt, createdAt: a.createdAt, updatedAt: a.updatedAt,
+    };
+  }
+
+  async list(user: AuthenticatedUser): Promise<ListAnnouncementsResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const rows = await this.prisma.announcement.findMany({
+      where: { tenantId: user.tenantId, deletedAt: null },
+      include: { author: { select: { firstName: true, lastName: true } } },
+      orderBy: { publishAt: 'desc' },
+    });
+    const items = rows.map((a) => this.toDto(a));
+    return { items, total: items.length };
+  }
+
+  async create(dto: CreateAnnouncementDto, user: AuthenticatedUser): Promise<AnnouncementResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const row = await this.prisma.announcement.create({
+      data: {
+        id: createId(),
+        tenantId: user.tenantId,
+        authorId: user.id,
+        title: dto.title,
+        body: dto.body,
+        audience: dto.audience ?? 'ALL',
+        publishAt: dto.publishAt ? new Date(dto.publishAt) : new Date(),
+      },
+      include: { author: { select: { firstName: true, lastName: true } } },
+    });
+    return this.toDto(row);
+  }
+
+  async update(id: string, dto: UpdateAnnouncementDto, user: AuthenticatedUser): Promise<AnnouncementResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const existing = await this.prisma.announcement.findFirst({
+      where: { id, tenantId: user.tenantId, deletedAt: null },
+    });
+    if (!existing) throw new NotFoundException('Announcement not found');
+    if (existing.authorId !== user.id && user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only the author or an admin can edit this announcement');
+    }
+    const row = await this.prisma.announcement.update({
+      where: { id },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.body !== undefined && { body: dto.body }),
+        ...(dto.audience !== undefined && { audience: dto.audience }),
+        ...(dto.publishAt !== undefined && { publishAt: new Date(dto.publishAt) }),
+      },
+      include: { author: { select: { firstName: true, lastName: true } } },
+    });
+    return this.toDto(row);
+  }
+
+  async remove(id: string, user: AuthenticatedUser): Promise<void> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const existing = await this.prisma.announcement.findFirst({
+      where: { id, tenantId: user.tenantId, deletedAt: null },
+    });
+    if (!existing) throw new NotFoundException('Announcement not found');
+    if (existing.authorId !== user.id && user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only the author or an admin can delete this announcement');
+    }
+    await this.prisma.announcement.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+}

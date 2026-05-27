@@ -14,7 +14,7 @@ if (!/^https?:\/\//.test(API_URL)) {
 }
 
 interface Context {
-  params: { action: string[] };
+  params: { action?: string[] };
 }
 
 export const dynamic = 'force-dynamic';

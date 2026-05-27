@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * V3-B — Passthrough proxy `/api/messaging*` → NestJS `/api/messaging*`.
- * Mirror du pattern V3-A `/api/parent-relations/[...action]/route.ts`.
- *
- * Note: Socket.IO traffic does NOT go through this route — clients connect
- * directly to NEXT_PUBLIC_API_URL (Railway) on the `/messaging` namespace.
- */
+// V1.6 — simple passthrough proxy for /api/admin/* endpoints. Used by the
+// tenant-branding admin UI. Pure Bearer auth (no refresh cookie management).
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 if (!/^https?:\/\//.test(API_URL)) {
@@ -16,7 +11,7 @@ if (!/^https?:\/\//.test(API_URL)) {
 }
 
 interface Context {
-  params: { action: string[] };
+  params: { action?: string[] };
 }
 
 export const dynamic = 'force-dynamic';
@@ -25,14 +20,23 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'GET');
 }
+
 export async function POST(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'POST');
+}
+
+export async function PATCH(request: NextRequest, ctx: Context): Promise<NextResponse> {
+  return passthrough(request, ctx, 'PATCH');
+}
+
+export async function DELETE(request: NextRequest, ctx: Context): Promise<NextResponse> {
+  return passthrough(request, ctx, 'DELETE');
 }
 
 async function passthrough(
   request: NextRequest,
   ctx: Context,
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
 ): Promise<NextResponse> {
   const action = ctx.params.action?.join('/') ?? '';
   const auth = request.headers.get('authorization');
@@ -40,21 +44,20 @@ async function passthrough(
     return NextResponse.json({ message: 'Missing Authorization header' }, { status: 401 });
   }
 
-  const url = new URL(request.url);
-  const suffix = action ? `/${action}` : '';
-  const targetUrl = `${API_URL}/api/messaging${suffix}${url.search}`;
-
-  const headers: Record<string, string> = { Authorization: auth };
-  if (method !== 'GET') {
-    headers['Content-Type'] = request.headers.get('content-type') ?? 'application/json';
+  const init: RequestInit = {
+    method,
+    headers: {
+      Authorization: auth,
+      ...(method !== 'GET' && method !== 'DELETE'
+        ? { 'Content-Type': 'application/json' }
+        : {}),
+    },
+  };
+  if (method !== 'GET' && method !== 'DELETE') {
+    init.body = await request.text();
   }
 
-  let body: BodyInit | undefined;
-  if (method !== 'GET') {
-    body = await request.text();
-  }
-
-  const upstream = await fetch(targetUrl, { method, headers, body });
+  const upstream = await fetch(`${API_URL}/api/admin${action ? `/${action}` : ''}${new URL(request.url).search}`, init);
   const text = await upstream.text();
   return new NextResponse(text || null, {
     status: upstream.status,

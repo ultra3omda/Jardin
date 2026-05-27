@@ -15,14 +15,14 @@ if (!/^https?:\/\//.test(API_URL)) {
 }
 
 interface Context {
-  params: { action: string[] };
+  params: { action?: string[] };
 }
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest, ctx: Context): Promise<NextResponse> {
-  const action = ctx.params.action.join('/');
+  const action = ctx.params.action?.join('/') ?? '';
   switch (action) {
     case 'login':
     case 'register':
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, ctx: Context): Promise<NextResp
 }
 
 export async function GET(request: NextRequest, ctx: Context): Promise<NextResponse> {
-  const action = ctx.params.action.join('/');
+  const action = ctx.params.action?.join('/') ?? '';
   if (action !== 'me') {
     return NextResponse.json({ message: 'Unknown auth action' }, { status: 404 });
   }

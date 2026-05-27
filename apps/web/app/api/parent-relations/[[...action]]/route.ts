@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// V1.6 — simple passthrough proxy for /api/admin/* endpoints. Used by the
-// tenant-branding admin UI. Pure Bearer auth (no refresh cookie management).
+/**
+ * V3-A — Passthrough proxy `/api/parent-relations*` → NestJS API.
+ * Mirror du pattern V2 `/api/students/[...action]/route.ts`.
+ */
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 if (!/^https?:\/\//.test(API_URL)) {
@@ -11,7 +13,7 @@ if (!/^https?:\/\//.test(API_URL)) {
 }
 
 interface Context {
-  params: { action: string[] };
+  params: { action?: string[] };
 }
 
 export const dynamic = 'force-dynamic';
@@ -20,15 +22,12 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'GET');
 }
-
 export async function POST(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'POST');
 }
-
 export async function PATCH(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'PATCH');
 }
-
 export async function DELETE(request: NextRequest, ctx: Context): Promise<NextResponse> {
   return passthrough(request, ctx, 'DELETE');
 }
@@ -38,26 +37,27 @@ async function passthrough(
   ctx: Context,
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
 ): Promise<NextResponse> {
-  const action = ctx.params.action.join('/');
+  const action = ctx.params.action?.join('/') ?? '';
   const auth = request.headers.get('authorization');
   if (!auth) {
     return NextResponse.json({ message: 'Missing Authorization header' }, { status: 401 });
   }
 
-  const init: RequestInit = {
-    method,
-    headers: {
-      Authorization: auth,
-      ...(method !== 'GET' && method !== 'DELETE'
-        ? { 'Content-Type': 'application/json' }
-        : {}),
-    },
-  };
+  const url = new URL(request.url);
+  const suffix = action ? `/${action}` : '';
+  const targetUrl = `${API_URL}/api/parent-relations${suffix}${url.search}`;
+
+  const headers: Record<string, string> = { Authorization: auth };
   if (method !== 'GET' && method !== 'DELETE') {
-    init.body = await request.text();
+    headers['Content-Type'] = request.headers.get('content-type') ?? 'application/json';
   }
 
-  const upstream = await fetch(`${API_URL}/api/admin/${action}`, init);
+  let body: BodyInit | undefined;
+  if (method !== 'GET' && method !== 'DELETE') {
+    body = await request.text();
+  }
+
+  const upstream = await fetch(targetUrl, { method, headers, body });
   const text = await upstream.text();
   return new NextResponse(text || null, {
     status: upstream.status,
