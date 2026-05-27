@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { colors } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { getSavedTenantSlug } from '@/lib/auth/secure-storage';
 import { refreshSession } from '@/lib/api/auth';
@@ -63,8 +64,15 @@ export default function Index() {
 
   // Spinner pendant le boot
   return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <ActivityIndicator size="large" color="#6366f1" />
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.navy[900],
+      }}
+    >
+      <ActivityIndicator size="large" color={colors.ambre[500]} />
     </View>
   );
 }
