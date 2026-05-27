@@ -109,15 +109,24 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
       id: 'finance',
       label: 'Finance',
       items: [
-        { id: 'payments',  label: 'Paiements',  href: '/payments',   icon: ICONS.payments },
-        { id: 'hrPayroll', label: 'RH / Paie',  href: '/hr',         icon: ICONS.hrPayroll },
+        { id: 'billing',   label: 'Facturation', href: '/billing',    icon: ICONS.billing },
+        { id: 'payments',  label: 'Paiements',   href: '/payments',   icon: ICONS.payments },
+        { id: 'hrPayroll', label: 'RH / Paie',   href: '/hr',         icon: ICONS.hrPayroll },
+      ],
+    },
+    {
+      id: 'parametres',
+      label: 'Paramètres',
+      items: [
+        { id: 'subjects',     label: 'Matières',   href: '/settings/subjects',      icon: ICONS.subjects },
+        { id: 'gradePeriods', label: 'Trimestres', href: '/settings/grade-periods', icon: ICONS.gradePeriods },
       ],
     },
     {
       id: 'compte',
       label: 'Compte',
       items: [
-        { id: 'profile',  label: 'Profil',    href: '/profile',          icon: ICONS.branding },
+        { id: 'profile',  label: 'Profil',    href: '/profile',           icon: ICONS.branding },
         { id: 'branding', label: 'Apparence', href: '/settings/branding', icon: ICONS.branding },
       ],
     },
