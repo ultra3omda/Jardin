@@ -73,7 +73,7 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
       label: 'Administration',
       items: [
         { id: 'establishment', label: 'Établissement',                    href: '/settings/establishment', icon: ICONS.establishment },
-        { id: 'schoolYear',    label: 'Année scolaire',                   href: '/grade-periods',          icon: ICONS.schoolYear },
+        { id: 'schoolYear',    label: 'Année scolaire',                   href: '/settings/grade-periods', icon: ICONS.schoolYear },
         { id: 'classes',       label: isKG ? "Groupes d'âge" : 'Classes', href: '/classes',                icon: ICONS.classes },
       ],
     },
