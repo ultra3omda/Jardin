@@ -56,10 +56,10 @@ const SCHOOL_ADMIN_PRIMARY: DashboardConfig = {
     { label: 'Moyenne Générale',    variant: 'amber',  icon: GraduationCap, selectorKey: 'globalAverage',  sub: 'Sur {classesCount} classes' },
   ],
   actions: [
-    { label: 'Saisir les absences', href: '/absences/new',     icon: ClipboardList },
-    { label: 'Voir les paiements',  href: '/payments',         icon: CreditCard },
-    { label: 'Ajouter un élève',    href: '/students/new',     icon: PlusCircle },
-    { label: 'Créer une annonce',   href: '/announcements/new', icon: Megaphone },
+    { label: 'Saisir les absences', href: '/absences',      icon: ClipboardList },
+    { label: 'Voir les paiements',  href: '/payments',      icon: CreditCard },
+    { label: 'Ajouter un élève',    href: '/students',      icon: PlusCircle },
+    { label: 'Créer une annonce',   href: '/announcements', icon: Megaphone },
   ],
   panels: ['absencesToday', 'upcomingDeadlines', 'latestNotes', 'announcements'],
 };
@@ -73,10 +73,10 @@ const SCHOOL_ADMIN_KG: DashboardConfig = {
     { label: 'Photos du jour', variant: 'amber', icon: Camera,   selectorKey: 'photosToday' },
   ],
   actions: [
-    { label: 'Photo du jour', href: '/journal/new',     icon: Camera },
-    { label: 'Activité',      href: '/activities/new',  icon: Sparkles },
-    { label: 'Pointage',      href: '/absences/new',    icon: ClipboardList },
-    { label: 'Annonce',       href: '/announcements/new', icon: Megaphone },
+    { label: 'Photo du jour', href: '/journal',      icon: Camera },
+    { label: 'Activité',      href: '/activities',   icon: Sparkles },
+    { label: 'Pointage',      href: '/absences',     icon: ClipboardList },
+    { label: 'Annonce',       href: '/announcements', icon: Megaphone },
   ],
   panels: ['journalToday', 'announcements'],
 };
@@ -90,10 +90,10 @@ const TEACHER_PRIMARY: DashboardConfig = {
     { label: 'Cours aujourd\'hui',  variant: 'green',  icon: Calendar, selectorKey: 'todayLessons' },
   ],
   actions: [
-    { label: 'Nouvelle évaluation', href: '/evaluations/new',   icon: PlusCircle },
-    { label: 'Pointer',             href: '/absences/new',      icon: ClipboardList },
-    { label: 'Message parent',      href: '/messages',          icon: Mail },
-    { label: 'Bulletins',           href: '/bulletins',         icon: FileText },
+    { label: 'Évaluations',    href: '/evaluations', icon: PlusCircle },
+    { label: 'Pointer',        href: '/absences',    icon: ClipboardList },
+    { label: 'Message parent', href: '/messages',    icon: Mail },
+    { label: 'Bulletins',      href: '/bulletins',   icon: FileText },
   ],
   panels: ['latestNotes', 'announcements'],
 };
@@ -107,10 +107,10 @@ const TEACHER_KG: DashboardConfig = {
     { label: 'Présents',       variant: 'green', icon: ClipboardList, selectorKey: 'presentToday' },
   ],
   actions: [
-    { label: 'Photo',     href: '/journal/new',    icon: Camera },
-    { label: 'Activité',  href: '/activities/new', icon: Sparkles },
-    { label: 'Pointage',  href: '/absences/new',   icon: ClipboardList },
-    { label: 'Message parent', href: '/messages',  icon: Mail },
+    { label: 'Photo',          href: '/journal',    icon: Camera },
+    { label: 'Activité',       href: '/activities', icon: Sparkles },
+    { label: 'Pointage',       href: '/absences',   icon: ClipboardList },
+    { label: 'Message parent', href: '/messages',   icon: Mail },
   ],
   panels: ['journalToday', 'announcements'],
 };
@@ -175,10 +175,10 @@ const SUPER_ADMIN_CONFIG: DashboardConfig = {
     { label: 'Démos',          variant: 'orange', icon: Megaphone, selectorKey: 'pendingDemos' },
   ],
   actions: [
-    { label: 'Nouvelle école', href: '/admin/tenants/new', icon: PlusCircle },
-    { label: 'Invite',         href: '/admin/invites/new', icon: Mail },
-    { label: 'Analytics',      href: '/admin/analytics',   icon: BookOpen },
-    { label: 'Incidents',      href: '/admin/audit',       icon: ShieldAlert },
+    { label: 'Tenants',    href: '/admin/tenants',       icon: PlusCircle },
+    { label: 'Invitations', href: '/admin/invite-tokens', icon: Mail },
+    { label: 'Analytics',  href: '/admin/analytics',     icon: BookOpen },
+    { label: 'Audit',      href: '/admin/audit',         icon: ShieldAlert },
   ],
   panels: ['demoRequests', 'incidents'],
 };

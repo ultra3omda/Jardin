@@ -13,8 +13,8 @@ const DEMO_CONVERSATIONS: Conversation[] = [
     createdAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
     updatedAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
     participants: [
-      CURRENT_USER_DEMO,
       { userId: 'demo-parent-1', firstName: 'Fatma', lastName: 'Trabelsi', email: 'parent@demo.tn' },
+      CURRENT_USER_DEMO,
     ],
     lastMessage: { id: 'msg-1', body: 'Bonjour, pouvez-vous me confirmer les horaires de la réunion parents-professeurs ?', senderId: 'demo-parent-1', createdAt: new Date(Date.now() - 2 * 3600_000).toISOString() },
     unreadCount: 2,
@@ -24,8 +24,8 @@ const DEMO_CONVERSATIONS: Conversation[] = [
     createdAt: new Date(Date.now() - 1 * 86400_000).toISOString(),
     updatedAt: new Date(Date.now() - 1 * 86400_000).toISOString(),
     participants: [
-      CURRENT_USER_DEMO,
       { userId: 'demo-parent-2', firstName: 'Ahmed', lastName: 'Ben Ali', email: 'ahmed@demo.tn' },
+      CURRENT_USER_DEMO,
     ],
     lastMessage: { id: 'msg-2', body: 'Vous : Merci pour votre message, le bulletin sera disponible vendredi.', senderId: 'demo-current', createdAt: new Date(Date.now() - 1 * 86400_000).toISOString() },
     unreadCount: 0,
@@ -35,8 +35,8 @@ const DEMO_CONVERSATIONS: Conversation[] = [
     createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
     updatedAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
     participants: [
-      CURRENT_USER_DEMO,
       { userId: 'demo-teacher-1', firstName: 'Mme', lastName: 'Martin', email: 'prof@demo.tn' },
+      CURRENT_USER_DEMO,
     ],
     lastMessage: { id: 'msg-3', body: 'Rappel : sortie pédagogique mercredi, prévoir une tenue adaptée.', senderId: 'demo-teacher-1', createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
     unreadCount: 1,
