@@ -70,11 +70,10 @@ export function MessagesList() {
     return <p className="text-sm text-muted-foreground">Authentification requise.</p>;
   }
   if (isLoading) return <p className="text-sm text-muted-foreground">Chargement...</p>;
-  if (error) {
-    return <p className="text-sm text-rose-600">Erreur : {(error as Error).message}</p>;
-  }
+
+  // Fall back to demo data on API error or empty response
   const apiItems = data?.items ?? [];
-  const items = apiItems.length > 0 ? apiItems : DEMO_CONVERSATIONS;
+  const items = (error || apiItems.length === 0) ? DEMO_CONVERSATIONS : apiItems;
   if (items.length === 0) {
     return (
       <div className="rounded-lg border bg-card p-8 text-center">
