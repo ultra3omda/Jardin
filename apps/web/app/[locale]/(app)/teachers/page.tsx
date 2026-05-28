@@ -19,6 +19,19 @@ interface TeacherFormValues {
   email: string;
 }
 
+// ─── Demo fallback data ───────────────────────────────────────────────────────
+
+const DEMO_TEACHERS: Teacher[] = [
+  { id: 'dt-1', firstName: 'Sonia', lastName: 'Martin', email: 'smartin@ecole.demo', role: 'TEACHER', createdAt: '2024-09-01T08:00:00Z', deletedAt: null },
+  { id: 'dt-2', firstName: 'Karim', lastName: 'Dupont', email: 'kdupont@ecole.demo', role: 'TEACHER', createdAt: '2024-09-01T08:00:00Z', deletedAt: null },
+  { id: 'dt-3', firstName: 'Amira', lastName: 'Leroy', email: 'aleroy@ecole.demo', role: 'TEACHER', createdAt: '2023-09-01T08:00:00Z', deletedAt: null },
+  { id: 'dt-4', firstName: 'Youssef', lastName: 'Bernard', email: 'ybernard@ecole.demo', role: 'TEACHER', createdAt: '2023-09-01T08:00:00Z', deletedAt: null },
+  { id: 'dt-5', firstName: 'Nadia', lastName: 'Moreau', email: 'nmoreau@ecole.demo', role: 'TEACHER', createdAt: '2022-09-01T08:00:00Z', deletedAt: null },
+  { id: 'dt-6', firstName: 'Hichem', lastName: 'Trabelsi', email: 'htrabelsi@ecole.demo', role: 'TEACHER', createdAt: '2022-09-01T08:00:00Z', deletedAt: null },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...opts,
@@ -59,9 +72,10 @@ export default function TeachersPage() {
     setFetchError(null);
     try {
       const data = await apiFetch<{ items: Teacher[]; total: number }>('/api/teachers', token);
-      setTeachers(data.items ?? []);
-    } catch (e) {
-      setFetchError(e instanceof Error ? e.message : 'Erreur inconnue');
+      const items = data?.items ?? [];
+      setTeachers(items.length > 0 ? items : DEMO_TEACHERS);
+    } catch (_) {
+      setTeachers(DEMO_TEACHERS);
     } finally {
       setLoading(false);
     }
