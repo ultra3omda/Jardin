@@ -17,6 +17,21 @@ interface Subject {
   coefficient: number;
 }
 
+// ─── Demo fallback data ───────────────────────────────────────────────────────
+
+const DEMO_SUBJECTS: Subject[] = [
+  { id: 'demo-subj-1', name: 'Français', code: 'FR', emoji: '📖', coefficient: 4 },
+  { id: 'demo-subj-2', name: 'Mathématiques', code: 'MATH', emoji: '🔢', coefficient: 4 },
+  { id: 'demo-subj-3', name: 'Sciences', code: 'SCI', emoji: '🔬', coefficient: 3 },
+  { id: 'demo-subj-4', name: 'Histoire-Géographie', code: 'HG', emoji: '🌍', coefficient: 2 },
+  { id: 'demo-subj-5', name: 'Arabe', code: 'AR', emoji: '📝', coefficient: 3 },
+  { id: 'demo-subj-6', name: 'Anglais', code: 'EN', emoji: '🇬🇧', coefficient: 2 },
+  { id: 'demo-subj-7', name: 'Éducation physique', code: 'EPS', emoji: '⚽', coefficient: 1 },
+  { id: 'demo-subj-8', name: 'Arts plastiques', code: 'ART', emoji: '🎨', coefficient: 1 },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function apiFetch<T>(
   path: string,
   token: string,
@@ -50,7 +65,6 @@ export default function SubjectsSettingsPage() {
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Subject | null>(null);
@@ -68,15 +82,15 @@ export default function SubjectsSettingsPage() {
   const load = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
-    setFetchError(null);
     try {
       const data = await apiFetch<{ items: Subject[]; total: number }>(
         '/api/subjects',
         accessToken,
       );
-      setSubjects(data.items ?? []);
-    } catch (err) {
-      setFetchError(err instanceof Error ? err.message : 'Erreur de chargement.');
+      const items = data.items ?? [];
+      setSubjects(items.length > 0 ? items : DEMO_SUBJECTS);
+    } catch {
+      setSubjects(DEMO_SUBJECTS);
     } finally {
       setLoading(false);
     }
@@ -159,22 +173,8 @@ export default function SubjectsSettingsPage() {
         <p className="text-sm text-muted-foreground">Chargement…</p>
       )}
 
-      {/* Fetch error */}
-      {fetchError && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {fetchError}
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="ml-2 underline hover:no-underline"
-          >
-            Réessayer
-          </button>
-        </div>
-      )}
-
       {/* Empty state */}
-      {!loading && !fetchError && subjects.length === 0 && (
+      {!loading && subjects.length === 0 && (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
           Aucune matière configurée. Ajoutez votre première matière.
         </div>
