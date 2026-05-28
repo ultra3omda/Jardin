@@ -153,6 +153,116 @@ export default function DashboardPage() {
               </ul>
             </div>
           )}
+
+          {config.panels.includes('absencesToday') && (
+            <div className="rounded-2xl bg-surface p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-ink-900">Absences du jour</h2>
+                <span className="text-xs text-ink-300">Aujourd&apos;hui</span>
+              </div>
+              <div className="grid grid-cols-4 gap-3 mb-3">
+                {[
+                  { label: 'Présents', value: '38', color: 'text-green-600 bg-green-50' },
+                  { label: 'Absents', value: '4', color: 'text-red-600 bg-red-50' },
+                  { label: 'Retards', value: '2', color: 'text-yellow-600 bg-yellow-50' },
+                  { label: 'Excusés', value: '1', color: 'text-slate-600 bg-slate-50' },
+                ].map((s) => (
+                  <div key={s.label} className={`rounded-xl p-3 ${s.color}`}>
+                    <p className="text-lg font-bold">{s.value}</p>
+                    <p className="text-xs">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <ul className="space-y-2">
+                {[
+                  { name: 'Ibrahima Ba', class: 'CM1-A', status: 'Absent', statusColor: 'bg-red-100 text-red-700' },
+                  { name: 'Yasmine Gharbi', class: 'CE2-B', status: 'Retard', statusColor: 'bg-yellow-100 text-yellow-700' },
+                  { name: 'Khalil Mejri', class: 'CP-A', status: 'Excusé', statusColor: 'bg-slate-100 text-slate-600' },
+                ].map((a, i) => (
+                  <li key={i} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium text-ink-900">{a.name}</p>
+                      <p className="text-xs text-ink-300">{a.class}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.statusColor}`}>{a.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {config.panels.includes('upcomingDeadlines') && (
+            <div className="mt-4 rounded-2xl bg-surface p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-ink-900">Échéances à venir</h2>
+                <span className="text-xs text-ink-300">7 prochains jours</span>
+              </div>
+              <ul className="space-y-2">
+                {[
+                  { title: 'Conseil de classe CM2-A', date: 'Vendredi 21 mars', type: 'Réunion', typeColor: 'bg-blue-100 text-blue-700' },
+                  { title: 'Remise bulletins T2', date: 'Lundi 24 mars', type: 'Administratif', typeColor: 'bg-purple-100 text-purple-700' },
+                  { title: 'Sortie pédagogique CE2', date: 'Mercredi 26 mars', type: 'Activité', typeColor: 'bg-green-100 text-green-700' },
+                  { title: 'Clôture paiements T2', date: 'Vendredi 28 mars', type: 'Finance', typeColor: 'bg-orange-100 text-orange-700' },
+                ].map((d, i) => (
+                  <li key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink-900">{d.title}</p>
+                      <p className="text-xs text-ink-300">{d.date}</p>
+                    </div>
+                    <span className={`flex-none rounded-full px-2 py-0.5 text-xs font-medium ${d.typeColor}`}>{d.type}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {config.panels.includes('incidents') && (
+            <div className="rounded-2xl bg-surface p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-ink-900">Incidents récents</h2>
+                <span className="text-xs text-ink-300">7 derniers jours</span>
+              </div>
+              <ul className="space-y-2">
+                {[
+                  { title: 'Bagarre dans la cour', class: 'CE2-A', date: 'Hier', severity: 'Modéré', severityColor: 'bg-orange-100 text-orange-700' },
+                  { title: 'Matériel endommagé', class: 'CM1-B', date: 'Il y a 2 jours', severity: 'Mineur', severityColor: 'bg-yellow-100 text-yellow-700' },
+                  { title: 'Retard répété', class: 'CP-A', date: 'Il y a 4 jours', severity: 'Mineur', severityColor: 'bg-yellow-100 text-yellow-700' },
+                ].map((inc, i) => (
+                  <li key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink-900">{inc.title}</p>
+                      <p className="text-xs text-ink-300">{inc.class} · {inc.date}</p>
+                    </div>
+                    <span className={`flex-none rounded-full px-2 py-0.5 text-xs font-medium ${inc.severityColor}`}>{inc.severity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {config.panels.includes('demoRequests') && (
+            <div className="rounded-2xl bg-surface p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-ink-900">Demandes de démo</h2>
+                <span className="rounded-full bg-ambre-100 px-2 py-0.5 text-xs font-semibold text-ambre-700">3 en attente</span>
+              </div>
+              <ul className="space-y-2">
+                {[
+                  { school: "École El Amal — Sfax", contact: 'M. Zouari', date: "Aujourd'hui", status: 'Nouveau', statusColor: 'bg-blue-100 text-blue-700' },
+                  { school: 'Collège Ibn Khaldoun — Tunis', contact: 'Mme Haddad', date: 'Hier', status: 'Nouveau', statusColor: 'bg-blue-100 text-blue-700' },
+                  { school: 'École Privée Les Pins — Sousse', contact: 'M. Karoui', date: 'Il y a 2 jours', status: 'En cours', statusColor: 'bg-yellow-100 text-yellow-700' },
+                ].map((req, i) => (
+                  <li key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink-900">{req.school}</p>
+                      <p className="text-xs text-ink-300">{req.contact} · {req.date}</p>
+                    </div>
+                    <span className={`flex-none rounded-full px-2 py-0.5 text-xs font-medium ${req.statusColor}`}>{req.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         {config.panels.includes('announcements') && (
           <AnnouncementsPanel announcements={announcements} />

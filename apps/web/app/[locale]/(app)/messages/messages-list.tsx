@@ -6,6 +6,43 @@ import { Link } from '@/i18n/routing';
 import { listConversations, type Conversation } from '@/lib/api/messaging';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
+const CURRENT_USER_DEMO = { userId: 'demo-current', firstName: '', lastName: '', email: '' };
+const DEMO_CONVERSATIONS: Conversation[] = [
+  {
+    id: 'demo-conv-1',
+    createdAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
+    participants: [
+      CURRENT_USER_DEMO,
+      { userId: 'demo-parent-1', firstName: 'Fatma', lastName: 'Trabelsi', email: 'parent@demo.tn' },
+    ],
+    lastMessage: { id: 'msg-1', body: 'Bonjour, pouvez-vous me confirmer les horaires de la réunion parents-professeurs ?', senderId: 'demo-parent-1', createdAt: new Date(Date.now() - 2 * 3600_000).toISOString() },
+    unreadCount: 2,
+  },
+  {
+    id: 'demo-conv-2',
+    createdAt: new Date(Date.now() - 1 * 86400_000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 86400_000).toISOString(),
+    participants: [
+      CURRENT_USER_DEMO,
+      { userId: 'demo-parent-2', firstName: 'Ahmed', lastName: 'Ben Ali', email: 'ahmed@demo.tn' },
+    ],
+    lastMessage: { id: 'msg-2', body: 'Vous : Merci pour votre message, le bulletin sera disponible vendredi.', senderId: 'demo-current', createdAt: new Date(Date.now() - 1 * 86400_000).toISOString() },
+    unreadCount: 0,
+  },
+  {
+    id: 'demo-conv-3',
+    createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
+    participants: [
+      CURRENT_USER_DEMO,
+      { userId: 'demo-teacher-1', firstName: 'Mme', lastName: 'Martin', email: 'prof@demo.tn' },
+    ],
+    lastMessage: { id: 'msg-3', body: 'Rappel : sortie pédagogique mercredi, prévoir une tenue adaptée.', senderId: 'demo-teacher-1', createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
+    unreadCount: 1,
+  },
+];
+
 function otherParticipant(c: Conversation, currentUserId: string) {
   return c.participants.find((p) => p.userId !== currentUserId);
 }
@@ -36,13 +73,14 @@ export function MessagesList() {
   if (error) {
     return <p className="text-sm text-rose-600">Erreur : {(error as Error).message}</p>;
   }
-  const items = data?.items ?? [];
+  const apiItems = data?.items ?? [];
+  const items = apiItems.length > 0 ? apiItems : DEMO_CONVERSATIONS;
   if (items.length === 0) {
     return (
       <div className="rounded-lg border bg-card p-8 text-center">
         <p className="text-sm text-muted-foreground">Aucune conversation pour l&apos;instant.</p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Démarrez une conversation depuis la fiche d&apos;un parent (V3-B).
+          Démarrez une conversation depuis la fiche d&apos;un parent ou d&apos;un élève.
         </p>
       </div>
     );
