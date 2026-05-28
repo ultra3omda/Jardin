@@ -7,6 +7,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { InvoiceStatus, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
   BillingDashboardStatsDto,
   CreateInvoiceDto,
@@ -21,7 +22,10 @@ import type {
 
 @Injectable()
 export class BillingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fanout: NotificationFanoutService,
+  ) {}
 
   // ───── Queries ─────
 
@@ -120,6 +124,11 @@ export class BillingService {
         include: { items: true, payments: true },
       });
     });
+
+    // V10 — notify the student's parents of the new invoice. Fire-and-forget.
+    if (dto.studentId) {
+      void this.fanoutInvoiceNotification(tenantId, dto.studentId, Number(invoiceAmount));
+    }
 
     return this.toInvoiceResponse(created);
   }
@@ -251,6 +260,33 @@ export class BillingService {
   }
 
   // ───── Private mappers ─────
+
+  /**
+   * V10 — Fan-out an invoice notification to each parent of the billed student.
+   * Fire-and-forget; never blocks invoice creation.
+   */
+  private async fanoutInvoiceNotification(
+    tenantId: string,
+    studentId: string,
+    amount: number,
+  ): Promise<void> {
+    const parents = await this.prisma.parentStudent.findMany({
+      where: { tenantId, studentId },
+      select: { parentUserId: true },
+    });
+    if (parents.length === 0) return;
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, tenantId },
+      select: { firstName: true, lastName: true },
+    });
+    if (!student) return;
+    const studentName = `${student.firstName} ${student.lastName}`.trim();
+    await Promise.allSettled(
+      parents.map((p) =>
+        this.fanout.fanoutInvoice(tenantId, p.parentUserId, studentName, amount),
+      ),
+    );
+  }
 
   private toInvoiceResponse(inv: {
     id: string;

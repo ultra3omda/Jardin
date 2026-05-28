@@ -85,27 +85,31 @@ model Tenant {
   invoices        Invoice[] // V8
   notifications   Notification[] // V8
   announcements   Announcement[] // V9
-  attendances     Attendance[]   // V9
+  attendances     Attendance[] // V9
 
   @@index([slug])
   @@map("tenants")
 }
 
 model User {
-  id                String    @id
-  tenantId          String?
-  email             String
-  passwordHash      String
-  firstName         String
-  lastName          String
-  role              UserRole
-  locale            Locale    @default(fr)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime?
-  lastLoginAt       DateTime?
-  emailVerifiedAt   DateTime? // V1.5: null = not verified, date = verified
-  passwordChangedAt DateTime? // V1.5: set on password change to invalidate sessions
+  id                        String    @id
+  tenantId                  String?
+  email                     String
+  passwordHash              String
+  firstName                 String
+  lastName                  String
+  role                      UserRole
+  locale                    Locale    @default(fr)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  deletedAt                 DateTime?
+  lastLoginAt               DateTime?
+  emailVerifiedAt           DateTime? // V1.5: null = not verified, date = verified
+  passwordChangedAt         DateTime? // V1.5: set on password change to invalidate sessions
+  // V10: push notifications
+  expoPushToken             String?
+  pushEnabled               Boolean   @default(true)
+  emailNotificationsEnabled Boolean   @default(true)
 
   tenant                     Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   refreshTokens              RefreshToken[]
@@ -379,7 +383,7 @@ model Class {
   teachers    ClassTeacher[]
   timeSlots   TimeSlot[]
   evaluations Evaluation[] // V6
-  attendances Attendance[]   // V9
+  attendances Attendance[] // V9
 
   @@unique([tenantId, schoolYear, name], name: "unique_class_per_year")
   @@index([tenantId, schoolYear])
@@ -445,8 +449,8 @@ model Subject {
   id          String    @id // cuid2
   tenantId    String
   name        String
-  code        String?   // ex. "MATH", "FR"
-  emoji       String?   // optional emoji icon e.g. "📐"
+  code        String? // ex. "MATH", "FR"
+  emoji       String? // optional emoji icon e.g. "📐"
   coefficient Float     @default(1) // grade weight 1-10
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -609,7 +613,7 @@ model Payment {
   id        String   @id @default(cuid())
   invoiceId String
   amount    Decimal  @db.Decimal(10, 3)
-  method    String   // "cash" | "bank_transfer" | "stripe" | "konnect"
+  method    String // "cash" | "bank_transfer" | "stripe" | "konnect"
   reference String?
   notes     String?
   paidAt    DateTime @default(now())

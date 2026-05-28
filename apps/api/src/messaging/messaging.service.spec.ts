@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import { MessagingService } from './messaging.service';
 
 const tenantA = 'tenant_A';
@@ -18,7 +19,7 @@ const userB = { id: 'user_B' };
 
 function makePrismaMock() {
   return {
-    user: { findFirst: vi.fn() },
+    user: { findFirst: vi.fn(), findUnique: vi.fn() },
     conversation: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -41,11 +42,17 @@ function makePrismaMock() {
 describe('MessagingService', () => {
   let service: MessagingService;
   let prisma: ReturnType<typeof makePrismaMock>;
+  let fanout: { fanoutMessage: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
+    fanout = { fanoutMessage: vi.fn().mockResolvedValue(undefined) };
     const module = await Test.createTestingModule({
-      providers: [MessagingService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        MessagingService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NotificationFanoutService, useValue: fanout },
+      ],
     }).compile();
     service = module.get(MessagingService);
   });
@@ -105,6 +112,8 @@ describe('MessagingService', () => {
       readAt: null,
     });
     prisma.conversation.update.mockResolvedValueOnce({});
+    // V10 fan-out is fire-and-forget; no other participants → returns early.
+    prisma.conversationParticipant.findMany.mockResolvedValueOnce([]);
     const msg = await service.sendMessage({ conversationId: 'c_1', body: 'Hello' }, userA);
     expect(msg.body).toBe('Hello');
     expect(prisma.conversation.update).toHaveBeenCalledWith({

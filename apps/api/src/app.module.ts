@@ -20,6 +20,7 @@ import { validateEnv } from './common/config/env.validation';
 import { EmailModule } from './common/email/email.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { PushModule } from './common/push/push.module';
 import { R2Module } from './common/r2/r2.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { ClassesModule } from './classes/classes.module';
@@ -49,6 +50,7 @@ import { UsersModule } from './users/users.module';
     TenantModule,
     PrismaModule,
     EmailModule,
+    PushModule, // V10
     R2Module,
     ThrottlerModule.forRoot([
       { name: 'global', ttl: 60_000, limit: 100 },

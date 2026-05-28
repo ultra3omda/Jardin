@@ -6,7 +6,9 @@ import {
   CheckCircle2,
   Download,
   Loader2,
+  Mail,
   Monitor,
+  Smartphone,
   Trash2,
   XCircle,
 } from 'lucide-react';
@@ -40,15 +42,19 @@ import {
   ApiError,
   changeMyPassword,
   deleteAccount,
+  getNotificationPreferences,
   listSessions,
   logout,
   requestDataExport,
   revokeSession,
+  updateNotificationPreferences,
   updateProfile,
   type ExportResultResponse,
+  type NotificationPreferences,
   type SessionListItem,
 } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { cn } from '@/lib/utils';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'Prénom requis').max(100),
@@ -99,6 +105,7 @@ export default function ProfilePage() {
 
       <ProfileCard accessToken={accessToken} setSession={setSession} />
       <PasswordCard accessToken={accessToken} router={router} />
+      <NotificationsCard accessToken={accessToken} />
       <SessionsCard accessToken={accessToken} />
       <RgpdCard accessToken={accessToken} router={router} />
     </div>
@@ -373,6 +380,191 @@ function PasswordCard({
           </CardFooter>
         </form>
       </Form>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Accessible toggle switch (no extra dependency — native button + ARIA)
+// ---------------------------------------------------------------------------
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+  label,
+  id,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  label: string;
+  id?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      id={id}
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+        checked ? 'bg-primary' : 'bg-input',
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow ring-0 transition-transform',
+          checked ? 'translate-x-5' : 'translate-x-0',
+        )}
+      />
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Notifications — push (mobile) + email delivery preferences (V10)
+// ---------------------------------------------------------------------------
+function NotificationsCard({ accessToken }: { accessToken: string }) {
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<
+    'pushEnabled' | 'emailNotificationsEnabled' | null
+  >(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const data = await getNotificationPreferences(accessToken);
+        if (active) setPrefs(data);
+      } catch (err) {
+        if (active) setLoadError(err instanceof Error ? err.message : 'Erreur réseau.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
+  async function handleToggle(
+    key: 'pushEnabled' | 'emailNotificationsEnabled',
+    next: boolean,
+  ) {
+    if (!prefs) return;
+    setSaveError(null);
+    setSavingKey(key);
+    const previous = prefs;
+    // Optimistic update — revert on failure so the UI never lies.
+    setPrefs({ ...prefs, [key]: next });
+    try {
+      const updated = await updateNotificationPreferences(accessToken, { [key]: next });
+      setPrefs(updated);
+    } catch (err) {
+      setPrefs(previous);
+      setSaveError(err instanceof Error ? err.message : 'Erreur réseau.');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>
+          Choisissez comment être averti(e) des nouveautés (messages, notes,
+          absences, factures, annonces). Les notifications dans l&apos;application
+          restent toujours actives.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {saveError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            <AlertTitle>Erreur</AlertTitle>
+            <AlertDescription>{saveError}</AlertDescription>
+          </Alert>
+        )}
+        {loadError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{loadError}</AlertDescription>
+          </Alert>
+        ) : prefs === null ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            Chargement des préférences…
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            <li className="flex items-center justify-between gap-4 py-3">
+              <div className="flex items-start gap-3">
+                <Smartphone
+                  className="mt-0.5 h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Notifications push (mobile)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {prefs.pushRegistered
+                      ? 'Reçues sur votre application mobile École SaaS.'
+                      : "Activez-les puis ouvrez l'application mobile pour enregistrer votre appareil."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {savingKey === 'pushEnabled' && (
+                  <Loader2
+                    className="h-4 w-4 animate-spin text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                )}
+                <ToggleSwitch
+                  id="pref-push"
+                  label="Activer les notifications push mobile"
+                  checked={prefs.pushEnabled}
+                  disabled={savingKey !== null}
+                  onChange={(next) => handleToggle('pushEnabled', next)}
+                />
+              </div>
+            </li>
+            <li className="flex items-center justify-between gap-4 py-3">
+              <div className="flex items-start gap-3">
+                <Mail
+                  className="mt-0.5 h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Notifications par email</p>
+                  <p className="text-xs text-muted-foreground">
+                    Envoyées à votre adresse email enregistrée.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {savingKey === 'emailNotificationsEnabled' && (
+                  <Loader2
+                    className="h-4 w-4 animate-spin text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                )}
+                <ToggleSwitch
+                  id="pref-email"
+                  label="Activer les notifications par email"
+                  checked={prefs.emailNotificationsEnabled}
+                  disabled={savingKey !== null}
+                  onChange={(next) => handleToggle('emailNotificationsEnabled', next)}
+                />
+              </div>
+            </li>
+          </ul>
+        )}
+      </CardContent>
     </Card>
   );
 }

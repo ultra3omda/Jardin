@@ -1,9 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
+import { AttendanceStatus } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import {
+  AttendanceEntryDto,
   AttendanceResponseDto,
   BulkAttendanceDto,
   ListAttendanceResponseDto,
@@ -12,7 +15,10 @@ import {
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fanout: NotificationFanoutService,
+  ) {}
 
   private toDto(a: {
     id: string; studentId: string; classId: string | null;
@@ -70,6 +76,8 @@ export class AttendanceService {
         }),
       ),
     );
+    // V10 — notify parents of any newly recorded absence. Fire-and-forget.
+    void this.fanoutAbsences(user.tenantId, dateObj, dto.entries);
     return results.map((r) => this.toDto(r));
   }
 
@@ -87,5 +95,49 @@ export class AttendanceService {
       },
     });
     return this.toDto(row);
+  }
+
+  /**
+   * V10 — Fan-out an absence notification to each parent of every student
+   * marked ABSENT or EXCUSED. Fire-and-forget; never blocks the bulk save.
+   */
+  private async fanoutAbsences(
+    tenantId: string,
+    date: Date,
+    entries: AttendanceEntryDto[],
+  ): Promise<void> {
+    const absences = entries.filter(
+      (e) => e.status === AttendanceStatus.ABSENT || e.status === AttendanceStatus.EXCUSED,
+    );
+    if (absences.length === 0) return;
+    await Promise.allSettled(
+      absences.map((e) =>
+        this.notifyAbsence(tenantId, e.studentId, date, e.status === AttendanceStatus.EXCUSED),
+      ),
+    );
+  }
+
+  private async notifyAbsence(
+    tenantId: string,
+    studentId: string,
+    date: Date,
+    justified: boolean,
+  ): Promise<void> {
+    const parents = await this.prisma.parentStudent.findMany({
+      where: { tenantId, studentId },
+      select: { parentUserId: true },
+    });
+    if (parents.length === 0) return;
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, tenantId },
+      select: { firstName: true, lastName: true },
+    });
+    if (!student) return;
+    const studentName = `${student.firstName} ${student.lastName}`.trim();
+    await Promise.allSettled(
+      parents.map((p) =>
+        this.fanout.fanoutAbsence(tenantId, p.parentUserId, studentName, date, justified),
+      ),
+    );
   }
 }

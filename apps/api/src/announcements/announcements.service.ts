@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
-import { UserRole } from '@prisma/client';
+import { AnnouncementAudience, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import {
   AnnouncementResponseDto,
   CreateAnnouncementDto,
@@ -13,7 +14,10 @@ import {
 
 @Injectable()
 export class AnnouncementsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fanout: NotificationFanoutService,
+  ) {}
 
   private toDto(a: {
     id: string; title: string; body: string; audience: string;
@@ -53,6 +57,8 @@ export class AnnouncementsService {
       },
       include: { author: { select: { firstName: true, lastName: true } } },
     });
+    // V10 — fan-out the announcement to its audience. Fire-and-forget.
+    void this.fanoutAnnouncementNotification(user.tenantId, row.audience, row.title, user.id);
     return this.toDto(row);
   }
 
@@ -88,5 +94,46 @@ export class AnnouncementsService {
       throw new ForbiddenException('Only the author or an admin can delete this announcement');
     }
     await this.prisma.announcement.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  /**
+   * V10 — Fan-out a published announcement to every user in its audience
+   * (excluding the author). Fire-and-forget; never blocks the create call.
+   */
+  private async fanoutAnnouncementNotification(
+    tenantId: string,
+    audience: AnnouncementAudience,
+    title: string,
+    authorId: string,
+  ): Promise<void> {
+    const roles = this.audienceToRoles(audience);
+    const recipients = await this.prisma.user.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        id: { not: authorId },
+        ...(roles ? { role: { in: roles } } : {}),
+      },
+      select: { id: true },
+    });
+    if (recipients.length === 0) return;
+    await this.fanout.fanoutAnnouncement(
+      tenantId,
+      recipients.map((u) => u.id),
+      title,
+    );
+  }
+
+  private audienceToRoles(audience: AnnouncementAudience): UserRole[] | null {
+    switch (audience) {
+      case AnnouncementAudience.PARENTS:
+        return [UserRole.PARENT];
+      case AnnouncementAudience.TEACHERS:
+        return [UserRole.TEACHER];
+      case AnnouncementAudience.STAFF:
+        return [UserRole.STAFF];
+      default:
+        return null;
+    }
   }
 }

@@ -472,6 +472,143 @@ describe('UsersService', () => {
       );
     });
   });
+
+  // -------------------------------------------------------------------------
+  // V10 — push token (setPushToken / clearPushToken)
+  // -------------------------------------------------------------------------
+  describe('setPushToken', () => {
+    it('persists the Expo token for an existing user', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce({ id: 'user-1' });
+      prisma.user.update.mockResolvedValueOnce({});
+
+      await service.setPushToken('user-1', 'ExponentPushToken[abc]');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { expoPushToken: 'ExponentPushToken[abc]' },
+      });
+    });
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await expect(service.setPushToken('ghost', 'ExponentPushToken[abc]')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clearPushToken', () => {
+    it('nulls the Expo token for an existing user', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce({ id: 'user-1' });
+      prisma.user.update.mockResolvedValueOnce({});
+
+      await service.clearPushToken('user-1');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { expoPushToken: null },
+      });
+    });
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await expect(service.clearPushToken('ghost')).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // V10 — notification preferences (get / update)
+  // -------------------------------------------------------------------------
+  describe('getNotificationPreferences', () => {
+    it('reports pushRegistered true when a token is present', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce({
+        pushEnabled: true,
+        emailNotificationsEnabled: false,
+        expoPushToken: 'ExponentPushToken[abc]',
+      });
+
+      const result = await service.getNotificationPreferences('user-1');
+
+      expect(result).toEqual({
+        pushEnabled: true,
+        emailNotificationsEnabled: false,
+        pushRegistered: true,
+      });
+    });
+
+    it('reports pushRegistered false when no token is stored', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce({
+        pushEnabled: false,
+        emailNotificationsEnabled: true,
+        expoPushToken: null,
+      });
+
+      const result = await service.getNotificationPreferences('user-1');
+
+      expect(result.pushRegistered).toBe(false);
+    });
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await expect(service.getNotificationPreferences('ghost')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('updateNotificationPreferences', () => {
+    it('updates only the provided flags and returns the fresh preferences', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce({ id: 'user-1' });
+      prisma.user.update.mockResolvedValueOnce({
+        pushEnabled: false,
+        emailNotificationsEnabled: true,
+        expoPushToken: 'ExponentPushToken[abc]',
+      });
+
+      const result = await service.updateNotificationPreferences('user-1', { pushEnabled: false });
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-1' },
+          data: { pushEnabled: false },
+        }),
+      );
+      expect(result).toEqual({
+        pushEnabled: false,
+        emailNotificationsEnabled: true,
+        pushRegistered: true,
+      });
+    });
+
+    it('omits undefined flags from the update payload', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce({ id: 'user-1' });
+      prisma.user.update.mockResolvedValueOnce({
+        pushEnabled: true,
+        emailNotificationsEnabled: false,
+        expoPushToken: null,
+      });
+
+      await service.updateNotificationPreferences('user-1', { emailNotificationsEnabled: false });
+
+      const call = prisma.user.update.mock.calls[0][0] as { data: Record<string, unknown> };
+      expect(call.data).toEqual({ emailNotificationsEnabled: false });
+      expect(call.data).not.toHaveProperty('pushEnabled');
+    });
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      prisma.user.findFirst.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateNotificationPreferences('ghost', { pushEnabled: true }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
