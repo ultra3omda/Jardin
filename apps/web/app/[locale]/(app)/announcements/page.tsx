@@ -37,6 +37,45 @@ async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Pro
   return t ? (JSON.parse(t) as T) : (null as T);
 }
 
+const DEMO_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: 'demo-ann-1',
+    title: 'Réunion parents-professeurs — vendredi 15 mars',
+    body: "Nous vous invitons à la réunion annuelle parents-professeurs qui se tiendra le vendredi 15 mars de 17h à 19h dans les locaux de l'établissement. Merci de confirmer votre présence via le formulaire joint.",
+    audience: 'PARENTS',
+    authorName: 'Direction',
+    publishAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
+    createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
+  },
+  {
+    id: 'demo-ann-2',
+    title: 'Sortie pédagogique CE2-A — Musée des sciences',
+    body: 'La classe de CE2-A participera à une sortie au Musée national des sciences le mercredi 20 mars. Les autorisations parentales sont à remettre avant le vendredi 14 mars. Participation : 12 TND.',
+    audience: 'PARENTS',
+    authorName: 'Mme Martin',
+    publishAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
+    createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
+  },
+  {
+    id: 'demo-ann-3',
+    title: 'Fermeture exceptionnelle — vendredi 22 mars',
+    body: "L'établissement sera fermé le vendredi 22 mars en raison d'une journée pédagogique pour l'ensemble du corps enseignant. La reprise des cours s'effectuera normalement le lundi 25 mars.",
+    audience: 'ALL',
+    authorName: 'Direction',
+    publishAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
+    createdAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
+  },
+  {
+    id: 'demo-ann-4',
+    title: 'Concours de lecture — inscription avant le 10 avril',
+    body: "Notre établissement participe au concours régional de lecture cette année. Les élèves souhaitant concourir doivent s'inscrire auprès de leur enseignant(e) avant le 10 avril.",
+    audience: 'TEACHERS',
+    authorName: 'Direction',
+    publishAt: new Date(Date.now() - 10 * 86400_000).toISOString(),
+    createdAt: new Date(Date.now() - 10 * 86400_000).toISOString(),
+  },
+];
+
 export default function AnnouncementsPage() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
@@ -101,6 +140,8 @@ export default function AnnouncementsPage() {
     } catch (e) { setDeleteError(e instanceof Error ? e.message : 'Erreur'); }
   }
 
+  const displayed = announcements.length > 0 ? announcements : DEMO_ANNOUNCEMENTS;
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -123,11 +164,11 @@ export default function AnnouncementsPage() {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Chargement…</p>
-      ) : announcements.length === 0 ? (
+      ) : displayed.length === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">Aucune annonce publiée.</div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {announcements.map((a) => (
+          {displayed.map((a) => (
             <div key={a.id} className="rounded-xl border bg-white p-5 shadow-sm flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${AUDIENCE_COLORS[a.audience] ?? 'bg-slate-100 text-slate-700'}`}>
