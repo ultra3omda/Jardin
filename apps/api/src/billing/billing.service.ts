@@ -36,7 +36,7 @@ export class BillingService {
       ...(query.studentId ? { studentId: query.studentId } : {}),
     };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.invoice.findMany({
         where,
         include: {

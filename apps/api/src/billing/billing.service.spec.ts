@@ -110,7 +110,8 @@ describe('BillingService', () => {
   describe('findAll', () => {
     it('returns invoices scoped to tenantId', async () => {
       const inv = makeInvoice();
-      prisma.$transaction.mockResolvedValueOnce([[inv], 1]);
+      prisma.invoice.findMany.mockResolvedValueOnce([inv]);
+      prisma.invoice.count.mockResolvedValueOnce(1);
 
       const result = await service.findAll(TENANT_A, { page: 1, limit: 20 });
 
@@ -119,7 +120,8 @@ describe('BillingService', () => {
     });
 
     it('returns empty list when tenant has no invoices', async () => {
-      prisma.$transaction.mockResolvedValueOnce([[], 0]);
+      prisma.invoice.findMany.mockResolvedValueOnce([]);
+      prisma.invoice.count.mockResolvedValueOnce(0);
 
       const result = await service.findAll(TENANT_B, {});
 
@@ -129,7 +131,8 @@ describe('BillingService', () => {
 
     it('passes status filter through', async () => {
       const inv = makeInvoice({ status: InvoiceStatus.OVERDUE });
-      prisma.$transaction.mockResolvedValueOnce([[inv], 1]);
+      prisma.invoice.findMany.mockResolvedValueOnce([inv]);
+      prisma.invoice.count.mockResolvedValueOnce(1);
 
       const result = await service.findAll(TENANT_A, { status: InvoiceStatus.OVERDUE });
 
@@ -137,7 +140,8 @@ describe('BillingService', () => {
     });
 
     it('returns correct pagination metadata', async () => {
-      prisma.$transaction.mockResolvedValueOnce([[], 50]);
+      prisma.invoice.findMany.mockResolvedValueOnce([]);
+      prisma.invoice.count.mockResolvedValueOnce(50);
 
       const result = await service.findAll(TENANT_A, { page: 3, limit: 10 });
 

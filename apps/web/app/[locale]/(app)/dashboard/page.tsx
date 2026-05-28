@@ -1,7 +1,9 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
+
+import type { Announcement } from '@/components/dashboard/announcements-panel';
 
 import { AnnouncementsPanel } from '@/components/dashboard/announcements-panel';
 import { KpiCard } from '@/components/dashboard/kpi-card';
@@ -11,6 +13,12 @@ import { getDashboardConfig } from '@/lib/dashboard/config';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 export const dynamic = 'force-dynamic';
+
+const DEMO_ANNOUNCEMENTS: Announcement[] = [
+  { id: 'a1', title: 'Réunion parents-professeurs — 15 mars', date: '2026-03-10' },
+  { id: 'a2', title: 'Sortie pédagogique CE2 — musée des sciences', date: '2026-03-08' },
+  { id: 'a3', title: 'Fermeture exceptionnelle vendredi 22 mars', date: '2026-03-05' },
+];
 
 // Placeholder data — wired to real APIs in subsequent waves (V8+).
 const PLACEHOLDER_DATA = {
@@ -44,6 +52,20 @@ function interpolate(template: string, vars: Record<string, string>): string {
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(DEMO_ANNOUNCEMENTS);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetch('/api/announcements?limit=5', { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => r.ok ? r.json() as Promise<{ items: Array<{ id: string; title: string; createdAt: string }> }> : null)
+      .then((d) => {
+        if (d?.items?.length) {
+          setAnnouncements(d.items.map((a) => ({ id: a.id, title: a.title, date: a.createdAt })));
+        }
+      })
+      .catch(() => { /* keep demo data */ });
+  }, [accessToken]);
 
   const config = useMemo(() => {
     if (!user) return null;
@@ -110,13 +132,30 @@ export default function DashboardPage() {
           )}
           {config.panels.includes('journalToday') && (
             <div className="rounded-2xl bg-surface p-5 shadow-sm">
-              <h2 className="text-sm font-bold text-ink-900">Journal du jour</h2>
-              <p className="mt-2 text-sm text-ink-500">— V7-B implémentation détaillée à venir —</p>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-ink-900">Journal du jour</h2>
+                <span className="text-xs text-ink-300">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+              </div>
+              <ul className="space-y-3">
+                {[
+                  { id: 'j1', className: 'CP-A', teacher: 'Mme Martin', activity: 'Lecture — Le Petit Prince chap. 4', mood: '😄' },
+                  { id: 'j2', className: 'CE1-B', teacher: 'M. Dupont', activity: 'Calcul mental — tables ×6 et ×7', mood: '🙂' },
+                  { id: 'j3', className: 'CM2-A', teacher: 'Mme Leroy', activity: 'Exposé — La Révolution française', mood: '😄' },
+                ].map((e) => (
+                  <li key={e.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                    <span className="text-xl leading-none">{e.mood}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink-900">{e.activity}</p>
+                      <p className="text-xs text-ink-300">{e.className} · {e.teacher}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
         {config.panels.includes('announcements') && (
-          <AnnouncementsPanel announcements={[]} />
+          <AnnouncementsPanel announcements={announcements} />
         )}
       </section>
     </div>
