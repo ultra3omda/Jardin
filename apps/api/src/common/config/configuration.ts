@@ -44,6 +44,11 @@ export interface AppConfig {
     resendApiKey: string;
     from: string;
   };
+  /** V10 — Expo push notifications (mobile) */
+  push: {
+    /** Optional Expo access token for enhanced push security; empty = anonymous */
+    expoAccessToken: string | undefined;
+  };
   r2: {
     accountId: string | undefined;
     accessKeyId: string | undefined;
@@ -81,6 +86,9 @@ export function configuration(): AppConfig {
     email: {
       resendApiKey: process.env.RESEND_API_KEY ?? '',
       from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    },
+    push: {
+      expoAccessToken: process.env.EXPO_ACCESS_TOKEN,
     },
     r2: {
       accountId: process.env.R2_ACCOUNT_ID,
