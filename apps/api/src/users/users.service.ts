@@ -13,6 +13,10 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import type { RequestMeta } from '../auth/utils/request-meta.utils';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import {
+  NotificationPreferencesResponseDto,
+  UpdateNotificationPreferencesDto,
+} from './dto/notification-settings.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
@@ -153,6 +157,93 @@ export class UsersService {
     });
 
     this.logger.log(`User soft-deleted: userId=${userId}`);
+  }
+
+  // ===== V10 — Push token & notification preferences =====
+
+  /** Register or refresh the caller's Expo push token (mobile device). */
+  async setPushToken(userId: string, token: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { expoPushToken: token },
+    });
+  }
+
+  /** Clear the caller's Expo push token (e.g. on logout / device change). */
+  async clearPushToken(userId: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { expoPushToken: null },
+    });
+  }
+
+  /** Read the caller's current notification delivery preferences. */
+  async getNotificationPreferences(
+    userId: string,
+  ): Promise<NotificationPreferencesResponseDto> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: {
+        pushEnabled: true,
+        emailNotificationsEnabled: true,
+        expoPushToken: true,
+      },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      pushEnabled: user.pushEnabled,
+      emailNotificationsEnabled: user.emailNotificationsEnabled,
+      pushRegistered: user.expoPushToken !== null,
+    };
+  }
+
+  /** Partially update the caller's notification delivery preferences. */
+  async updateNotificationPreferences(
+    userId: string,
+    dto: UpdateNotificationPreferencesDto,
+  ): Promise<NotificationPreferencesResponseDto> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.pushEnabled !== undefined ? { pushEnabled: dto.pushEnabled } : {}),
+        ...(dto.emailNotificationsEnabled !== undefined
+          ? { emailNotificationsEnabled: dto.emailNotificationsEnabled }
+          : {}),
+      },
+      select: {
+        pushEnabled: true,
+        emailNotificationsEnabled: true,
+        expoPushToken: true,
+      },
+    });
+    return {
+      pushEnabled: updated.pushEnabled,
+      emailNotificationsEnabled: updated.emailNotificationsEnabled,
+      pushRegistered: updated.expoPushToken !== null,
+    };
   }
 
   // ===== Private =====

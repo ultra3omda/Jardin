@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -18,6 +19,11 @@ import type { AuthenticatedUser } from '../auth/decorators/current-user.decorato
 import { MeResponseDto, TenantDto } from '../auth/dto/auth-response.dto';
 import { getRequestMeta } from '../auth/utils/request-meta.utils';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import {
+  NotificationPreferencesResponseDto,
+  UpdateNotificationPreferencesDto,
+  UpdatePushTokenDto,
+} from './dto/notification-settings.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ExportService, type ExportResult } from './export.service';
 import { SessionsService, type SessionListItem } from './sessions.service';
@@ -138,5 +144,51 @@ export class UsersController {
     @Req() req: Request,
   ): Promise<ExportResult> {
     return this.exports.exportForUser(user.id, getRequestMeta(req));
+  }
+
+  // ───── V10 — Push token & notification preferences ─────
+
+  @Put('me/push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Register or refresh the Expo push token (V10)',
+    description: 'Stores the caller mobile device push token for notification delivery.',
+  })
+  @ApiResponse({ status: 204 })
+  async setPushToken(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdatePushTokenDto,
+  ): Promise<void> {
+    await this.users.setPushToken(user.id, dto.token);
+  }
+
+  @Delete('me/push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Clear the registered Expo push token (V10)',
+    description: 'Removes the push token, e.g. on logout or device change.',
+  })
+  @ApiResponse({ status: 204 })
+  async clearPushToken(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.users.clearPushToken(user.id);
+  }
+
+  @Get('me/notification-preferences')
+  @ApiOperation({ summary: 'Read notification delivery preferences (V10)' })
+  @ApiResponse({ status: 200, type: NotificationPreferencesResponseDto })
+  async getNotificationPreferences(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<NotificationPreferencesResponseDto> {
+    return this.users.getNotificationPreferences(user.id);
+  }
+
+  @Patch('me/notification-preferences')
+  @ApiOperation({ summary: 'Update notification delivery preferences (V10)' })
+  @ApiResponse({ status: 200, type: NotificationPreferencesResponseDto })
+  async updateNotificationPreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ): Promise<NotificationPreferencesResponseDto> {
+    return this.users.updateNotificationPreferences(user.id, dto);
   }
 }

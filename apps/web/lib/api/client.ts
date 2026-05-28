@@ -235,6 +235,43 @@ export async function deleteAccount(accessToken: string): Promise<void> {
 }
 
 // ============================================================================
+// V10 — Notification delivery preferences (push / email)
+// ============================================================================
+
+export interface NotificationPreferences {
+  pushEnabled: boolean;
+  emailNotificationsEnabled: boolean;
+  /** Whether a mobile push token is currently registered for this account. */
+  pushRegistered: boolean;
+}
+
+export async function getNotificationPreferences(
+  accessToken: string,
+): Promise<NotificationPreferences> {
+  return jsonRequest<NotificationPreferences>(
+    `${USERS_PROXY_BASE}/me/notification-preferences`,
+    {
+      method: 'GET',
+      auth: accessToken,
+    },
+  );
+}
+
+export async function updateNotificationPreferences(
+  accessToken: string,
+  values: { pushEnabled?: boolean; emailNotificationsEnabled?: boolean },
+): Promise<NotificationPreferences> {
+  return jsonRequest<NotificationPreferences>(
+    `${USERS_PROXY_BASE}/me/notification-preferences`,
+    {
+      method: 'PATCH',
+      auth: accessToken,
+      body: JSON.stringify(values),
+    },
+  );
+}
+
+// ============================================================================
 // V1.6 — Tenant branding (admin)
 // ============================================================================
 
