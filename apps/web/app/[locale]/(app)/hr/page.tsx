@@ -5,6 +5,19 @@ import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 interface Teacher { id: string; firstName: string; lastName: string; email: string; isActive: boolean; createdAt: string }
 
+// ─── Demo fallback data ───────────────────────────────────────────────────────
+
+const DEMO_TEACHERS_HR: Teacher[] = [
+  { id: 'dt-1', firstName: 'Sonia', lastName: 'Martin', email: 'smartin@ecole.demo', isActive: true, createdAt: '2024-09-01T08:00:00Z' },
+  { id: 'dt-2', firstName: 'Karim', lastName: 'Dupont', email: 'kdupont@ecole.demo', isActive: true, createdAt: '2024-09-01T08:00:00Z' },
+  { id: 'dt-3', firstName: 'Amira', lastName: 'Leroy', email: 'aleroy@ecole.demo', isActive: true, createdAt: '2023-09-01T08:00:00Z' },
+  { id: 'dt-4', firstName: 'Youssef', lastName: 'Bernard', email: 'ybernard@ecole.demo', isActive: true, createdAt: '2023-09-01T08:00:00Z' },
+  { id: 'dt-5', firstName: 'Nadia', lastName: 'Moreau', email: 'nmoreau@ecole.demo', isActive: true, createdAt: '2022-09-01T08:00:00Z' },
+  { id: 'dt-6', firstName: 'Hichem', lastName: 'Trabelsi', email: 'htrabelsi@ecole.demo', isActive: false, createdAt: '2022-09-01T08:00:00Z' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const CONTRACT_TYPES = ['CDI', 'CDD', 'Vacataire', 'Temps partiel'];
 const SALARIES = [1800, 2200, 2600, 3000, 3400];
 const LEAVE_BALANCE = [5, 10, 12, 15, 18, 20];
@@ -32,9 +45,14 @@ export default function HrPage() {
       const res = await fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json() as { items: Teacher[] };
-        setTeachers(data.items ?? []);
+        const items = data.items ?? [];
+        setTeachers(items.length > 0 ? items : DEMO_TEACHERS_HR);
+      } else {
+        setTeachers(DEMO_TEACHERS_HR);
       }
-    } catch { /* ignore */ }
+    } catch {
+      setTeachers(DEMO_TEACHERS_HR);
+    }
     finally { setLoading(false); }
   }, [token]);
 

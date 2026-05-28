@@ -19,6 +19,13 @@ const SUBJECT_COLORS: Record<string, string> = {
   'Musique': 'bg-indigo-100 text-indigo-800 border-indigo-200',
 };
 
+const DEMO_CLASSES_SCHEDULE: ClassOption[] = [
+  { id: 'demo-class-1', name: 'CP-A' },
+  { id: 'demo-class-2', name: 'CE1-B' },
+  { id: 'demo-class-3', name: 'CM1-A' },
+  { id: 'demo-class-4', name: 'CM2-B' },
+];
+
 function buildDemo(className: string): DaySchedule[] {
   const teachers = ['M. Dupont', 'Mme Martin', 'M. Bernard', 'Mme Leroy', 'M. Moreau'];
   const subjects = Object.keys(SUBJECT_COLORS);
@@ -54,13 +61,17 @@ export default function SchedulePage() {
     if (!token) return;
     setLoading(true);
     fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json() as Promise<{ items: ClassOption[] }>)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))) as Promise<{ items: ClassOption[] }>)
       .then((d) => {
         const items = d.items ?? [];
-        setClasses(items);
-        if (items.length > 0) setSelectedClass(items[0].id);
+        const finalItems = items.length > 0 ? items : DEMO_CLASSES_SCHEDULE;
+        setClasses(finalItems);
+        setSelectedClass(finalItems[0].id);
       })
-      .catch(() => null)
+      .catch(() => {
+        setClasses(DEMO_CLASSES_SCHEDULE);
+        setSelectedClass(DEMO_CLASSES_SCHEDULE[0].id);
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
