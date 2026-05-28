@@ -58,7 +58,7 @@ test.describe('Settings — Subjects @smoke', () => {
 
     // The row should contain the coefficient value
     const row = page.locator('tr', { hasText: subjectName });
-    await expect(row.getByText('2')).toBeVisible();
+    await expect(row.getByText('2', { exact: true })).toBeVisible();
   });
 });
 
