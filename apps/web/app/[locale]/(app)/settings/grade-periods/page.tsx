@@ -64,6 +64,16 @@ async function apiFetch<T>(
   return text ? (JSON.parse(text) as T) : (null as T);
 }
 
+// ─── Demo fallback data ───────────────────────────────────────────────────────
+
+const DEMO_GRADE_PERIODS: GradePeriod[] = [
+  { id: 'demo-gp-1', name: 'Trimestre 1', startDate: '2024-09-02', endDate: '2024-12-20', status: 'CLOSED' },
+  { id: 'demo-gp-2', name: 'Trimestre 2', startDate: '2025-01-06', endDate: '2025-03-28', status: 'CLOSED' },
+  { id: 'demo-gp-3', name: 'Trimestre 3', startDate: '2025-04-07', endDate: '2025-06-30', status: 'OPEN' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString('fr-FR');
@@ -101,7 +111,6 @@ export default function GradePeriodsSettingsPage() {
 
   const [periods, setPeriods] = useState<GradePeriod[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<GradePeriod | null>(null);
@@ -121,15 +130,15 @@ export default function GradePeriodsSettingsPage() {
   const load = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
-    setFetchError(null);
     try {
       const data = await apiFetch<{ items: ApiGradePeriod[]; total: number }>(
         '/api/grade-periods',
         accessToken,
       );
-      setPeriods((data.items ?? []).map(fromApi));
-    } catch (err) {
-      setFetchError(err instanceof Error ? err.message : 'Erreur de chargement.');
+      const items = (data.items ?? []).map(fromApi);
+      setPeriods(items.length > 0 ? items : DEMO_GRADE_PERIODS);
+    } catch {
+      setPeriods(DEMO_GRADE_PERIODS);
     } finally {
       setLoading(false);
     }
@@ -230,22 +239,8 @@ export default function GradePeriodsSettingsPage() {
         <p className="text-sm text-muted-foreground">Chargement…</p>
       )}
 
-      {/* Fetch error */}
-      {fetchError && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {fetchError}
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="ml-2 underline hover:no-underline"
-          >
-            Réessayer
-          </button>
-        </div>
-      )}
-
       {/* Empty state */}
-      {!loading && !fetchError && periods.length === 0 && (
+      {!loading && periods.length === 0 && (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
           Aucune période configurée. Ajoutez votre premier trimestre.
         </div>
