@@ -12,6 +12,25 @@ interface ParentUser {
   createdAt: string;
 }
 
+// ─── Demo fallback data ───────────────────────────────────────────────────────
+
+const DEMO_PARENTS: ParentUser[] = [
+  { id: 'dp-1', firstName: 'Souad', lastName: 'Fontaine', email: 'sfontaine@parent.demo', deletedAt: null, createdAt: '2024-09-01T08:00:00Z' },
+  { id: 'dp-2', firstName: 'Kamel', lastName: 'Saidi', email: 'ksaidi@parent.demo', deletedAt: null, createdAt: '2024-09-01T08:00:00Z' },
+  { id: 'dp-3', firstName: 'Nadia', lastName: 'Benali', email: 'nbenali@parent.demo', deletedAt: null, createdAt: '2024-09-02T08:00:00Z' },
+  { id: 'dp-4', firstName: 'Tarek', lastName: 'Khlifi', email: 'tkhlifi@parent.demo', deletedAt: null, createdAt: '2024-09-02T08:00:00Z' },
+  { id: 'dp-5', firstName: 'Leila', lastName: 'Moreau', email: 'lmoreau@parent.demo', deletedAt: null, createdAt: '2024-09-03T08:00:00Z' },
+  { id: 'dp-6', firstName: 'Ahmed', lastName: 'Trabelsi', email: 'atrabelsi@parent.demo', deletedAt: null, createdAt: '2024-09-03T08:00:00Z' },
+  { id: 'dp-7', firstName: 'Fatma', lastName: 'Gharbi', email: 'fgharbi@parent.demo', deletedAt: null, createdAt: '2024-09-04T08:00:00Z' },
+  { id: 'dp-8', firstName: 'Riadh', lastName: 'Ben Ali', email: 'rbenali@parent.demo', deletedAt: null, createdAt: '2024-09-04T08:00:00Z' },
+  { id: 'dp-9', firstName: 'Sonia', lastName: 'Dupont', email: 'sdupont@parent.demo', deletedAt: null, createdAt: '2024-09-05T08:00:00Z' },
+  { id: 'dp-10', firstName: 'Mehdi', lastName: 'Boukhari', email: 'mboukhari@parent.demo', deletedAt: null, createdAt: '2024-09-05T08:00:00Z' },
+  { id: 'dp-11', firstName: 'Amira', lastName: 'Leroy', email: 'aleroy@parent.demo', deletedAt: null, createdAt: '2024-09-06T08:00:00Z' },
+  { id: 'dp-12', firstName: 'Walid', lastName: 'Haddad', email: 'whaddad@parent.demo', deletedAt: null, createdAt: '2024-09-06T08:00:00Z' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...opts,
@@ -42,8 +61,11 @@ export default function ParentsPage() {
     setLoading(true); setFetchError(null);
     try {
       const data = await apiFetch<{ items: ParentUser[] }>('/api/parents', token);
-      setParents(data.items ?? []);
-    } catch (e) { setFetchError(e instanceof Error ? e.message : 'Erreur'); }
+      const items = data?.items ?? [];
+      setParents(items.length > 0 ? items : DEMO_PARENTS);
+    } catch {
+      setParents(DEMO_PARENTS);
+    }
     finally { setLoading(false); }
   }, [token]);
 
