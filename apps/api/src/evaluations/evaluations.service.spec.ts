@@ -31,6 +31,7 @@ function buildPrismaMock() {
       delete: vi.fn(),
     },
     student: { findFirst: vi.fn() },
+    parentStudent: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
   };
 }
@@ -41,8 +42,9 @@ describe('EvaluationsService', () => {
 
   beforeEach(() => {
     prisma = buildPrismaMock();
+    const fanout = { fanoutGrade: vi.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new EvaluationsService(prisma as any);
+    service = new EvaluationsService(prisma as any, fanout as any);
   });
 
   const baseCreateDto = {

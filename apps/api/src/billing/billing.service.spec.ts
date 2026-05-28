@@ -5,6 +5,7 @@ import { InvoiceStatus, Prisma } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import { BillingService } from './billing.service';
 import type { CreateInvoiceDto } from './dto/billing.dto';
 
@@ -80,6 +81,9 @@ function buildPrismaMock() {
     student: {
       findFirst: vi.fn(),
     },
+    parentStudent: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     payment: {
       create: vi.fn(),
     },
@@ -99,6 +103,7 @@ describe('BillingService', () => {
       providers: [
         BillingService,
         { provide: PrismaService, useValue: prisma },
+        { provide: NotificationFanoutService, useValue: { fanoutInvoice: vi.fn() } },
       ],
     }).compile();
 

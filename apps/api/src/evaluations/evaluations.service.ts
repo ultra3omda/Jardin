@@ -9,6 +9,7 @@ import { Prisma, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
   AdminClassPerfDto,
   ChildGradesDto,
@@ -24,7 +25,10 @@ import type {
 
 @Injectable()
 export class EvaluationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fanout: NotificationFanoutService,
+  ) {}
 
   // ───── Evaluations ─────
 
@@ -184,6 +188,8 @@ export class EvaluationsService {
       },
       update: { score: dto.score },
     });
+    // V10 — notify the student's parents of the new/updated grade. Fire-and-forget.
+    void this.fanoutGradeNotification(user.tenantId, evaluation, dto.studentId);
     return this.toGradeResponse(upserted);
   }
 
@@ -537,6 +543,43 @@ export class EvaluationsService {
   }
 
   // ───── Helpers ─────
+
+  /**
+   * V10 — Fan-out a "new grade" notification to every parent linked to the
+   * student. Fire-and-forget; never blocks grade entry.
+   */
+  private async fanoutGradeNotification(
+    tenantId: string,
+    evaluation: { subjectId: string; gradePeriodId: string },
+    studentId: string,
+  ): Promise<void> {
+    const parents = await this.prisma.parentStudent.findMany({
+      where: { tenantId, studentId },
+      select: { parentUserId: true },
+    });
+    if (parents.length === 0) return;
+    const [student, subject, period] = await Promise.all([
+      this.prisma.student.findFirst({
+        where: { id: studentId, tenantId },
+        select: { firstName: true, lastName: true },
+      }),
+      this.prisma.subject.findFirst({
+        where: { id: evaluation.subjectId, tenantId },
+        select: { name: true },
+      }),
+      this.prisma.gradePeriod.findFirst({
+        where: { id: evaluation.gradePeriodId, tenantId },
+        select: { name: true },
+      }),
+    ]);
+    if (!student || !subject) return;
+    const studentName = `${student.firstName} ${student.lastName}`.trim();
+    await Promise.allSettled(
+      parents.map((p) =>
+        this.fanout.fanoutGrade(tenantId, p.parentUserId, studentName, subject.name, period?.name),
+      ),
+    );
+  }
 
   private async ensureTeacherAssignment(user: AuthenticatedUser, classId: string): Promise<void> {
     if (user.role !== UserRole.TEACHER) return;

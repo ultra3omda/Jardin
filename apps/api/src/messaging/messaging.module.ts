@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
+import { NotificationsModule } from '../notifications/notifications.module';
 import { MessagingController } from './messaging.controller';
 import { MessagingGateway } from './messaging.gateway';
 import { MessagingService } from './messaging.service';
@@ -16,6 +17,7 @@ import { MessagingService } from './messaging.service';
  */
 @Module({
   imports: [
+    NotificationsModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

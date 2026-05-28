@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
   ConversationResponseDto,
   CreateConversationDto,
@@ -33,7 +34,10 @@ import type {
 export class MessagingService {
   private readonly logger = new Logger(MessagingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fanout: NotificationFanoutService,
+  ) {}
 
   // ───── Conversations ─────
 
@@ -119,7 +123,35 @@ export class MessagingService {
       where: { id: dto.conversationId },
       data: { updatedAt: new Date() },
     });
+    // V10 — fan-out a notification to the other participant(s). Fire-and-forget:
+    // delivery never blocks (or fails) the message send.
+    void this.fanoutNewMessage(conversation.tenantId, dto.conversationId, user);
     return this.toMessageResponse(created);
+  }
+
+  /**
+   * V10 — Notify every other participant of a new message across in-app,
+   * email and push channels. Resolves the sender's display name once.
+   */
+  private async fanoutNewMessage(
+    tenantId: string,
+    conversationId: string,
+    sender: AuthenticatedUser,
+  ): Promise<void> {
+    const recipientIds = await this.getOtherParticipantIds(conversationId, sender.id);
+    if (recipientIds.length === 0) return;
+    const senderRow = await this.prisma.user.findUnique({
+      where: { id: sender.id },
+      select: { firstName: true, lastName: true },
+    });
+    const senderName = senderRow
+      ? `${senderRow.firstName} ${senderRow.lastName}`.trim()
+      : sender.email;
+    await Promise.allSettled(
+      recipientIds.map((recipientId) =>
+        this.fanout.fanoutMessage(tenantId, recipientId, senderName, conversationId),
+      ),
+    );
   }
 
   async listMessages(
