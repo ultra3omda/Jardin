@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Expo, type ExpoPushMessage } from 'expo-server-sdk';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,8 +10,33 @@ export interface ExpoPushResult {
   error?: string;
 }
 
+/** Expo Push API endpoint (HTTP v2). */
+const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
+
 /**
- * V10 — Thin wrapper around the Expo Push SDK for mobile notifications.
+ * Matches the modern `ExpoPushToken[…]` and legacy `ExponentPushToken[…]`
+ * formats — mirrors `expo-server-sdk`'s `Expo.isExpoPushToken`.
+ */
+const EXPO_PUSH_TOKEN_RE = /^Expo(nent)?PushToken\[[^\]]+\]$/;
+
+/** Shape of a single push ticket returned by the Expo API. */
+interface ExpoPushTicket {
+  status?: 'ok' | 'error';
+  id?: string;
+  message?: string;
+  details?: { error?: string };
+}
+
+/**
+ * V10 — Thin wrapper around the Expo Push HTTP API for mobile notifications.
+ *
+ * Why a hand-rolled HTTP client instead of `expo-server-sdk`? The SDK ships as
+ * an ES Module only (v6+). Our NestJS build targets CommonJS, so a static
+ * `import` is downleveled to `require()` and crashes the whole API at boot with
+ * `ERR_REQUIRE_ESM`. We only ever send single messages (no batching/receipts),
+ * so a ~15-line `fetch` against the documented v2 endpoint is simpler, has zero
+ * ESM/CJS friction, and keeps the API bootable. (Node 18+ provides global
+ * `fetch`.)
  *
  * Design rule (mirrors {@link ResendService}): this service NEVER throws.
  * A failed push must not cascade into the business flow (sending a message
@@ -27,14 +51,18 @@ export interface ExpoPushResult {
 @Injectable()
 export class ExpoPushService {
   private readonly logger = new Logger(ExpoPushService.name);
-  private readonly expo: Expo;
+  private readonly accessToken?: string;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const accessToken = this.config.get<string>('push.expoAccessToken') || undefined;
-    this.expo = new Expo(accessToken ? { accessToken } : {});
+    this.accessToken = this.config.get<string>('push.expoAccessToken') || undefined;
+  }
+
+  /** Validate an Expo push token's format (no network call). */
+  static isExpoPushToken(token: string): boolean {
+    return EXPO_PUSH_TOKEN_RE.test(token);
   }
 
   /**
@@ -56,23 +84,35 @@ export class ExpoPushService {
       return { success: false, skipped: true, error: 'No push token' };
     }
 
-    if (!Expo.isExpoPushToken(token)) {
+    if (!ExpoPushService.isExpoPushToken(token)) {
       this.logger.warn(`Invalid Expo push token format, clearing: ${this.mask(token)}`);
       await this.clearToken(token);
       return { success: false, skipped: true, error: 'Invalid token format' };
     }
 
-    const message: ExpoPushMessage = {
-      to: token,
-      sound: 'default',
-      title,
-      body,
-      data: data ?? {},
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
     };
+    if (this.accessToken) {
+      headers.Authorization = `Bearer ${this.accessToken}`;
+    }
 
     try {
-      const tickets = await this.expo.sendPushNotificationsAsync([message]);
-      const ticket = tickets[0];
+      const response = await fetch(EXPO_PUSH_ENDPOINT, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify([{ to: token, sound: 'default', title, body, data: data ?? {} }]),
+      });
+
+      if (!response.ok) {
+        const errMsg = `Expo push HTTP ${response.status}`;
+        this.logger.error(`${errMsg} token=${this.mask(token)}`);
+        return { success: false, error: errMsg };
+      }
+
+      const payload = (await response.json()) as { data?: ExpoPushTicket[] | ExpoPushTicket };
+      const ticket = Array.isArray(payload.data) ? payload.data[0] : payload.data;
 
       if (ticket && ticket.status === 'error') {
         const errorCode = ticket.details?.error;
@@ -82,7 +122,7 @@ export class ExpoPushService {
         if (errorCode === 'DeviceNotRegistered') {
           await this.clearToken(token);
         }
-        return { success: false, error: ticket.message };
+        return { success: false, error: ticket.message ?? errorCode ?? 'Unknown push error' };
       }
 
       this.logger.log(`Push sent token=${this.mask(token)} title="${title}"`);
