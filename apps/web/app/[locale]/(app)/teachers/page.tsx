@@ -87,7 +87,7 @@ export default function TeachersPage() {
         skeletonCols={isAdmin ? 5 : 4}
       >
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" aria-label="Liste des enseignants">
             <thead className="bg-slate-50 text-left text-navy-700">
               <tr>
                 <th className="px-4 py-3 font-medium">Nom</th>
@@ -157,6 +157,7 @@ export default function TeachersPage() {
       <CrudModal open={!!editing} title="Modifier l'enseignant" onClose={() => setEditing(null)}>
         {editing && (
           <StaffEditForm
+            key={editing.id}
             defaultValues={{ firstName: editing.firstName, lastName: editing.lastName }}
             pending={editMut.isPending}
             onSubmit={(values) => editMut.mutate({ id: editing.id, values })}
