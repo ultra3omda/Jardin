@@ -17,12 +17,6 @@ export interface CookieOptions {
 }
 
 /**
- * Cookie attributes for the refresh token. httpOnly + Secure + SameSite=Lax
- * is the standard recipe for refresh tokens served from a same-origin
- * Route Handler proxy. We DO NOT use SameSite=Strict because that would
- * break OAuth-style redirects later.
- */
-/**
  * Cookie `Domain` attribute. In subdomain mode the refresh cookie must be
  * readable on every `<slug>.klasso.tn`, so we scope it to `.<base>`. In path
  * mode (apex / Vercel preview) we return undefined → host-only cookie (R1: a
@@ -34,6 +28,12 @@ export function subdomainCookieDomain(): string | undefined {
   return enabled && base ? `.${base}` : undefined;
 }
 
+/**
+ * Cookie attributes for the refresh token. httpOnly + Secure + SameSite=Lax
+ * is the standard recipe for refresh tokens served from a same-origin
+ * Route Handler proxy. We DO NOT use SameSite=Strict because that would
+ * break OAuth-style redirects later.
+ */
 export function refreshCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
