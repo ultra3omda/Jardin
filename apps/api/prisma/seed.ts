@@ -4,6 +4,7 @@ import { createId } from '@paralleldrive/cuid2';
 import {
   Locale,
   PrismaClient,
+  RelationType,
   Sex,
   TenantType,
   UserRole,
@@ -101,35 +102,89 @@ async function seedV6ForTenant(tenantId: string, schoolYear: string) {
   }
 }
 
-interface SeededStudent { id: string; firstName: string; lastName: string; classroom: string }
+interface SeededStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  classroom: string;
+  parentEmail: string;
+}
 
-async function seedStudents(tenantId: string, classroom: string, names: Array<[string, string]>): Promise<SeededStudent[]> {
+async function seedStudents(
+  tenantId: string,
+  classroom: string,
+  names: Array<[string, string]>,
+): Promise<SeededStudent[]> {
   const seeded: SeededStudent[] = [];
   for (let i = 0; i < names.length; i += 1) {
     const [firstName, lastName] = names[i];
-    const email = `parent.${lastName.toLowerCase()}.${firstName.toLowerCase()}@demo-ecole.klasso.tn`;
+    const parentEmail = `parent.${lastName.toLowerCase()}.${firstName.toLowerCase()}@demo-ecole.klasso.tn`;
+    // Seed-only idempotency: (firstName, lastName, classroom) is treated as the
+    // natural key for a student, and parentEmail derives from it. The curated
+    // name arrays below are kept collision-free so no two distinct children
+    // share a name within a class (or an email across classes). There is no DB
+    // unique constraint backing this, so keep the arrays unambiguous.
+    const existing = await prisma.student.findFirst({
+      where: { tenantId, firstName, lastName, classroom },
+    });
+    if (existing) {
+      seeded.push({ id: existing.id, firstName, lastName, classroom, parentEmail });
+      continue;
+    }
     const id = createId();
-    await prisma.student.upsert({
-      where: { id },
-      update: {},
-      create: {
+    await prisma.student.create({
+      data: {
         id,
         tenantId,
         firstName,
         lastName,
-        dateOfBirth: new Date(2018 - Math.floor(i / 10), (i % 12), 1 + (i % 27)),
+        dateOfBirth: new Date(2018 - Math.floor(i / 10), i % 12, 1 + (i % 27)),
         sex: i % 2 === 0 ? Sex.F : Sex.M,
         nationality: 'TN',
         classroom,
-        parentEmail: email,
+        parentEmail,
         siblingsCount: i % 3,
         country: 'TN',
         motherTongue: 'ar',
       },
     });
-    seeded.push({ id, firstName, lastName, classroom });
+    seeded.push({ id, firstName, lastName, classroom, parentEmail });
   }
   return seeded;
+}
+
+async function seedParentLinks(
+  tenantId: string,
+  students: SeededStudent[],
+  passwordHash: string,
+): Promise<number> {
+  let links = 0;
+  for (const s of students) {
+    const parent = await upsertUser({
+      tenantId,
+      email: s.parentEmail,
+      firstName: 'Parent',
+      lastName: s.lastName,
+      role: UserRole.PARENT,
+      passwordHash,
+    });
+    const existingLink = await prisma.parentStudent.findFirst({
+      where: { parentUserId: parent.id, studentId: s.id },
+    });
+    if (existingLink) continue;
+    await prisma.parentStudent.create({
+      data: {
+        id: createId(),
+        tenantId,
+        parentUserId: parent.id,
+        studentId: s.id,
+        relationType: RelationType.MOTHER,
+        isPrimaryContact: true,
+      },
+    });
+    links += 1;
+  }
+  return links;
 }
 
 async function seedClass(tenantId: string, name: string, level: string, schoolYear: string): Promise<string> {
@@ -178,6 +233,9 @@ async function main(): Promise<void> {
   // -- 4 personas per tenant + super-admin -----------------------------------
   await upsertUser({ tenantId: ecole.id, email: 'admin@demo-ecole.klasso.tn',  firstName: 'Amadou',  lastName: 'Koné',     role: UserRole.SCHOOL_ADMIN, passwordHash });
   await upsertUser({ tenantId: ecole.id, email: 'prof@demo-ecole.klasso.tn',   firstName: 'Sami',    lastName: 'Hadj',     role: UserRole.TEACHER,      passwordHash });
+  await upsertUser({ tenantId: ecole.id, email: 'prof.math@demo-ecole.klasso.tn', firstName: 'Nabil', lastName: 'Gharbi',  role: UserRole.TEACHER,      passwordHash });
+  await upsertUser({ tenantId: ecole.id, email: 'prof.fr@demo-ecole.klasso.tn',   firstName: 'Rim',   lastName: 'Cherif',  role: UserRole.TEACHER,      passwordHash });
+  await upsertUser({ tenantId: ecole.id, email: 'prof.sci@demo-ecole.klasso.tn',  firstName: 'Hédi',  lastName: 'Brahmi',  role: UserRole.TEACHER,      passwordHash });
   await upsertUser({ tenantId: ecole.id, email: 'parent@demo-ecole.klasso.tn', firstName: 'Salma',   lastName: 'Ben Ali',  role: UserRole.PARENT,       passwordHash });
   await upsertUser({ tenantId: ecole.id, email: 'staff@demo-ecole.klasso.tn',  firstName: 'Omar',    lastName: 'Mansour',  role: UserRole.STAFF,        passwordHash });
 
@@ -198,26 +256,29 @@ async function main(): Promise<void> {
   await seedClass(ecole.id, 'CE2-A', 'CE2', '2025-2026');
 
   // -- Students -- realistic, ~50 split across 3 classes ---------------------
-  await seedStudents(ecole.id, 'CP-A', [
+  const cpA = await seedStudents(ecole.id, 'CP-A', [
     ['Lina', 'Ben Ali'], ['Karim', 'Ben Ali'], ['Yacine', 'Mansour'], ['Maya', 'Trabelsi'],
     ['Adam', 'Hadj'], ['Sara', 'Belhaj'], ['Anis', 'Riahi'], ['Nour', 'Khaldi'],
     ['Inès', 'Bouaziz'], ['Rayan', 'Mejri'], ['Aya', 'Hammami'], ['Wassim', 'Lassoued'],
     ['Yasmine', 'Saidi'], ['Mehdi', 'Chaabane'], ['Sirine', 'Karoui'], ['Hamza', 'Jbeli'],
   ]);
-  await seedStudents(ecole.id, 'CE1-B', [
+  const ce1B = await seedStudents(ecole.id, 'CE1-B', [
     ['Ibrahim', 'Ba'], ['Aïcha', 'Sow'], ['Mohamed', 'Diop'], ['Aminata', 'Cissé'],
     ['Ousmane', 'Diallo'], ['Fatou', 'Niang'], ['Bakary', 'Touré'], ['Awa', 'Ndiaye'],
     ['Cheikh', 'Fall'], ['Mariama', 'Sy'], ['Souleymane', 'Sarr'], ['Khadidja', 'Gueye'],
     ['Modibo', 'Konaté'], ['Bintou', 'Camara'], ['Lamine', 'Diakité'], ['Salimata', 'Doumbia'],
   ]);
-  await seedStudents(ecole.id, 'CE2-A', [
+  const ce2A = await seedStudents(ecole.id, 'CE2-A', [
     ['Tarek', 'Trabelsi'], ['Lilia', 'Bouaziz'], ['Skander', 'Ben Hassine'], ['Mariem', 'Mejri'],
     ['Aziz', 'Lassoued'], ['Nadia', 'Hammami'], ['Bilel', 'Karoui'], ['Donia', 'Jbeli'],
     ['Hatem', 'Saidi'], ['Ines', 'Khaldi'], ['Walid', 'Riahi'], ['Habiba', 'Chaabane'],
   ]);
 
+  // -- Parents -- one PARENT user per student, linked idempotently -----------
+  const parentLinks = await seedParentLinks(ecole.id, [...cpA, ...ce1B, ...ce2A], passwordHash);
+
   console.log('');
-  console.log('Demo data seeded successfully (V7).');
+  console.log(`Demo data seeded successfully (T2a): ${parentLinks} new parent link(s).`);
   console.log('------------------------------------------------------------');
   console.log(`  Tenant: ${ecole.slug}      (${ecole.type})`);
   console.log(`    admin   : admin@demo-ecole.klasso.tn`);

@@ -116,3 +116,24 @@ export async function deleteTimeSlot(token: string, slotId: string): Promise<voi
   });
   if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
 }
+
+export async function updateClass(
+  token: string,
+  id: string,
+  payload: { name?: string; level?: string },
+): Promise<SchoolClass> {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return ok(res);
+}
+
+export async function deleteClass(token: string, id: string): Promise<void> {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+}

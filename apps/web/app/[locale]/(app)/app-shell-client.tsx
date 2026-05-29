@@ -8,6 +8,7 @@ import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 
 import { Sidebar } from '@/components/app-shell/sidebar';
 import { Topbar } from '@/components/app-shell/topbar';
+import { Toaster } from '@/components/ui/toaster';
 import { logout, refresh } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { buildBrandStyleTag } from '@/lib/tenant/brand-style-tag';
@@ -120,6 +121,7 @@ export function AppShellClient({ children }: { children: ReactNode }) {
           <main className="flex-1 px-6 pb-6">{children}</main>
         </div>
       </div>
+      <Toaster />
     </QueryClientProvider>
   );
 }
