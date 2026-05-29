@@ -90,7 +90,7 @@ export function StudentsList() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="min-w-full divide-y divide-border">
+          <table className="min-w-full divide-y divide-border" aria-label="Liste des élèves">
           <thead className="bg-muted/50">
             <tr>
               <th scope="col" className="w-12 px-4 py-3">
