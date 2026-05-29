@@ -55,8 +55,15 @@ export default function DashboardPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const [announcements, setAnnouncements] = useState<Announcement[]>(DEMO_ANNOUNCEMENTS);
 
+  const config = useMemo(() => {
+    if (!user) return null;
+    return getDashboardConfig(user.role, tenant?.type ?? null);
+  }, [user, tenant?.type]);
+
+  const showAnnouncements = config?.panels.includes('announcements') ?? false;
+
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || !showAnnouncements) return;
     fetch('/api/announcements?limit=5', { headers: { Authorization: `Bearer ${accessToken}` } })
       .then((r) => r.ok ? r.json() as Promise<{ items: Array<{ id: string; title: string; createdAt: string }> }> : null)
       .then((d) => {
@@ -65,12 +72,7 @@ export default function DashboardPage() {
         }
       })
       .catch(() => { /* keep demo data */ });
-  }, [accessToken]);
-
-  const config = useMemo(() => {
-    if (!user) return null;
-    return getDashboardConfig(user.role, tenant?.type ?? null);
-  }, [user, tenant?.type]);
+  }, [accessToken, showAnnouncements]);
 
   if (!user || !config) return null;
 
