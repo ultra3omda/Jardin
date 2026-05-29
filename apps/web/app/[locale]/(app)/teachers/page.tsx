@@ -1,310 +1,186 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { useResource } from '@/lib/hooks/use-resource';
+import { useToast } from '@/lib/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { CrudModal } from '@/components/crud/crud-modal';
+import { ResourceListPage } from '@/components/crud/resource-list-page';
+import { StaffCreateForm, StaffEditForm } from '@/components/crud/staff-form';
+import {
+  listTeachers,
+  createTeacher,
+  updateTeacher,
+  type StaffUser,
+  type StaffMutationResult,
+} from '@/lib/api/staff';
+import type { CreateStaffValues, EditStaffValues } from '@/lib/validation/staff.schemas';
 
-interface Teacher {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  createdAt: string;
-  deletedAt: string | null;
-}
-
-interface TeacherFormValues {
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_TEACHERS: Teacher[] = [
-  { id: 'dt-1', firstName: 'Sonia', lastName: 'Martin', email: 'smartin@ecole.demo', role: 'TEACHER', createdAt: '2024-09-01T08:00:00Z', deletedAt: null },
-  { id: 'dt-2', firstName: 'Karim', lastName: 'Dupont', email: 'kdupont@ecole.demo', role: 'TEACHER', createdAt: '2024-09-01T08:00:00Z', deletedAt: null },
-  { id: 'dt-3', firstName: 'Amira', lastName: 'Leroy', email: 'aleroy@ecole.demo', role: 'TEACHER', createdAt: '2023-09-01T08:00:00Z', deletedAt: null },
-  { id: 'dt-4', firstName: 'Youssef', lastName: 'Bernard', email: 'ybernard@ecole.demo', role: 'TEACHER', createdAt: '2023-09-01T08:00:00Z', deletedAt: null },
-  { id: 'dt-5', firstName: 'Nadia', lastName: 'Moreau', email: 'nmoreau@ecole.demo', role: 'TEACHER', createdAt: '2022-09-01T08:00:00Z', deletedAt: null },
-  { id: 'dt-6', firstName: 'Hichem', lastName: 'Trabelsi', email: 'htrabelsi@ecole.demo', role: 'TEACHER', createdAt: '2022-09-01T08:00:00Z', deletedAt: null },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(opts?.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  const text = await res.text();
-  return text ? (JSON.parse(text) as T) : (null as T);
-}
+const TEACHERS_KEY = ['teachers', 'list'];
 
 export default function TeachersPage() {
-  const token = useAuthStore((s) => s.accessToken);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  const queryClient = useQueryClient();
+  const toast = useToast();
 
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Teacher | null>(null);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [deactivateTarget, setDeactivateTarget] = useState<Teacher | null>(null);
-  const [deactivateError, setDeactivateError] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState<TeacherFormValues>({ firstName: '', lastName: '', email: '' });
-  const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const { data, isLoading, isError, refetch } = useResource(TEACHERS_KEY, listTeachers);
+  const teachers = data?.items ?? [];
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const data = await apiFetch<{ items: Teacher[]; total: number }>('/api/teachers', token);
-      const items = data?.items ?? [];
-      setTeachers(items.length > 0 ? items : DEMO_TEACHERS);
-    } catch (_) {
-      setTeachers(DEMO_TEACHERS);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<StaffUser | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ name: string; password: string } | null>(null);
 
-  useEffect(() => { void load(); }, [load]);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: TEACHERS_KEY });
+  const errMsg = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
-  function openCreate() {
-    setEditTarget(null);
-    setFormValues({ firstName: '', lastName: '', email: '' });
-    setFormError(null);
-    setModalOpen(true);
-  }
-
-  function openEdit(t: Teacher) {
-    setEditTarget(t);
-    setFormValues({ firstName: t.firstName, lastName: t.lastName, email: t.email });
-    setFormError(null);
-    setModalOpen(true);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token) return;
-    setSubmitting(true);
-    setFormError(null);
-    try {
-      if (editTarget) {
-        await apiFetch(`/api/teachers/${editTarget.id}`, token, {
-          method: 'PATCH',
-          body: JSON.stringify({ firstName: formValues.firstName, lastName: formValues.lastName }),
-        });
-      } else {
-        const result = await apiFetch<Teacher & { tempPassword?: string }>('/api/teachers', token, {
-          method: 'POST',
-          body: JSON.stringify(formValues),
-        });
-        if (result?.tempPassword) setTempPassword(result.tempPassword);
+  const createMut = useMutation({
+    mutationFn: (values: CreateStaffValues) => createTeacher(accessToken as string, values),
+    onSuccess: (result: StaffMutationResult) => {
+      invalidate();
+      setCreateOpen(false);
+      toast.success('Enseignant créé.');
+      if (result.tempPassword) {
+        setTempPassword({ name: `${result.firstName} ${result.lastName}`, password: result.tempPassword });
       }
-      setModalOpen(false);
-      void load();
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Erreur');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+    },
+    onError: (err) => toast.error(errMsg(err, 'Création impossible.')),
+  });
 
-  async function handleDeactivate() {
-    if (!token || !deactivateTarget) return;
-    setDeactivateError(null);
-    try {
-      await apiFetch(`/api/teachers/${deactivateTarget.id}`, token, {
-        method: 'PATCH',
-        body: JSON.stringify({ isActive: false }),
-      });
-      setDeactivateTarget(null);
-      void load();
-    } catch (e) {
-      setDeactivateError(e instanceof Error ? e.message : 'Erreur');
-    }
-  }
+  const editMut = useMutation({
+    mutationFn: (vars: { id: string; values: EditStaffValues }) =>
+      updateTeacher(accessToken as string, vars.id, vars.values),
+    onSuccess: () => {
+      invalidate();
+      setEditing(null);
+      toast.success('Enseignant mis à jour.');
+    },
+    onError: (err) => toast.error(errMsg(err, 'Mise à jour impossible.')),
+  });
+
+  const deactivateMut = useMutation({
+    mutationFn: (id: string) => updateTeacher(accessToken as string, id, { isActive: false }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Enseignant désactivé.');
+    },
+    onError: (err) => toast.error(errMsg(err, 'Désactivation impossible.')),
+  });
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900">Enseignants</h1>
-          <p className="text-sm text-muted-foreground">
-            Gérez les enseignants et leur affectation aux classes.
-          </p>
-        </div>
-        {isAdmin && (
-          <button
-            onClick={openCreate}
-            className="inline-flex h-10 items-center rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 text-sm font-medium text-white"
-          >
-            + Nouvel enseignant
-          </button>
-        )}
-      </header>
-
-      {tempPassword && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <strong>Mot de passe temporaire :</strong> <code className="font-mono">{tempPassword}</code>
-          {' '}— Notez-le, il ne sera plus affiché.
-          <button onClick={() => setTempPassword(null)} className="ml-4 underline">Fermer</button>
-        </div>
-      )}
-
-      {fetchError && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Erreur : {fetchError}
-          <button onClick={() => void load()} className="ml-2 underline">Réessayer</button>
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
-      ) : teachers.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          Aucun enseignant pour le moment.
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+    <>
+      <ResourceListPage
+        title="Enseignants"
+        description="Gérez les enseignants de votre établissement."
+        action={isAdmin ? <Button onClick={() => setCreateOpen(true)}>Ajouter un enseignant</Button> : undefined}
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={teachers.length === 0}
+        onRetry={refetch}
+        errorMessage="Impossible de charger les enseignants."
+        emptyTitle="Aucun enseignant"
+        emptyDescription="Commencez par ajouter un enseignant à votre établissement."
+        emptyAction={isAdmin ? { label: 'Ajouter un enseignant', onClick: () => setCreateOpen(true) } : undefined}
+        skeletonCols={isAdmin ? 5 : 4}
+      >
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-navy-700">
-                <th className="px-4 py-3">Nom</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Statut</th>
-                <th className="px-4 py-3">Ajouté le</th>
-                {isAdmin && <th className="px-4 py-3">Actions</th>}
+            <thead className="bg-slate-50 text-left text-navy-700">
+              <tr>
+                <th className="px-4 py-3 font-medium">Nom</th>
+                <th className="px-4 py-3 font-medium">E-mail</th>
+                <th className="px-4 py-3 font-medium">Statut</th>
+                <th className="px-4 py-3 font-medium">Créé le</th>
+                {isAdmin && <th className="px-4 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {teachers.map((t) => (
-                <tr key={t.id} className="border-b last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium">{t.lastName} {t.firstName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{t.email}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${t.deletedAt ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                      {t.deletedAt ? 'Désactivé' : 'Actif'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(t.createdAt).toLocaleDateString('fr-FR')}
-                  </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={() => openEdit(t)} className="text-xs text-blue-600 hover:underline">Modifier</button>
-                        {!t.deletedAt && (
-                          <button onClick={() => { setDeactivateTarget(t); setDeactivateError(null); }} className="text-xs text-red-600 hover:underline">
-                            Désactiver
-                          </button>
-                        )}
-                      </div>
+              {teachers.map((t) => {
+                const active = !t.deletedAt;
+                return (
+                  <tr key={t.id} className="border-t">
+                    <td className="px-4 py-3 font-medium text-navy-900">
+                      {t.firstName} {t.lastName}
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-4 py-3 text-muted-foreground">{t.email}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {active ? 'Actif' : 'Inactif'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(t.createdAt).toLocaleDateString('fr-FR')}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setEditing(t)}>
+                            Modifier
+                          </Button>
+                          {active && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deactivateMut.mutate(t.id)}
+                              disabled={deactivateMut.isPending}
+                            >
+                              Désactiver
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      )}
+      </ResourceListPage>
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-semibold">
-              {editTarget ? 'Modifier l\'enseignant' : 'Nouvel enseignant'}
-            </h2>
-            <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Prénom</label>
-                <input
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                  value={formValues.firstName}
-                  onChange={(e) => setFormValues((p) => ({ ...p, firstName: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Nom</label>
-                <input
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                  value={formValues.lastName}
-                  onChange={(e) => setFormValues((p) => ({ ...p, lastName: e.target.value }))}
-                  required
-                />
-              </div>
-              {!editTarget && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Email</label>
-                  <input
-                    type="email"
-                    className="w-full rounded-md border px-3 py-2 text-sm"
-                    value={formValues.email}
-                    onChange={(e) => setFormValues((p) => ({ ...p, email: e.target.value }))}
-                    required
-                  />
-                </div>
-              )}
-              {formError && (
-                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {formError}
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setModalOpen(false)} className="rounded-md border px-4 py-2 text-sm">
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
-                  {submitting ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CrudModal open={createOpen} title="Ajouter un enseignant" onClose={() => setCreateOpen(false)}>
+        <StaffCreateForm
+          submitLabel="Créer"
+          pending={createMut.isPending}
+          onSubmit={(values) => createMut.mutate(values)}
+          onCancel={() => setCreateOpen(false)}
+        />
+      </CrudModal>
 
-      {deactivateTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="mb-2 text-lg font-semibold">Désactiver l&apos;enseignant</h2>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Confirmer la désactivation de <strong>{deactivateTarget.firstName} {deactivateTarget.lastName}</strong> ?
+      <CrudModal open={!!editing} title="Modifier l'enseignant" onClose={() => setEditing(null)}>
+        {editing && (
+          <StaffEditForm
+            defaultValues={{ firstName: editing.firstName, lastName: editing.lastName }}
+            pending={editMut.isPending}
+            onSubmit={(values) => editMut.mutate({ id: editing.id, values })}
+            onCancel={() => setEditing(null)}
+          />
+        )}
+      </CrudModal>
+
+      <CrudModal open={!!tempPassword} title="Mot de passe temporaire" onClose={() => setTempPassword(null)}>
+        {tempPassword && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Communiquez ce mot de passe temporaire à <strong>{tempPassword.name}</strong>. Il ne sera plus
+              affiché.
             </p>
-            {deactivateError && (
-              <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {deactivateError}
-              </div>
-            )}
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setDeactivateTarget(null)} className="rounded-md border px-4 py-2 text-sm">
-                Annuler
-              </button>
-              <button onClick={() => { void handleDeactivate(); }} className="rounded-md bg-red-600 hover:bg-red-700 px-4 py-2 text-sm text-white">
-                Désactiver
-              </button>
+            <code className="block rounded-md bg-slate-100 px-4 py-3 text-center text-lg font-bold text-navy-900">
+              {tempPassword.password}
+            </code>
+            <div className="flex justify-end">
+              <Button onClick={() => setTempPassword(null)}>J&apos;ai noté</Button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CrudModal>
+    </>
   );
 }
