@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { requireToken } from '@/lib/auth/require-token';
 import { useResource } from '@/lib/hooks/use-resource';
 import { useToast } from '@/lib/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { StaffCreateForm } from '@/components/crud/staff-form';
 import { listParents, createParent, type StaffMutationResult } from '@/lib/api/staff';
 import type { CreateStaffValues } from '@/lib/validation/staff.schemas';
 
-const PARENTS_KEY = ['parents', 'list'];
+const PARENTS_KEY = ['parents', 'list'] as const;
 
 export default function ParentsPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -36,7 +37,7 @@ export default function ParentsPage() {
   }, [parents, search]);
 
   const createMut = useMutation({
-    mutationFn: (values: CreateStaffValues) => createParent(accessToken as string, values),
+    mutationFn: (values: CreateStaffValues) => createParent(requireToken(accessToken), values),
     onSuccess: (result: StaffMutationResult) => {
       queryClient.invalidateQueries({ queryKey: PARENTS_KEY });
       setCreateOpen(false);

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { requireToken } from '@/lib/auth/require-token';
 import { useResource } from '@/lib/hooks/use-resource';
 import { useToast } from '@/lib/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ import {
 } from '@/lib/api/staff';
 import type { CreateStaffValues, EditStaffValues } from '@/lib/validation/staff.schemas';
 
-const TEACHERS_KEY = ['teachers', 'list'];
+const TEACHERS_KEY = ['teachers', 'list'] as const;
 
 export default function TeachersPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -38,7 +39,7 @@ export default function TeachersPage() {
   const errMsg = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
   const createMut = useMutation({
-    mutationFn: (values: CreateStaffValues) => createTeacher(accessToken as string, values),
+    mutationFn: (values: CreateStaffValues) => createTeacher(requireToken(accessToken), values),
     onSuccess: (result: StaffMutationResult) => {
       invalidate();
       setCreateOpen(false);
@@ -52,7 +53,7 @@ export default function TeachersPage() {
 
   const editMut = useMutation({
     mutationFn: (vars: { id: string; values: EditStaffValues }) =>
-      updateTeacher(accessToken as string, vars.id, vars.values),
+      updateTeacher(requireToken(accessToken), vars.id, vars.values),
     onSuccess: () => {
       invalidate();
       setEditing(null);
@@ -62,7 +63,7 @@ export default function TeachersPage() {
   });
 
   const deactivateMut = useMutation({
-    mutationFn: (id: string) => updateTeacher(accessToken as string, id, { isActive: false }),
+    mutationFn: (id: string) => updateTeacher(requireToken(accessToken), id, { isActive: false }),
     onSuccess: () => {
       invalidate();
       toast.success('Enseignant désactivé.');

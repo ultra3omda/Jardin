@@ -12,6 +12,7 @@ import {
   type SchoolClass,
 } from '@/lib/api/classes';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { requireToken } from '@/lib/auth/require-token';
 import { useResource } from '@/lib/hooks/use-resource';
 import { useToast } from '@/lib/ui/use-toast';
 import { CrudModal } from '@/components/crud/crud-modal';
@@ -41,7 +42,7 @@ export function ClassesList() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: CLASSES_KEY });
 
   const createMutation = useMutation({
-    mutationFn: () => createClass(accessToken as string, createForm),
+    mutationFn: () => createClass(requireToken(accessToken), createForm),
     onSuccess: () => {
       setShowCreate(false);
       setCreateForm({ name: '', level: '', schoolYear: CURRENT_YEAR });
@@ -54,7 +55,7 @@ export function ClassesList() {
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      updateClass(accessToken as string, editing!.id, { name: editForm.name.trim(), level: editForm.level.trim() }),
+      updateClass(requireToken(accessToken), editing!.id, { name: editForm.name.trim(), level: editForm.level.trim() }),
     onSuccess: () => {
       setEditing(null);
       setFormError(null);
@@ -65,7 +66,7 @@ export function ClassesList() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteClass(accessToken as string, deleting!.id),
+    mutationFn: () => deleteClass(requireToken(accessToken), deleting!.id),
     onSuccess: () => {
       setDeleting(null);
       invalidate();
@@ -174,7 +175,14 @@ export function ClassesList() {
         </ul>
       </ResourceListPage>
 
-      <CrudModal open={showCreate} title="Nouvelle classe" onClose={() => setShowCreate(false)}>
+      <CrudModal
+        open={showCreate}
+        title="Nouvelle classe"
+        onClose={() => {
+          setShowCreate(false);
+          setFormError(null);
+        }}
+      >
         <form onSubmit={submitCreate} className="space-y-4">
           <div>
             <label className="text-sm font-medium" htmlFor="cls-name">Nom *</label>
@@ -202,7 +210,14 @@ export function ClassesList() {
         </form>
       </CrudModal>
 
-      <CrudModal open={editing !== null} title="Modifier la classe" onClose={() => setEditing(null)}>
+      <CrudModal
+        open={editing !== null}
+        title="Modifier la classe"
+        onClose={() => {
+          setEditing(null);
+          setFormError(null);
+        }}
+      >
         <form onSubmit={submitEdit} className="space-y-4">
           <div>
             <label className="text-sm font-medium" htmlFor="edit-name">Nom *</label>
