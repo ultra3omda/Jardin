@@ -119,6 +119,11 @@ async function seedStudents(
   for (let i = 0; i < names.length; i += 1) {
     const [firstName, lastName] = names[i];
     const parentEmail = `parent.${lastName.toLowerCase()}.${firstName.toLowerCase()}@demo-ecole.klasso.tn`;
+    // Seed-only idempotency: (firstName, lastName, classroom) is treated as the
+    // natural key for a student, and parentEmail derives from it. The curated
+    // name arrays below are kept collision-free so no two distinct children
+    // share a name within a class (or an email across classes). There is no DB
+    // unique constraint backing this, so keep the arrays unambiguous.
     const existing = await prisma.student.findFirst({
       where: { tenantId, firstName, lastName, classroom },
     });
