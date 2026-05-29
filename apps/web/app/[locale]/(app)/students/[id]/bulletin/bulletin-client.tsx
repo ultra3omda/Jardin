@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { findDemoStudent } from '@/lib/demo/students';
 
 interface StudentDto {
   id: string;
@@ -37,6 +38,9 @@ export function BulletinClient({ studentId }: Props): JSX.Element {
       return (await r.json()) as StudentDto;
     },
   });
+
+  // Demo fallback: keep the header populated even when the student fetch fails.
+  const student = studentQ.data ?? findDemoStudent(studentId);
 
   const periodsQ = useQuery<{ items: GradePeriodDto[] }>({
     queryKey: ['v6-bulletin-periods'],
@@ -77,7 +81,7 @@ export function BulletinClient({ studentId }: Props): JSX.Element {
         periodsQ.data?.items.find((p) => p.id === gradePeriodId)?.name ?? gradePeriodId;
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bulletin_${studentQ.data?.lastName ?? studentId}_${periodName}.pdf`;
+      a.download = `bulletin_${student?.lastName ?? studentId}_${periodName}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     },
@@ -91,9 +95,9 @@ export function BulletinClient({ studentId }: Props): JSX.Element {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">
-        Bulletin — {studentQ.data?.lastName?.toUpperCase()} {studentQ.data?.firstName}
+        Bulletin — {student?.lastName?.toUpperCase()} {student?.firstName}
       </h1>
-      <p className="text-sm text-gray-600">Classe : {studentQ.data?.classroom}</p>
+      <p className="text-sm text-gray-600">Classe : {student?.classroom}</p>
 
       <div className="space-y-3">
         <label htmlFor="period" className="block font-medium">

@@ -64,6 +64,8 @@ export default function BulletinsPage() {
   const [generating, setGenerating] = useState<Set<string>>(new Set());
   const [progressCount, setProgressCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [isDemo, setIsDemo] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const loadBase = useCallback(async () => {
     if (!token) return;
@@ -77,12 +79,15 @@ export default function BulletinsPage() {
       const pItems = pData.status === 'fulfilled' ? (pData.value?.items ?? []) : [];
       const finalStudents = sItems.length > 0 ? sItems : DEMO_STUDENTS_BULLETINS;
       const finalPeriods = pItems.length > 0 ? pItems : DEMO_PERIODS_BULLETINS;
+      const demoMode = sItems.length === 0;
+      setIsDemo(demoMode);
       setStudents(finalStudents);
       setPeriods(finalPeriods);
       if (finalPeriods.length > 0) setSelectedPeriodId(finalPeriods[0].id);
       // If using demo students, pre-populate the bulletins map
-      if (sItems.length === 0) setBulletinsMap(DEMO_BULLETINS_MAP);
+      if (demoMode) setBulletinsMap(DEMO_BULLETINS_MAP);
     } catch (_) {
+      setIsDemo(true);
       setStudents(DEMO_STUDENTS_BULLETINS);
       setPeriods(DEMO_PERIODS_BULLETINS);
       setSelectedPeriodId(DEMO_PERIODS_BULLETINS[0].id);
@@ -94,6 +99,9 @@ export default function BulletinsPage() {
 
   const loadBulletins = useCallback(async () => {
     if (!token || !selectedPeriodId || students.length === 0) return;
+    // Demo mode: the per-student /latest endpoint 404s for demo IDs, which would
+    // clobber the pre-populated demo bulletins map with nulls. Keep demo data.
+    if (isDemo) return;
     setLoadingBulletins(true);
     const results = await Promise.allSettled(
       students.map((s) =>
@@ -108,13 +116,39 @@ export default function BulletinsPage() {
     }
     setBulletinsMap(map);
     setLoadingBulletins(false);
-  }, [token, selectedPeriodId, students]);
+  }, [token, selectedPeriodId, students, isDemo]);
 
   useEffect(() => { void loadBulletins(); }, [loadBulletins]);
 
+  function clearGenerating(studentId: string) {
+    setGenerating((prev) => {
+      const s = new Set(prev);
+      s.delete(studentId);
+      return s;
+    });
+  }
+
   async function handleGenerate(studentId: string) {
     if (!token || !selectedPeriodId) return;
+    setErrorMsg(null);
     setGenerating((prev) => new Set(prev).add(studentId));
+
+    // Demo mode: the generate endpoint 404s for demo student IDs, so optimistically
+    // mark the bulletin as generated — keeps the demo flow functional end-to-end.
+    if (isDemo) {
+      setBulletinsMap((prev) => {
+        const next = new Map(prev);
+        next.set(studentId, {
+          id: `demo-${studentId}-${selectedPeriodId}`,
+          pdfUrl: null,
+          generatedAt: new Date().toISOString(),
+        });
+        return next;
+      });
+      clearGenerating(studentId);
+      return;
+    }
+
     try {
       const res = await fetch('/api/bulletins/generate', {
         method: 'POST',
@@ -132,9 +166,13 @@ export default function BulletinsPage() {
           if (data.pdfUrl) window.open(data.pdfUrl, '_blank');
         }
         void loadBulletins();
+      } else {
+        setErrorMsg('La génération du bulletin a échoué. Réessayez.');
       }
+    } catch {
+      setErrorMsg('La génération du bulletin a échoué. Réessayez.');
     } finally {
-      setGenerating((prev) => { const s = new Set(prev); s.delete(studentId); return s; });
+      clearGenerating(studentId);
     }
   }
 
@@ -168,6 +206,12 @@ export default function BulletinsPage() {
           )}
         </div>
       </header>
+
+      {errorMsg && (
+        <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {errorMsg}
+        </div>
+      )}
 
       {loadingStudents || loadingBulletins ? (
         <p className="text-sm text-muted-foreground">Chargement…</p>

@@ -49,7 +49,7 @@ export function InviteTokensList() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['admin', 'invite-tokens'],
     queryFn: () => listInviteTokens(accessToken!),
     enabled: !!accessToken,
@@ -64,14 +64,8 @@ export function InviteTokensList() {
     return <p className="text-sm text-muted-foreground">Chargement…</p>;
   }
 
-  if (error) {
-    return (
-      <p className="text-sm text-rose-600" role="alert">
-        Erreur : {(error as Error).message}
-      </p>
-    );
-  }
-
+  // On API error (e.g. demo mode without a reachable backend) fall through to
+  // the friendly empty state below instead of a red banner over the page.
   const tokens: InviteToken[] = data ?? [];
 
   return (

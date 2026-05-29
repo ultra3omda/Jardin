@@ -177,12 +177,12 @@ export function BrandingForm({ initial }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>Domaine personnalisé</CardTitle>
-          <CardDescription>Disponible dans le tier premium (V11).</CardDescription>
+          <CardDescription>Disponible avec l&apos;offre premium.</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Bientôt : <code>portail.votre-ecole.fr</code> au lieu de l&apos;URL
-            Vercel actuelle.
+            Utilisez votre propre domaine, par exemple{' '}
+            <code>portail.votre-ecole.fr</code>, au lieu de l&apos;URL actuelle.
           </p>
         </CardContent>
       </Card>

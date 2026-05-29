@@ -10,6 +10,7 @@ import {
   resendInvite,
   type InviteSummary,
 } from '@/lib/api/admin-tenants';
+import { findDemoTenant } from '@/lib/demo/tenants';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 export function TenantDetail({ id }: { id: string }) {
@@ -17,11 +18,15 @@ export function TenantDetail({ id }: { id: string }) {
   const queryClient = useQueryClient();
   const [resentInvite, setResentInvite] = useState<InviteSummary | null>(null);
 
-  const { data: tenant, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['admin', 'tenant', id],
     queryFn: () => getTenant(accessToken!, id),
     enabled: !!accessToken,
   });
+
+  // Fall back to shared demo fixtures so a demo list → detail click never errors.
+  const tenant = data ?? findDemoTenant(id);
+  const isDemo = !data && !!tenant;
 
   const resendMutation = useMutation({
     mutationFn: () => resendInvite(accessToken!, id),
@@ -32,13 +37,12 @@ export function TenantDetail({ id }: { id: string }) {
   });
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Chargement...</p>;
-  if (error) return <p className="text-sm text-rose-600">Erreur : {(error as Error).message}</p>;
-  if (!tenant) return null;
+  if (!tenant) return <p className="text-sm text-muted-foreground">École introuvable.</p>;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ecole-saas-weld.vercel.app';
   const webUrl = `${appUrl}/t/${tenant.slug}/login`;
   const mobileUrl = 'https://klasso-mobile.vercel.app';
-  const canResend = tenant.inviteStatus !== 'consumed' && !tenant.adminOnboarded;
+  const canResend = !isDemo && tenant.inviteStatus !== 'consumed' && !tenant.adminOnboarded;
 
   return (
     <div className="space-y-6">
@@ -52,7 +56,7 @@ export function TenantDetail({ id }: { id: string }) {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Stat label="Type" value={tenant.type} />
-        <Stat label="Langue" value={tenant.locale.toUpperCase()} />
+        <Stat label="Langue" value={tenant.locale?.toUpperCase() ?? '—'} />
         <Stat label="Utilisateurs" value={String(tenant.usersCount)} />
       </section>
 

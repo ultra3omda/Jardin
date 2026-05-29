@@ -204,6 +204,7 @@ export async function recordPayment(
 
 /** Format a number as a currency string with thousands separator. */
 export function formatAmount(amount: number, currency = 'TND'): string {
+  if (amount == null || Number.isNaN(amount)) return `— ${currency}`;
   const formatted = amount.toLocaleString('fr-TN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,

@@ -2,6 +2,8 @@
 
 import { Building2, Users, TrendingUp, Bell } from 'lucide-react';
 
+import { Link } from '@/i18n/routing';
+
 const PLATFORM_STATS = [
   { label: 'Établissements actifs', value: '17', sub: '+2 ce mois', icon: Building2, color: 'bg-purple-50 text-purple-600', badge: 'bg-purple-100 text-purple-700' },
   { label: 'Utilisateurs totaux', value: '1 247', sub: '+48 cette semaine', icon: Users, color: 'bg-blue-50 text-blue-600', badge: 'bg-blue-100 text-blue-700' },
@@ -52,7 +54,7 @@ export default function AdminDashboardPage() {
       <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-sm font-semibold text-navy-900">Établissements</h2>
-          <a href="/admin/tenants" className="text-xs text-ambre-600 hover:underline">Voir tous →</a>
+          <Link href="/admin/tenants" className="text-xs text-ambre-600 hover:underline">Voir tous →</Link>
         </div>
         <table className="w-full text-sm">
           <thead>
