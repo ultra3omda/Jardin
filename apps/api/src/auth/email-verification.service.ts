@@ -49,7 +49,7 @@ export class EmailVerificationService {
       },
     });
 
-    const baseUrl = this.config.get<string>('webAppUrl', 'https://ecole-saas-weld.vercel.app');
+    const baseUrl = this.config.get<string>('webAppUrl', 'https://klasso.tn');
     // V1.6 — pre-auth deep link routes through /t/[slug]/verify-email so the
     // landing page is branded with the tenant theme. Fallback to generic
     // /verify-email if the user has no tenantSlug (legacy super_admin).

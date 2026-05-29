@@ -22,7 +22,7 @@ export class InviteTokenCreatedDto {
 
   @ApiProperty({
     description: 'Absolute URL pointing at the web /register page with the token pre-filled.',
-    example: 'https://ecole-saas-weld.vercel.app/register?token=q-VkXhg7BvK9-...',
+    example: 'https://klasso.tn/register?token=q-VkXhg7BvK9-...',
   })
   url!: string;
 

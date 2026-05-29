@@ -67,7 +67,7 @@ export class InviteTokensService {
 
     const baseUrl = this.config.get<string>(
       'webAppUrl',
-      'https://ecole-saas-weld.vercel.app',
+      'https://klasso.tn',
     );
     return {
       id,
