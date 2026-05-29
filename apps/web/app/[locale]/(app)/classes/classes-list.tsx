@@ -57,6 +57,7 @@ export function ClassesList() {
       updateClass(accessToken as string, editing!.id, { name: editForm.name.trim(), level: editForm.level.trim() }),
     onSuccess: () => {
       setEditing(null);
+      setFormError(null);
       invalidate();
       toast.success('Classe mise à jour.');
     },
@@ -127,7 +128,15 @@ export function ClassesList() {
         emptyTitle="Aucune classe enregistrée"
         emptyDescription="Créez votre première classe pour commencer."
         emptyAction={
-          isAdmin ? { label: '+ Nouvelle classe', onClick: () => setShowCreate(true) } : undefined
+          isAdmin
+            ? {
+                label: '+ Nouvelle classe',
+                onClick: () => {
+                  setFormError(null);
+                  setShowCreate(true);
+                },
+              }
+            : undefined
         }
       >
         <ul className="divide-y divide-border overflow-hidden rounded-lg border bg-card">
