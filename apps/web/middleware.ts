@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { defaultLocale, locales } from '@/i18n';
 import { REFRESH_COOKIE_NAME } from '@/lib/auth/cookies';
-import { extractTenantSlugFromHost } from '@/lib/tenant/extract-tenant-slug';
+import { resolveBrandedRewrite } from '@/lib/tenant/subdomain-rewrite';
 
 const PROTECTED_PREFIXES = ['/dashboard'];
 const AUTH_PREFIXES = ['/login', '/register'];
@@ -34,17 +34,21 @@ export function middleware(request: NextRequest): NextResponse {
   const path = request.nextUrl.pathname;
 
   // V1.7-A — Subdomain resolver (dormant, gated by ENABLE_SUBDOMAIN_RESOLVER).
+  // Selective: ONLY branded pre-auth pages are rewritten to /t/{slug}. Authed
+  // pages (/dashboard, the (app) group) pass through — tenant comes from the
+  // JWT, never the Host (D3). Fixes the "rewrite everything → 404" bug.
   if (SUBDOMAIN_RESOLVER_ENABLED) {
-    const slug = extractTenantSlugFromHost(host, BASE_DOMAIN);
-    if (slug) {
-      const stripped = stripLocale(path);
-      if (!stripped.startsWith(`/t/${slug}`)) {
-        const url = request.nextUrl.clone();
-        const localeMatch = path.match(/^\/(fr|ar)(\/|$)/);
-        const locale = localeMatch ? localeMatch[1] : '';
-        url.pathname = locale ? `/${locale}/t/${slug}${stripped}` : `/t/${slug}${stripped}`;
-        return NextResponse.rewrite(url);
-      }
+    const target = resolveBrandedRewrite({
+      host,
+      path,
+      enabled: SUBDOMAIN_RESOLVER_ENABLED,
+      baseDomain: BASE_DOMAIN,
+      locales,
+    });
+    if (target) {
+      const url = request.nextUrl.clone();
+      url.pathname = target;
+      return NextResponse.rewrite(url);
     }
   }
 
