@@ -5,24 +5,12 @@ import type { Route } from 'next';
 import { Link } from '@/i18n/routing';
 import { useEffect, useState } from 'react';
 
-import { listStudents, type StudentSummary, type ListStudentsResponse } from '@/lib/api/students';
-import { DEMO_STUDENTS } from '@/lib/demo/students';
+import { listStudents, type StudentSummary } from '@/lib/api/students';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { ErrorRetry } from '@/components/ui/error-retry';
 
 const PAGE_SIZE = 25;
-
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-// Fixtures live in @/lib/demo/students so the detail/sub views fall back to the
-// SAME data — a demo list → detail click never 404s.
-
-const DEMO_STUDENTS_RESPONSE: ListStudentsResponse = {
-  items: DEMO_STUDENTS,
-  total: DEMO_STUDENTS.length,
-  page: 1,
-  pageSize: PAGE_SIZE,
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 function initials(s: StudentSummary): string {
   return `${s.firstName[0] ?? ''}${s.lastName[0] ?? ''}`.toUpperCase();
@@ -53,7 +41,7 @@ export function StudentsList() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['students', page, debounced],
     queryFn: () =>
       listStudents(accessToken!, {
@@ -64,40 +52,10 @@ export function StudentsList() {
     enabled: !!accessToken,
   });
 
-  if (!accessToken || isLoading) {
-    return (
-      <p className="text-sm text-muted-foreground" role="status">
-        Chargement…
-      </p>
-    );
-  }
-
-  // Fall back to demo data when API returns empty or errors — only when not actively searching
-  const effectiveData = (!debounced && (error || !data || data.total === 0))
-    ? DEMO_STUDENTS_RESPONSE
-    : (data ?? DEMO_STUDENTS_RESPONSE);
-
-  if (!effectiveData || effectiveData.total === 0) {
-    return (
-      <div className="rounded-lg border bg-card p-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          {debounced
-            ? `Aucun élève ne correspond à « ${debounced} ».`
-            : "Aucun élève pour l’instant."}
-        </p>
-        {canWrite && !debounced && (
-          <Link
-            href={"/students/new" as Route}
-            className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
-          >
-            {"Créer le premier élève →"}
-          </Link>
-        )}
-      </div>
-    );
-  }
-
-  const totalPages = Math.max(1, Math.ceil(effectiveData.total / PAGE_SIZE));
+  const students = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasRows = !isLoading && !isError && students.length > 0;
 
   return (
     <div className="space-y-4">
@@ -110,8 +68,29 @@ export function StudentsList() {
         aria-label="Rechercher un élève"
       />
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="min-w-full divide-y divide-border">
+      {isLoading ? (
+        <TableSkeleton rows={8} cols={6} />
+      ) : isError ? (
+        <ErrorRetry message="Impossible de charger les élèves." onRetry={() => refetch()} />
+      ) : students.length === 0 ? (
+        <div className="rounded-lg border bg-card p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            {debounced
+              ? `Aucun élève ne correspond à « ${debounced} ».`
+              : 'Aucun élève enregistré.'}
+          </p>
+          {canWrite && !debounced && (
+            <Link
+              href={'/students/new' as Route}
+              className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+            >
+              {'Créer le premier élève →'}
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="min-w-full divide-y divide-border">
           <thead className="bg-muted/50">
             <tr>
               <th scope="col" className="w-12 px-4 py-3">
@@ -150,7 +129,7 @@ export function StudentsList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {effectiveData.items.map((s) => (
+            {students.map((s) => (
               <tr key={s.id} className="hover:bg-muted/30">
                 <td className="px-4 py-3">
                   {s.photoUrl ? (
@@ -186,14 +165,15 @@ export function StudentsList() {
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {totalPages > 1 && (
+      {hasRows && totalPages > 1 && (
         <nav className="flex items-center justify-between text-sm" aria-label="Pagination">
           <span className="text-muted-foreground">
-            {effectiveData.total} élèves · page {page}/{totalPages}
+            {total} élèves · page {page}/{totalPages}
           </span>
           <div className="flex gap-2">
             <button
