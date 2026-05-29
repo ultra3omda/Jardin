@@ -30,4 +30,17 @@ describe('isAllowedOrigin', () => {
   it('rejects look-alike suffixes', () => {
     expect(isAllowedOrigin('https://klasso.tn.attacker.com', allowlist)).toBe(false);
   });
+
+  it('accepts a single-character subdomain label', () => {
+    expect(isAllowedOrigin('https://a.klasso.tn', allowlist)).toBe(true);
+  });
+
+  it('rejects a subdomain label with a trailing hyphen', () => {
+    expect(isAllowedOrigin('https://ecole-.klasso.tn', allowlist)).toBe(false);
+  });
+
+  it('matches case-insensitively (scheme, host, and subdomain)', () => {
+    expect(isAllowedOrigin('HTTPS://KLASSO.TN', allowlist)).toBe(true);
+    expect(isAllowedOrigin('https://Ecole-Victor-Hugo.klasso.tn', allowlist)).toBe(true);
+  });
 });

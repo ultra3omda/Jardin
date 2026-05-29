@@ -19,6 +19,10 @@ export function isAllowedOrigin(
   allowlist: string[],
 ): boolean {
   if (!origin) return true; // same-origin / server-to-server / curl
-  if (allowlist.includes(origin)) return true; // KLASSO_KNOWN_ORIGINS + CORS_ORIGIN
-  return KLASSO_SUBDOMAIN_RE.test(origin); // <slug>.klasso.tn
+  // Origin scheme + host are case-insensitive. Browsers already lowercase them,
+  // but normalise defensively so a mixed-case allowlist entry or a non-browser
+  // caller still matches deterministically.
+  const normalized = origin.toLowerCase();
+  if (allowlist.some((o) => o.toLowerCase() === normalized)) return true; // allowlist
+  return KLASSO_SUBDOMAIN_RE.test(normalized); // <slug>.klasso.tn
 }
