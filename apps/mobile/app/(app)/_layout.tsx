@@ -1,11 +1,13 @@
 import { Tabs } from 'expo-router';
 
 import { colors } from '@klasso/ui-mobile';
-import { getMobileTabs } from '@/lib/tabs';
+import { getTabsForRole } from '@/lib/tabs';
 import { useUnreadCount } from '@/lib/api/notifications';
+import { useAuthStore } from '@/lib/auth/store';
 
 export default function AppLayout() {
-  const tabs = getMobileTabs();
+  const role = useAuthStore((s) => s.user?.role);
+  const tabs = getTabsForRole(role ?? 'STAFF');
   const { data: unreadData } = useUnreadCount();
   const unreadCount = unreadData?.count ?? 0;
 
