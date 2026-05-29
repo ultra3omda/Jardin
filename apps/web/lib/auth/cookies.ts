@@ -11,6 +11,9 @@ export interface CookieOptions {
   sameSite: 'lax';
   path: '/';
   maxAge: number;
+  /** V1.7-A — `.klasso.tn` in subdomain mode so the refresh cookie is shared
+   *  across every `<slug>.klasso.tn`. Omitted (host-only) otherwise. */
+  domain?: string;
 }
 
 /**
@@ -19,6 +22,18 @@ export interface CookieOptions {
  * Route Handler proxy. We DO NOT use SameSite=Strict because that would
  * break OAuth-style redirects later.
  */
+/**
+ * Cookie `Domain` attribute. In subdomain mode the refresh cookie must be
+ * readable on every `<slug>.klasso.tn`, so we scope it to `.<base>`. In path
+ * mode (apex / Vercel preview) we return undefined → host-only cookie (R1: a
+ * `.klasso.tn` domain cookie would not apply on `*.vercel.app` anyway).
+ */
+export function subdomainCookieDomain(): string | undefined {
+  const base = process.env.NEXT_PUBLIC_BASE_DOMAIN;
+  const enabled = process.env.NEXT_PUBLIC_ENABLE_SUBDOMAIN === 'true';
+  return enabled && base ? `.${base}` : undefined;
+}
+
 export function refreshCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
@@ -26,6 +41,7 @@ export function refreshCookieOptions(): CookieOptions {
     sameSite: 'lax',
     path: '/',
     maxAge: REFRESH_COOKIE_MAX_AGE,
+    domain: subdomainCookieDomain(),
   };
 }
 
