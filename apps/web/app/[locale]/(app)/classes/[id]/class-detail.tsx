@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { Link } from '@/i18n/routing';
 import { createTimeSlot, deleteTimeSlot, getClass, type TimeSlot } from '@/lib/api/classes';
+import { findDemoClass } from '@/lib/demo/classes';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 interface Props {
@@ -41,11 +42,16 @@ export function ClassDetail({ id }: Props) {
   });
   const [slotError, setSlotError] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
+  const { data: apiClass, isLoading } = useQuery({
     queryKey: ['classes', 'detail', id],
     queryFn: () => getClass(accessToken!, id),
     enabled: !!accessToken,
   });
+
+  // Fall back to shared demo fixtures when the API errors or returns nothing,
+  // so a demo list → detail click never shows "Class not found".
+  const data = apiClass ?? findDemoClass(id);
+  const isDemo = !apiClass && !!data;
 
   const addSlotMutation = useMutation({
     mutationFn: () =>
@@ -74,12 +80,8 @@ export function ClassDetail({ id }: Props) {
     return <p className="p-8 text-sm text-muted-foreground">Authentification requise.</p>;
   }
   if (isLoading) return <p className="p-8 text-sm text-muted-foreground">Chargement...</p>;
-  if (error || !data) {
-    return (
-      <p className="p-8 text-sm text-rose-600">
-        Erreur : {(error as Error)?.message ?? 'Class not found'}
-      </p>
-    );
+  if (!data) {
+    return <p className="p-8 text-sm text-muted-foreground">Classe introuvable.</p>;
   }
 
   const slotsByDay: Record<number, TimeSlot[]> = {};
@@ -100,13 +102,15 @@ export function ClassDetail({ id }: Props) {
             Niveau {data.level} · Année {data.schoolYear}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAdd((v) => !v)}
-          className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-        >
-          {showAdd ? 'Annuler' : '+ Créneau EDT'}
-        </button>
+        {!isDemo && (
+          <button
+            type="button"
+            onClick={() => setShowAdd((v) => !v)}
+            className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+          >
+            {showAdd ? 'Annuler' : '+ Créneau EDT'}
+          </button>
+        )}
       </div>
 
       <section className="mt-8">
@@ -241,17 +245,19 @@ export function ClassDetail({ id }: Props) {
                               {slot.room && <p className="text-muted-foreground">{slot.room}</p>}
                               {slot.teacher && (
                                 <p className="text-muted-foreground">
-                                  {slot.teacher.firstName[0]}. {slot.teacher.lastName}
+                                  {slot.teacher.firstName?.[0] ?? ''}. {slot.teacher.lastName}
                                 </p>
                               )}
-                              <button
-                                type="button"
-                                onClick={() => deleteMutation.mutate(slot.id)}
-                                className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded text-xs text-rose-600 hover:bg-rose-50 group-hover:flex"
-                                title="Supprimer"
-                              >
-                                ×
-                              </button>
+                              {!isDemo && (
+                                <button
+                                  type="button"
+                                  onClick={() => deleteMutation.mutate(slot.id)}
+                                  className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded text-xs text-rose-600 hover:bg-rose-50 group-hover:flex"
+                                  title="Supprimer"
+                                >
+                                  ×
+                                </button>
+                              )}
                             </div>
                           ) : null}
                         </td>

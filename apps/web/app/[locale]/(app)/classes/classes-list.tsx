@@ -5,19 +5,15 @@ import { useState } from 'react';
 
 import { Link } from '@/i18n/routing';
 import { createClass, listClasses, type SchoolClass } from '@/lib/api/classes';
+import { DEMO_SCHOOL_CLASSES } from '@/lib/demo/classes';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 const CURRENT_YEAR = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
 
 // ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_SCHOOL_CLASSES: SchoolClass[] = [
-  { id: 'demo-class-1', name: 'CP-A', level: 'CP', schoolYear: '2025-2026', createdAt: '2024-09-01T08:00:00Z', updatedAt: '2024-09-01T08:00:00Z' },
-  { id: 'demo-class-2', name: 'CE1-B', level: 'CE1', schoolYear: '2025-2026', createdAt: '2024-09-01T08:00:00Z', updatedAt: '2024-09-01T08:00:00Z' },
-  { id: 'demo-class-3', name: 'CM1-A', level: 'CM1', schoolYear: '2025-2026', createdAt: '2024-09-01T08:00:00Z', updatedAt: '2024-09-01T08:00:00Z' },
-  { id: 'demo-class-4', name: 'CM2-B', level: 'CM2', schoolYear: '2025-2026', createdAt: '2024-09-01T08:00:00Z', updatedAt: '2024-09-01T08:00:00Z' },
-  { id: 'demo-class-5', name: 'CE2-A', level: 'CE2', schoolYear: '2025-2026', createdAt: '2024-09-01T08:00:00Z', updatedAt: '2024-09-01T08:00:00Z' },
-];
+// Fixtures live in @/lib/demo/classes (enriched with a main teacher + weekly
+// timetable) so the class detail view falls back to the SAME data — a demo
+// list → detail click never shows "Class not found".
 
 // ─────────────────────────────────────────────────────────────────────────────
 

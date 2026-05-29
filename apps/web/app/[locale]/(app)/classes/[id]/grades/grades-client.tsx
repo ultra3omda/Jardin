@@ -3,7 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { Link } from '@/i18n/routing';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { findDemoClass } from '@/lib/demo/classes';
 
 interface SubjectDto {
   id: string;
@@ -84,6 +86,10 @@ export function GradesClient({ classId }: Props): JSX.Element {
     enabled: !!accessToken,
     queryFn: () => fetch(`/api/classes/${classId}`, { headers: authHeaders(accessToken!) }).then(jsonOk<ClassDto>),
   });
+
+  // Demo fallback: keep the header populated (name/level/year) when the class
+  // fetch fails, so a demo list → grades click never shows a blank title.
+  const cls = classQ.data ?? findDemoClass(classId);
 
   const subjectsQ = useQuery<{ items: SubjectDto[] }>({
     queryKey: ['v6-subjects'],
@@ -178,10 +184,10 @@ export function GradesClient({ classId }: Props): JSX.Element {
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold">
-        Notes — {classQ.data?.name}{' '}
-        {classQ.data && (
+        Notes — {cls?.name}{' '}
+        {cls && (
           <span className="text-sm font-normal text-muted-foreground">
-            ({classQ.data.level} {classQ.data.schoolYear})
+            ({cls.level} {cls.schoolYear})
           </span>
         )}
       </h1>
@@ -192,8 +198,8 @@ export function GradesClient({ classId }: Props): JSX.Element {
         </label>
         {periodsQ.data && periodsQ.data.items.length === 0 ? (
           <span className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-1.5">
-            Aucune période définie pour l&apos;année {classQ.data?.schoolYear}. Créez des périodes dans{' '}
-            <a href="/fr/administration/grade-periods" className="underline">Paramètres → Périodes</a>.
+            Aucune période définie pour l&apos;année {cls?.schoolYear}. Créez des périodes dans{' '}
+            <Link href="/settings/grade-periods" className="underline">Paramètres → Périodes</Link>.
           </span>
         ) : (
           <select

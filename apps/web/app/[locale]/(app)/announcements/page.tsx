@@ -83,7 +83,6 @@ export default function AnnouncementsPage() {
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Announcement | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
@@ -94,12 +93,14 @@ export default function AnnouncementsPage() {
 
   const load = useCallback(async () => {
     if (!token) return;
-    setLoading(true); setFetchError(null);
+    setLoading(true);
     try {
       const data = await apiFetch<{ items: Announcement[] }>('/api/announcements', token);
       setAnnouncements(data.items ?? []);
-    } catch (e) { setFetchError(e instanceof Error ? e.message : 'Erreur'); }
-    finally { setLoading(false); }
+    } catch {
+      // API unavailable → fall back to demo announcements (handled by `displayed`).
+      setAnnouncements([]);
+    } finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => { void load(); }, [load]);
@@ -155,12 +156,6 @@ export default function AnnouncementsPage() {
           </button>
         )}
       </header>
-
-      {fetchError && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Erreur : {fetchError} <button onClick={() => void load()} className="ml-2 underline">Réessayer</button>
-        </div>
-      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Chargement…</p>

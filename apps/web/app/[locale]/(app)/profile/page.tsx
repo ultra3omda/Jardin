@@ -182,7 +182,7 @@ function ProfileCard({
               <FormLabel>Email</FormLabel>
               <Input value={user?.email ?? ''} disabled aria-readonly />
               <FormDescription>
-                L&apos;email ne peut pas être modifié depuis cette page (V1.5).
+                L&apos;email ne peut pas être modifié depuis cette page.
               </FormDescription>
             </div>
 

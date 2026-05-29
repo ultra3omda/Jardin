@@ -14,6 +14,7 @@ import {
   updateStudent,
   type StudentSummary,
 } from '@/lib/api/students';
+import { findDemoStudent } from '@/lib/demo/students';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import {
   updateStudentSchema,
@@ -50,14 +51,18 @@ export function StudentDetail({ id }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const {
-    data: student,
+    data: apiStudent,
     isLoading,
-    error,
   } = useQuery({
     queryKey: ['student', id],
     queryFn: () => getStudent(accessToken!, id),
     enabled: !!accessToken,
   });
+
+  // Fall back to shared demo fixtures when the API errors or returns nothing,
+  // so a demo list → detail click never lands on a red error banner.
+  const student = apiStudent ?? findDemoStudent(id);
+  const isDemo = !apiStudent && !!student;
 
   const form = useForm<UpdateStudentFormValues>({
     resolver: zodResolver(updateStudentSchema),
@@ -88,13 +93,6 @@ export function StudentDetail({ id }: Props) {
       </p>
     );
   }
-  if (error) {
-    return (
-      <p className="text-sm text-rose-600" role="alert">
-        Erreur : {(error as Error).message}
-      </p>
-    );
-  }
   if (!student) {
     return <p className="text-sm text-muted-foreground">Élève introuvable.</p>;
   }
@@ -114,7 +112,7 @@ export function StudentDetail({ id }: Props) {
           </h1>
           <p className="text-sm text-muted-foreground">Classe {student.classroom}</p>
         </div>
-        {canWrite && !editing && (
+        {canWrite && !editing && !isDemo && (
           <div className="flex gap-2">
             <button
               type="button"
@@ -305,8 +303,7 @@ function EditPanel(props: {
         </label>
       </div>
       <p className="text-xs text-muted-foreground">
-        Édition rapide des champs courants. L&apos;édition complète (santé, contact, langue) arrive
-        en V2.1.
+        Édition rapide des champs courants.
       </p>
       {error && (
         <p className="text-sm text-rose-600" role="alert">

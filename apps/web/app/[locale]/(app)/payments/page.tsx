@@ -60,12 +60,10 @@ export default function PaymentsPage() {
   const token = useAuthStore((s) => s.accessToken);
   const [invoices, setInvoices] = useState<Invoice[]>(DEMO_INVOICES);
   const [stats, setStats] = useState<BillingStats>(DEMO_STATS);
-  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
 
   const load = useCallback(async () => {
     if (!token) return;
-    setLoading(true);
     try {
       const [invRes, statsRes] = await Promise.all([
         fetch('/api/billing/invoices', { headers: { Authorization: `Bearer ${token}` } }),
@@ -77,8 +75,6 @@ export default function PaymentsPage() {
       if (statsData) setStats(statsData);
     } catch {
       /* keep demo data */
-    } finally {
-      setLoading(false);
     }
   }, [token]);
 
@@ -87,6 +83,7 @@ export default function PaymentsPage() {
   const filtered = filterStatus ? invoices.filter((i) => i.status === filterStatus) : invoices;
 
   const fmt = (n: number, cur: string) => {
+    if (n == null || Number.isNaN(n)) return '—';
     try { return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: cur }).format(n); }
     catch { return `${n} ${cur}`; }
   };
@@ -124,9 +121,7 @@ export default function PaymentsPage() {
         </select>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
           Aucune facture.
         </div>

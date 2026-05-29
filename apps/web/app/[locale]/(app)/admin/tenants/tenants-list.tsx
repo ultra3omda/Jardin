@@ -4,17 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@/i18n/routing';
 
 import { listTenants, type TenantSummary } from '@/lib/api/admin-tenants';
+import { DEMO_TENANTS } from '@/lib/demo/tenants';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 // ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_TENANTS: TenantSummary[] = [
-  { id: 'demo-t-1', name: 'École El Khadra — Tunis', slug: 'el-khadra-tunis', type: 'PRIMARY_SCHOOL', locale: 'fr', brand: null, createdAt: '2024-01-15T08:00:00Z', usersCount: 87, adminOnboarded: true, inviteStatus: 'consumed' },
-  { id: 'demo-t-2', name: 'Maternelle Les Étoiles — Sousse', slug: 'les-etoiles-sousse', type: 'KINDERGARTEN', locale: 'fr', brand: null, createdAt: '2024-03-01T08:00:00Z', usersCount: 34, adminOnboarded: true, inviteStatus: 'consumed' },
-  { id: 'demo-t-3', name: 'École Carthage International', slug: 'carthage-intl', type: 'PRIMARY_SCHOOL', locale: 'fr', brand: null, createdAt: '2024-01-10T08:00:00Z', usersCount: 142, adminOnboarded: true, inviteStatus: 'consumed' },
-  { id: 'demo-t-4', name: 'Groupe scolaire Ibn Sina', slug: 'ibn-sina', type: 'MIXED', locale: 'ar', brand: null, createdAt: '2024-01-08T08:00:00Z', usersCount: 215, adminOnboarded: true, inviteStatus: 'consumed' },
-  { id: 'demo-t-5', name: 'École Privée Les Jasmins', slug: 'les-jasmins', type: 'PRIMARY_SCHOOL', locale: 'fr', brand: null, createdAt: '2025-03-20T08:00:00Z', usersCount: 76, adminOnboarded: false, inviteStatus: 'pending' },
-];
+// Fixtures live in @/lib/demo/tenants so the tenant detail view falls back to
+// the SAME data — a demo list → detail click never shows an error banner.
 
 // ─────────────────────────────────────────────────────────────────────────────
 
