@@ -10,6 +10,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { isAllowedOrigin } from './common/config/cors-origin';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -52,7 +53,9 @@ async function bootstrap(): Promise<void> {
   );
 
   app.enableCors({
-    origin: corsOrigin,
+    // Accept the static allowlist OR any https://<slug>.klasso.tn (D6). The
+    // Host/Origin NEVER drives tenant isolation (D3) — this only gates CORS.
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin, corsOrigin)),
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
   });
