@@ -97,7 +97,7 @@ export function StudentParents({ studentId }: Props) {
 
   const queryKey = ['parent-relations', { studentId }] as const;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: () => listParentRelations(accessToken!, { studentId }),
     enabled: !!accessToken,
@@ -144,9 +144,16 @@ export function StudentParents({ studentId }: Props) {
         )}
 
         {error && (
-          <p className="mt-4 text-sm text-rose-600" role="alert">
-            Erreur de chargement des parents.
-          </p>
+          <div className="mt-4 flex flex-col items-start gap-2" role="alert">
+            <p className="text-sm text-rose-600">Erreur de chargement des parents.</p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="h-9 rounded-md border border-rose-600/40 px-3 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+            >
+              Réessayer
+            </button>
+          </div>
         )}
 
         {!isLoading && !error && items.length === 0 && (
