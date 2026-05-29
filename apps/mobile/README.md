@@ -53,18 +53,19 @@ Le boot router (`app/index.tsx`) redirige automatiquement selon l'état :
 
 ---
 
-## 🎭 Personas
+## 🎭 Onglets par rôle
 
-Le flag `EXPO_PUBLIC_PERSONA` sélectionne l'UX cible :
+Depuis V1.7-A, la barre d'onglets est résolue **au runtime** selon le rôle de
+l'utilisateur connecté (porté par le JWT), via `getTabsForRole(role)` dans
+`lib/tabs.ts`. Un seul binaire sert les trois personas (Parent / Enseignant /
+Direction) — plus de flag de build.
 
-| Valeur | Description |
+| Rôle | Onglets |
 |---|---|
-| `dev` | Affiche tout (persona de dev local) |
-| `parent` | UX parent |
-| `teacher` | UX enseignant |
-| `admin` | UX direction |
-
-En V1.7-A : utilise `dev` pour voir tous les écrans.
+| `SCHOOL_ADMIN` | Tableau · Élèves · Classes · Pédagogie · Notifs · Profil |
+| `TEACHER` | Accueil · Mes classes · Messages · Notifs · Profil |
+| `PARENT` | Accueil · Mon enfant · Messages · Notifs · Profil |
+| `STAFF` / `SUPER_ADMIN` | Accueil · Messages · Notifs · Profil |
 
 ---
 
