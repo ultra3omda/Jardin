@@ -11,6 +11,8 @@ import { Topbar } from '@/components/app-shell/topbar';
 import { logout, refresh } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { buildBrandStyleTag } from '@/lib/tenant/brand-style-tag';
+import { buildTenantUrl } from '@/lib/tenant/build-tenant-url';
+import { shouldRedirectForSlugMismatch } from '@/lib/tenant/subdomain-consistency';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -47,6 +49,27 @@ export function AppShellClient({ children }: { children: ReactNode }) {
         router.replace('/login' as never);
       });
   }, [isHydrated, accessToken, setSession, clear, router]);
+
+  // V1.7-A — Subdomain<->JWT slug consistency (UX guard; isolation stays on the
+  // JWT, D3). If the branded host disagrees with the session tenant, log out and
+  // bounce to the correct host. No-op in path mode / on the apex / when disabled.
+  useEffect(() => {
+    if (!isHydrated || !tenant?.slug) return;
+    const jwtSlug = tenant.slug;
+    const mismatch = shouldRedirectForSlugMismatch({
+      host: window.location.host,
+      jwtSlug,
+      enabled: process.env.NEXT_PUBLIC_ENABLE_SUBDOMAIN === 'true',
+      baseDomain: process.env.NEXT_PUBLIC_BASE_DOMAIN ?? 'klasso.tn',
+    });
+    if (!mismatch) return;
+    logout()
+      .catch(() => undefined)
+      .finally(() => {
+        clear();
+        window.location.assign(buildTenantUrl(jwtSlug, '/dashboard'));
+      });
+  }, [isHydrated, tenant?.slug, clear]);
 
   const brand: TenantBrand = useMemo(() => {
     const stored = (tenant?.brand ?? {}) as Partial<TenantBrand>;
