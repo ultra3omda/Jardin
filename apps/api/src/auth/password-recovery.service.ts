@@ -63,7 +63,7 @@ export class PasswordRecoveryService {
       return;
     }
 
-    const baseUrl = this.config.get<string>('webAppUrl', 'https://ecole-saas-weld.vercel.app');
+    const baseUrl = this.config.get<string>('webAppUrl', 'https://klasso.tn');
 
     await Promise.all(
       users.map(async (u) => {

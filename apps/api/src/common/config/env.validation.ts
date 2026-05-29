@@ -60,7 +60,7 @@ export class EnvironmentVariables {
 
   @IsString()
   @Matches(/^https?:\/\/.+/, { message: 'WEB_APP_URL must be an absolute http(s) URL' })
-  WEB_APP_URL: string = 'https://ecole-saas-weld.vercel.app';
+  WEB_APP_URL: string = 'https://klasso.tn';
 
   @IsString()
   @MinLength(10, { message: 'RESEND_API_KEY must be set (looks like `re_…`)' })

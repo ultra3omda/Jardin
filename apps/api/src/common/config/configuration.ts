@@ -12,8 +12,10 @@ import type { NodeEnv } from './env.validation';
  */
 const KLASSO_KNOWN_ORIGINS = [
   // Note : ecole-saas.vercel.app appartient au projet Klasio (Côte d'Ivoire),
-  // PAS à nous. Notre vraie URL prod = ecole-saas-weld.vercel.app
-  // (confirmé via Vercel get_project pour prj_DsqPNx90qY3R98l71Pr92DHPoE7R).
+  // PAS à nous. Notre déploiement Vercel = ecole-saas-weld.vercel.app
+  // (prj_DsqPNx90qY3R98l71Pr92DHPoE7R), exposé publiquement via le domaine
+  // custom klasso.tn — l'URL prod CANONIQUE des liens sortants (voir
+  // `webAppUrl` ci-dessous). Les deux origines restent whitelistées pour CORS.
   'https://ecole-saas-weld.vercel.app',
   'https://klasso-mobile.vercel.app',
   'https://klasso.tn',
@@ -82,7 +84,7 @@ export function configuration(): AppConfig {
     },
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS ?? '12', 10),
     corsOrigin: buildCorsOrigins(),
-    webAppUrl: process.env.WEB_APP_URL ?? 'https://ecole-saas-weld.vercel.app',
+    webAppUrl: process.env.WEB_APP_URL ?? 'https://klasso.tn',
     email: {
       resendApiKey: process.env.RESEND_API_KEY ?? '',
       from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
