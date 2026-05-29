@@ -168,6 +168,64 @@ describe('Invite-only register flow (e2e)', () => {
     });
   });
 
+  describe('email verification gate (V1.6 auto-verify)', () => {
+    it('email-bound invite → admin auto-verified → immediate re-login succeeds', async () => {
+      const mintRes = await request(app.getHttpServer())
+        .post('/api/admin/invite-tokens')
+        .set('Authorization', `Bearer ${superAdminAccessToken}`)
+        .send({ invitedEmail: adminPayload.email, expiresInDays: 7 })
+        .expect(201);
+
+      const registerRes = await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({ inviteToken: mintRes.body.token, tenant: tenantPayload, admin: adminPayload })
+        .expect(201);
+
+      // DB: the email is marked verified at registration time.
+      const created = await prisma.user.findUnique({
+        where: { id: registerRes.body.user.id },
+      });
+      expect(created?.emailVerifiedAt).toBeInstanceOf(Date);
+
+      // A subsequent login is NOT blocked by the EMAIL_NOT_VERIFIED gate.
+      const loginRes = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: adminPayload.email,
+          password: adminPassword,
+          tenantSlug: tenantPayload.slug,
+        })
+        .expect(200);
+      expect(loginRes.body.accessToken).toBeTypeOf('string');
+    });
+
+    it('open (email-less) invite → admin stays unverified → re-login is gated', async () => {
+      const { plaintext } = await mintRawToken({ invitedEmail: null });
+
+      const registerRes = await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({ inviteToken: plaintext, tenant: tenantPayload, admin: adminPayload })
+        .expect(201);
+
+      // DB: the email is NOT verified — the typed-in address was never vetted.
+      const created = await prisma.user.findUnique({
+        where: { id: registerRes.body.user.id },
+      });
+      expect(created?.emailVerifiedAt).toBeNull();
+
+      // A subsequent login is blocked until the email is confirmed.
+      const loginRes = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: adminPayload.email,
+          password: adminPassword,
+          tenantSlug: tenantPayload.slug,
+        })
+        .expect(403);
+      expect(loginRes.body.code).toBe('EMAIL_NOT_VERIFIED');
+    });
+  });
+
   describe('rejection paths', () => {
     it('rejects /register when inviteToken is missing (ValidationPipe 400)', async () => {
       await request(app.getHttpServer())

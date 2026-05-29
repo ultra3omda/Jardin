@@ -85,6 +85,14 @@ export class AuthService {
     const rounds = this.config.get<number>('bcryptRounds', 12);
     const passwordHash = await bcrypt.hash(dto.admin.password, rounds);
 
+    // V1.6: when the invite is bound to a specific email, the super-admin has
+    // already vetted that exact address (and validate() above just confirmed
+    // admin.email matches it). We therefore trust it and mark the email as
+    // verified at registration, so the invitee can re-login immediately without
+    // the email round-trip. Open (email-less) invites keep the verification
+    // gate, since no one has vetted the address the invitee typed in.
+    const autoVerified = invite.invitedEmail !== null;
+
     const { tenant, user } = await this.prisma.$transaction(async (tx) => {
       const newTenant = await tx.tenant.create({
         data: {
@@ -106,6 +114,7 @@ export class AuthService {
           lastName: dto.admin.lastName.trim(),
           role: UserRole.SCHOOL_ADMIN,
           locale: dto.admin.locale ?? 'fr',
+          emailVerifiedAt: autoVerified ? new Date() : null,
         },
       });
       // Consume the invite token in the same tx — atomic with tenant+user
@@ -124,9 +133,12 @@ export class AuthService {
       ...meta,
     });
 
-    // V1.5: trigger verification email. Best-effort — failure logged inside
-    // the service and does NOT block registration.
-    await this.emailVerification.mintAndSend(user, meta);
+    // V1.5/V1.6: only open invites need the verification email — email-bound
+    // invites are auto-verified above. Best-effort either way: failure is logged
+    // inside the service and does NOT block registration.
+    if (!autoVerified) {
+      await this.emailVerification.mintAndSend(user, meta);
+    }
 
     return this.issueTokensAndBuildResponse(user, tenant, meta);
   }

@@ -457,15 +457,16 @@ describe('AuthService', () => {
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
-    it('creates tenant + admin + consumes invite in a single tx and issues tokens', async () => {
+    it('creates tenant + admin + consumes invite in a single tx and issues tokens (open invite → unverified + email sent)', async () => {
       prisma.tenant.findUnique.mockResolvedValueOnce(null);
       const txInviteUpdate = vi.fn().mockResolvedValue({ ...INVITE_ROW });
+      const txUserCreate = vi
+        .fn()
+        .mockResolvedValue({ ...baseUser, id: 'user-2', tenantId: 'tenant-2', emailVerifiedAt: null });
       prisma.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           tenant: { create: vi.fn().mockResolvedValue({ ...baseTenant, slug: 'new', id: 'tenant-2' }) },
-          user: {
-            create: vi.fn().mockResolvedValue({ ...baseUser, id: 'user-2', tenantId: 'tenant-2' }),
-          },
+          user: { create: txUserCreate },
           inviteToken: { update: txInviteUpdate },
         };
         return cb(tx);
@@ -497,10 +498,59 @@ describe('AuthService', () => {
           consumedAt: expect.any(Date),
         }),
       });
+      // Open invite (no invitedEmail) → email stays UNVERIFIED and the
+      // verification email IS sent so the invitee can later confirm.
+      expect(txUserCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ emailVerifiedAt: null }),
+      });
       expect(emailVerification.mintAndSend).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'user-2' }),
         expect.any(Object),
       );
+    });
+
+    it('auto-verifies the admin and skips the verification email when the invite is email-bound', async () => {
+      prisma.tenant.findUnique.mockResolvedValueOnce(null);
+      // Email-bound invite: validate() returns a row whose invitedEmail matches
+      // the (normalized) admin email — the super-admin already vetted it.
+      inviteTokens.validate.mockResolvedValueOnce({
+        ...INVITE_ROW,
+        invitedEmail: 'founder@new.school',
+      });
+      const txUserCreate = vi
+        .fn()
+        .mockResolvedValue({ ...baseUser, id: 'user-3', tenantId: 'tenant-3', emailVerifiedAt: new Date() });
+      prisma.$transaction.mockImplementationOnce(async (cb) => {
+        const tx = {
+          tenant: { create: vi.fn().mockResolvedValue({ ...baseTenant, slug: 'bound', id: 'tenant-3' }) },
+          user: { create: txUserCreate },
+          inviteToken: { update: vi.fn().mockResolvedValue({ ...INVITE_ROW }) },
+        };
+        return cb(tx);
+      });
+      prisma.refreshToken.create.mockResolvedValueOnce({});
+
+      const result = await service.register(
+        {
+          inviteToken: VALID_INVITE_TOKEN,
+          tenant: { name: 'Bound School', slug: 'bound', type: TenantType.PRIMARY_SCHOOL },
+          admin: {
+            email: 'Founder@New.School',
+            firstName: 'Found',
+            lastName: 'Er',
+            password: 'pwdpwdpwdpwd',
+          },
+        },
+        {},
+      );
+
+      expect(result.user.id).toBe('user-3');
+      // Email-bound invite → user persisted as ALREADY verified...
+      expect(txUserCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ emailVerifiedAt: expect.any(Date) }),
+      });
+      // ...and NO verification email is sent (the address is already trusted).
+      expect(emailVerification.mintAndSend).not.toHaveBeenCalled();
     });
   });
 });
