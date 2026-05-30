@@ -45,7 +45,7 @@ export default function AdminOverviewPage() {
           <p className="text-sm text-muted-foreground">Revenu mensuel récurrent (MRR)</p>
           <p className="mt-1 text-lg font-medium text-muted-foreground">À venir</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            La facturation par abonnement n'est pas encore activée.
+            La facturation par abonnement n&apos;est pas encore activée.
           </p>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function AdminOverviewPage() {
           href="/admin/audit"
           className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
         >
-          Journal d'audit
+          Journal d&apos;audit
         </Link>
       </div>
     </ResourceListPage>

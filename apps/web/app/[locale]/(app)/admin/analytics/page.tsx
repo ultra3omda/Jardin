@@ -87,8 +87,8 @@ export default function AdminAnalyticsPage() {
       <section className="mt-4 rounded-lg border border-dashed p-4">
         <h3 className="text-sm font-semibold text-muted-foreground">Revenu (MRR / ARR / churn / ARPU)</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          À venir — la facturation par abonnement n'est pas encore activée. Aucun chiffre de revenu n'est
-          affiché tant que les abonnements ne sont pas branchés.
+          À venir — la facturation par abonnement n&apos;est pas encore activée. Aucun chiffre de revenu
+          n&apos;est affiché tant que les abonnements ne sont pas branchés.
         </p>
       </section>
     </ResourceListPage>
