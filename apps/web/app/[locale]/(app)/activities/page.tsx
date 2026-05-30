@@ -1,79 +1,199 @@
-﻿type ActivityCategory = 'SPORTS' | 'ARTS' | 'SCIENCES' | 'LANGUAGES' | 'CIVIC';
+﻿'use client';
 
-interface Activity {
-  id: string; name: string; category: ActivityCategory;
-  description: string; schedule: string; enrolled: number; max: number; teacher: string;
-}
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { requireToken } from '@/lib/auth/require-token';
+import { useResource } from '@/lib/hooks/use-resource';
+import { useToast } from '@/lib/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { CrudModal } from '@/components/crud/crud-modal';
+import { ResourceListPage } from '@/components/crud/resource-list-page';
+import { ActivityForm } from '@/components/crud/activity-form';
+import {
+  listActivities,
+  createActivity,
+  updateActivity,
+  deleteActivity,
+  type Activity,
+  type ActivityCategory,
+} from '@/lib/api/activities';
+import { CATEGORIES, type ActivityValues } from '@/lib/validation/activities.schemas';
+
+const ACTIVITIES_KEY = ['activities', 'list'] as const;
 
 const CATEGORY_CONFIG: Record<ActivityCategory, { label: string; color: string; emoji: string }> = {
-  SPORTS: { label: 'Sports', color: 'bg-red-100 text-red-800', emoji: '⚽' },
-  ARTS: { label: 'Arts & Culture', color: 'bg-pink-100 text-pink-800', emoji: '🎨' },
-  SCIENCES: { label: 'Sciences', color: 'bg-blue-100 text-blue-800', emoji: '🔬' },
-  LANGUAGES: { label: 'Langues', color: 'bg-green-100 text-green-800', emoji: '🌍' },
-  CIVIC: { label: 'Vie scolaire', color: 'bg-purple-100 text-purple-800', emoji: '🤝' },
+  ART: { label: 'Arts & Culture', color: 'bg-pink-100 text-pink-800', emoji: '🎨' },
+  MUSIC: { label: 'Musique', color: 'bg-purple-100 text-purple-800', emoji: '🎵' },
+  SPORT: { label: 'Sport', color: 'bg-red-100 text-red-800', emoji: '⚽' },
+  OUTING: { label: 'Sorties', color: 'bg-green-100 text-green-800', emoji: '🚌' },
+  OTHER: { label: 'Autres', color: 'bg-slate-100 text-slate-700', emoji: '📌' },
 };
 
-const ACTIVITIES: Activity[] = [
-  { id: '1', name: 'Club Foot', category: 'SPORTS', description: 'Entraînement football tous niveaux.', schedule: 'Mardi & Jeudi 16h30-18h00', enrolled: 18, max: 22, teacher: 'M. Moreau' },
-  { id: '2', name: 'Natation', category: 'SPORTS', description: 'Piscine municipale — cours encadrés.', schedule: 'Mercredi 10h00-11h30', enrolled: 12, max: 15, teacher: 'Mme Chatti' },
-  { id: '3', name: 'Théâtre', category: 'ARTS', description: "Atelier d'expression dramatique et de mise en scène.", schedule: 'Vendredi 15h00-17h00', enrolled: 14, max: 20, teacher: 'Mme Leroy' },
-  { id: '4', name: 'Chorale', category: 'ARTS', description: "Chant choral — préparation fête de fin d'année.", schedule: 'Lundi 12h00-13h00', enrolled: 24, max: 30, teacher: 'M. Hamdi' },
-  { id: '5', name: 'Club Sciences', category: 'SCIENCES', description: 'Expériences pratiques et projets scientifiques.', schedule: 'Mercredi 14h00-16h00', enrolled: 10, max: 15, teacher: 'M. Bernard' },
-  { id: '6', name: 'Anglais renforcé', category: 'LANGUAGES', description: "Pratique orale et culturelle de l'anglais.", schedule: 'Mardi 12h00-13h00', enrolled: 16, max: 18, teacher: 'Mme Martin' },
-  { id: '7', name: 'Conseil des élèves', category: 'CIVIC', description: 'Délégués de classe et projets solidaires.', schedule: 'Jeudi 12h00-13h00', enrolled: 8, max: 12, teacher: 'M. Dupont' },
-];
+function formatSchedule(scheduledAt: string | null, durationMin: number | null): string | null {
+  if (!scheduledAt) return null;
+  const date = new Date(scheduledAt).toLocaleString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return durationMin ? `${date} · ${durationMin} min` : date;
+}
+
+function toFormValues(activity: Activity): Partial<ActivityValues> {
+  return {
+    name: activity.name,
+    category: activity.category,
+    description: activity.description ?? '',
+    scheduledAt: activity.scheduledAt ? activity.scheduledAt.slice(0, 16) : '',
+    durationMin: activity.durationMin ?? undefined,
+    location: activity.location ?? '',
+  };
+}
 
 export default function ActivitiesPage() {
-  const categories = (Object.keys(CATEGORY_CONFIG) as ActivityCategory[]).filter(
-    (cat) => ACTIVITIES.some((a) => a.category === cat)
-  );
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+  const isContributor = user?.role === 'SCHOOL_ADMIN' || user?.role === 'TEACHER';
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  const { data, isLoading, isError, refetch } = useResource(ACTIVITIES_KEY, listActivities);
+  const activities = data?.items ?? [];
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Activity | null>(null);
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ACTIVITIES_KEY });
+  const errMsg = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
+
+  const createMut = useMutation({
+    mutationFn: (values: ActivityValues) => createActivity(requireToken(accessToken), values),
+    onSuccess: () => {
+      invalidate();
+      setCreateOpen(false);
+      toast.success('Activité créée.');
+    },
+    onError: (err) => toast.error(errMsg(err, 'Création impossible.')),
+  });
+
+  const editMut = useMutation({
+    mutationFn: (vars: { id: string; values: ActivityValues }) =>
+      updateActivity(requireToken(accessToken), vars.id, vars.values),
+    onSuccess: () => {
+      invalidate();
+      setEditing(null);
+      toast.success('Activité mise à jour.');
+    },
+    onError: (err) => toast.error(errMsg(err, 'Mise à jour impossible.')),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteActivity(requireToken(accessToken), id),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Activité supprimée.');
+    },
+    onError: (err) => toast.error(errMsg(err, 'Suppression impossible.')),
+  });
+
+  const categories = CATEGORIES.filter((cat) => activities.some((a) => a.category === cat));
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Activités périscolaires</h1>
-        <p className="text-sm text-muted-foreground">{ACTIVITIES.length} activités proposées — {ACTIVITIES.reduce((s, a) => s + a.enrolled, 0)} inscriptions.</p>
-      </header>
+    <>
+      <ResourceListPage
+        title="Activités périscolaires"
+        description="Catalogue des activités proposées par l&apos;établissement."
+        action={
+          isContributor ? <Button onClick={() => setCreateOpen(true)}>Ajouter une activité</Button> : undefined
+        }
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={activities.length === 0}
+        onRetry={refetch}
+        errorMessage="Impossible de charger les activités."
+        emptyTitle="Aucune activité"
+        emptyDescription="Les activités périscolaires apparaîtront ici."
+        emptyAction={
+          isContributor ? { label: 'Ajouter une activité', onClick: () => setCreateOpen(true) } : undefined
+        }
+        skeletonCols={3}
+      >
+        <div className="space-y-8">
+          {categories.map((cat) => {
+            const cfg = CATEGORY_CONFIG[cat];
+            const items = activities.filter((a) => a.category === cat);
+            return (
+              <section key={cat}>
+                <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-navy-900">
+                  <span>{cfg.emoji}</span> {cfg.label}
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {items.map((act) => {
+                    const schedule = formatSchedule(act.scheduledAt, act.durationMin);
+                    return (
+                      <div key={act.id} className="space-y-3 rounded-xl border bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-navy-900">{act.name}</p>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cfg.color}`}
+                          >
+                            {act.participantCount} inscrit{act.participantCount > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        {act.description && (
+                          <p className="text-sm text-muted-foreground">{act.description}</p>
+                        )}
+                        {schedule && <p className="text-xs capitalize text-muted-foreground">{schedule}</p>}
+                        {act.location && <p className="text-xs text-muted-foreground">{act.location}</p>}
+                        {isContributor && (
+                          <div className="flex gap-2 pt-1">
+                            <Button variant="outline" size="sm" onClick={() => setEditing(act)}>
+                              Modifier
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteMut.mutate(act.id)}
+                              disabled={deleteMut.isPending}
+                            >
+                              Supprimer
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </ResourceListPage>
 
-      {categories.map((cat) => {
-        const cfg = CATEGORY_CONFIG[cat];
-        const items = ACTIVITIES.filter((a) => a.category === cat);
-        return (
-          <section key={cat}>
-            <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-navy-900">
-              <span>{cfg.emoji}</span> {cfg.label}
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((act) => {
-                const pct = Math.round((act.enrolled / act.max) * 100);
-                const full = act.enrolled >= act.max;
-                return (
-                  <div key={act.id} className="rounded-xl border bg-white p-4 shadow-sm space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-navy-900">{act.name}</p>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${full ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                        {full ? 'Complet' : 'Places dispo'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{act.description}</p>
-                    <p className="text-xs text-muted-foreground">{act.schedule}</p>
-                    <div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                        <span>{act.teacher}</span>
-                        <span>{act.enrolled}/{act.max} élèves</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-slate-100">
-                        <div className={`h-1.5 rounded-full ${pct >= 90 ? 'bg-red-500' : pct >= 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                          style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-    </div>
+      <CrudModal open={createOpen} title="Nouvelle activité" onClose={() => setCreateOpen(false)}>
+        <ActivityForm
+          submitLabel="Créer"
+          pending={createMut.isPending}
+          onSubmit={(values) => createMut.mutate(values)}
+          onCancel={() => setCreateOpen(false)}
+        />
+      </CrudModal>
+
+      <CrudModal open={!!editing} title="Modifier l&apos;activité" onClose={() => setEditing(null)}>
+        {editing && (
+          <ActivityForm
+            key={editing.id}
+            defaultValues={toFormValues(editing)}
+            submitLabel="Enregistrer"
+            pending={editMut.isPending}
+            onSubmit={(values) => editMut.mutate({ id: editing.id, values })}
+            onCancel={() => setEditing(null)}
+          />
+        )}
+      </CrudModal>
+    </>
   );
 }
