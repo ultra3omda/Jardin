@@ -224,4 +224,55 @@ describe('NotificationFanoutService', () => {
       expect(mocks.push.send).not.toHaveBeenCalled();
     });
   });
+
+  describe('fanoutDisciplineIncident', () => {
+    it('records a SYSTEM in-app notification with a severity label (no PII)', async () => {
+      await service.fanoutDisciplineIncident('t1', 'u1', 'Lina', 'SUSPENSION');
+
+      expect(mocks.notifications.create).toHaveBeenCalledWith(
+        't1',
+        expect.objectContaining({
+          userId: 'u1',
+          type: 'SYSTEM',
+          title: 'Incident de discipline — Lina',
+          body: expect.stringContaining('suspension'),
+          data: { studentName: 'Lina', severity: 'SUSPENSION' },
+        }),
+      );
+    });
+
+    it('never rejects when the recipient lookup fails (non-blocking contract)', async () => {
+      mocks.prisma.user.findFirst.mockRejectedValue(new Error('connection lost'));
+
+      await expect(
+        service.fanoutDisciplineIncident('t1', 'u1', 'Lina', 'MINOR'),
+      ).resolves.toBeUndefined();
+      expect(mocks.resend.send).not.toHaveBeenCalled();
+      expect(mocks.push.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fanoutInfirmaryVisit', () => {
+    it('uses an emergency title/body for an EMERGENCY outcome', async () => {
+      await service.fanoutInfirmaryVisit('t1', 'u1', 'Lina', 'EMERGENCY');
+
+      expect(mocks.notifications.create).toHaveBeenCalledWith(
+        't1',
+        expect.objectContaining({
+          type: 'SYSTEM',
+          title: 'Urgence infirmerie — Lina',
+          body: expect.stringContaining('urgence'),
+          data: { studentName: 'Lina', outcome: 'EMERGENCY' },
+        }),
+      );
+    });
+
+    it('uses a sent-home message for a SENT_HOME outcome', async () => {
+      await service.fanoutInfirmaryVisit('t1', 'u1', 'Lina', 'SENT_HOME');
+
+      const body = mocks.notifications.create.mock.calls[0][1].body as string;
+      expect(body).toContain('renvoyé');
+      expect(body).not.toContain('urgence');
+    });
+  });
 });

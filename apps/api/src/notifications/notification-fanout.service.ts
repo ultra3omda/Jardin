@@ -166,6 +166,55 @@ export class NotificationFanoutService {
     );
   }
 
+  /** T2b — A discipline incident was recorded for a student. */
+  async fanoutDisciplineIncident(
+    tenantId: string,
+    parentUserId: string,
+    studentName: string,
+    severity: 'MINOR' | 'MAJOR' | 'SUSPENSION',
+  ): Promise<void> {
+    const severityLabel =
+      severity === 'SUSPENSION' ? 'suspension' : severity === 'MAJOR' ? 'majeur' : 'mineur';
+    return this.deliver({
+      tenantId,
+      userId: parentUserId,
+      type: NotificationType.SYSTEM,
+      title: `Incident de discipline — ${studentName}`,
+      body: `Un incident de discipline (${severityLabel}) a été enregistré pour ${studentName}.`,
+      emailSubject: `Incident de discipline — ${studentName}`,
+      ctaLabel: "Voir l'incident",
+      ctaPath: '/discipline',
+      data: { studentName, severity },
+    });
+  }
+
+  /** T2b — An infirmary visit ended in the student being sent home / an emergency. */
+  async fanoutInfirmaryVisit(
+    tenantId: string,
+    parentUserId: string,
+    studentName: string,
+    outcome: 'SENT_HOME' | 'EMERGENCY',
+  ): Promise<void> {
+    const isEmergency = outcome === 'EMERGENCY';
+    return this.deliver({
+      tenantId,
+      userId: parentUserId,
+      type: NotificationType.SYSTEM,
+      title: isEmergency
+        ? `Urgence infirmerie — ${studentName}`
+        : `Passage à l'infirmerie — ${studentName}`,
+      body: isEmergency
+        ? `${studentName} a été pris(e) en charge à l'infirmerie (urgence). Contactez l'établissement.`
+        : `${studentName} a été renvoyé(e) à la maison après un passage à l'infirmerie.`,
+      emailSubject: isEmergency
+        ? `Urgence infirmerie — ${studentName}`
+        : `Passage à l'infirmerie — ${studentName}`,
+      ctaLabel: 'Voir le détail',
+      ctaPath: '/health',
+      data: { studentName, outcome },
+    });
+  }
+
   // ─── Core delivery (private) ───────────────────────────────────────────────
 
   private async deliver(input: DeliverInput): Promise<void> {
