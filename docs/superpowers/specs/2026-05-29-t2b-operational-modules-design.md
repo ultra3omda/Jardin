@@ -204,7 +204,7 @@ Chaque domaine reçoit un module calqué sur `apps/api/src/students/` (pour le p
 - `dto/<domain>.dto.ts` : DTOs `class-validator` + `@ApiProperty`.
 
 ### 5.2 Proxy web
-Catch-all `apps/web/app/api/<domain>/[...action]/route.ts` calqué sur un proxy existant
+Catch-all `apps/web/app/api/<domain>/[[...action]]/route.ts` calqué sur un proxy existant
 (`students`/`subjects`), forwarding `Authorization` + `Content-Type` vers `${NEXT_PUBLIC_API_URL}/api/<domain>`.
 
 ### 5.3 Web — UI CRUD (pattern T2a)
@@ -310,7 +310,7 @@ d'abord la forte valeur (lecture mobile) tout en posant tôt le pattern « entit
 
 - [ ] Modèles Prisma créés + migrés (additifs) pour les 7 domaines ; test d'isolation étendu et vert.
 - [ ] Modules NestJS (controller/service/spec/dto) tenant-scoped + parent-scoped + RBAC (§4.8) par domaine.
-- [ ] Proxys web `[...action]` en place ; pages web branchées sur `useResource`, **aucun tableau `const`
+- [ ] Proxys web `[[...action]]` en place ; pages web branchées sur `useResource`, **aucun tableau `const`
       codé en dur**, états loading/empty/error+retry partout, vues adaptées par rôle.
 - [ ] Mobile : lectures Journal / Activités / Cantine disponibles (pas de CRUD admin mobile en T2b).
 - [ ] Notifications fanout câblées (discipline créée, infirmerie SENT_HOME/EMERGENCY).
