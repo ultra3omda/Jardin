@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api/http';
+import { apiGet, apiPost } from '@/lib/api/http';
 
 export type ChildMood = 'HAPPY' | 'CALM' | 'TIRED' | 'UPSET' | 'SICK';
 
@@ -31,12 +31,7 @@ export interface CreateDailyLogInput {
   activitiesNote?: string;
   generalNote?: string;
 }
-export type UpdateDailyLogInput = Omit<Partial<CreateDailyLogInput>, 'studentId' | 'date'>;
-
 const BASE = '/api/journal';
 export const listJournal = (token: string) => apiGet<ListJournalResponse>(BASE, token);
 export const createDailyLog = (token: string, input: CreateDailyLogInput) =>
   apiPost<DailyLog>(BASE, token, input);
-export const updateDailyLog = (token: string, id: string, input: UpdateDailyLogInput) =>
-  apiPatch<DailyLog>(`${BASE}/${id}`, token, input);
-export const deleteDailyLog = (token: string, id: string) => apiDelete(`${BASE}/${id}`, token);

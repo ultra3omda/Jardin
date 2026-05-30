@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * V2 — Module Élèves : passthrough proxy `/api/activities*` → NestJS API.
- * Handles multipart/form-data (POST /activities/bulk-import) by streaming the
- * body as ArrayBuffer without re-serialising. Uses [[...action]] so the base
- * path GET /api/activities (no sub-segment) also resolves correctly.
+ * T2b — Activités : passthrough proxy /api/activities* → NestJS API.
+ * Uses [[...action]] so the base path GET /api/activities also resolves.
  */
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
