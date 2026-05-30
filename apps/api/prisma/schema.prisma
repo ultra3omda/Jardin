@@ -51,6 +51,24 @@ enum RelationType {
   OTHER
 }
 
+// T2b — Humeur de l'enfant consignée dans le journal quotidien.
+enum ChildMood {
+  HAPPY
+  CALM
+  TIRED
+  UPSET
+  SICK
+}
+
+// T2b — Catégorie d'activité (atelier, sortie…).
+enum ActivityCategory {
+  ART
+  MUSIC
+  SPORT
+  OUTING
+  OTHER
+}
+
 // ============================================================================
 // Models
 // ============================================================================
@@ -86,6 +104,11 @@ model Tenant {
   notifications   Notification[] // V8
   announcements   Announcement[] // V9
   attendances     Attendance[] // V9
+
+  // T2b — Journal & Activities
+  dailyLogEntries        DailyLogEntry[]
+  activities             Activity[]
+  activityParticipations ActivityParticipation[]
 
   @@index([slug])
   @@map("tenants")
@@ -127,6 +150,7 @@ model User {
   notifications              Notification[] // V8
   announcementsAuthored      Announcement[]            @relation("AnnouncementsAuthored") // V9
   attendanceRecorded         Attendance[]              @relation("AttendanceRecorded") // V9
+  dailyLogsAuthored          DailyLogEntry[]           @relation("DailyLogsAuthored") // T2b
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -282,6 +306,10 @@ model Student {
   bulletins       Bulletin[] // V6
   invoices        Invoice[] // V8
   attendances     Attendance[] // V9
+
+  // T2b — Journal & Activities
+  dailyLogEntries        DailyLogEntry[]
+  activityParticipations ActivityParticipation[]
 
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
@@ -715,4 +743,74 @@ model Attendance {
   @@index([tenantId, date])
   @@index([tenantId, classId, date])
   @@map("attendance")
+}
+
+// ============================================================================
+// T2b — Journal quotidien + Activités
+// ============================================================================
+
+// T2b — Entrée de journal quotidien d'un élève (repas, sieste, humeur…).
+// Un seul journal par (tenant, élève, jour) — enforce DB.
+model DailyLogEntry {
+  id             String     @id
+  tenantId       String
+  studentId      String
+  date           DateTime   @db.Date
+  meals          String?    @db.VarChar(200)
+  nap            String?    @db.VarChar(200)
+  mood           ChildMood?
+  bathroom       String?    @db.VarChar(200)
+  activitiesNote String?    @db.Text
+  generalNote    String?    @db.Text
+  authorId       String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  deletedAt      DateTime?
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  author  User    @relation("DailyLogsAuthored", fields: [authorId], references: [id])
+
+  @@unique([tenantId, studentId, date], name: "unique_daily_log_per_day")
+  @@index([tenantId, date])
+  @@index([tenantId, studentId])
+  @@map("daily_log_entries")
+}
+
+// T2b — Activité pédagogique (atelier, sortie). Participations N-N via pivot.
+model Activity {
+  id          String           @id
+  tenantId    String
+  name        String           @db.VarChar(160)
+  description String?          @db.Text
+  category    ActivityCategory @default(OTHER)
+  scheduledAt DateTime?
+  durationMin Int?
+  location    String?          @db.VarChar(160)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  participations ActivityParticipation[]
+
+  @@index([tenantId])
+  @@map("activities")
+}
+
+// T2b — Pivot élève ↔ activité. Unique (activity, student) — enforce DB.
+model ActivityParticipation {
+  id         String   @id
+  tenantId   String
+  activityId String
+  studentId  String
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, studentId], name: "unique_participation")
+  @@index([tenantId, activityId])
+  @@map("activity_participations")
 }
