@@ -43,6 +43,7 @@ async function upsertUser(args: {
         lastName: args.lastName,
         role: args.role,
         locale: Locale.fr,
+        emailVerifiedAt: new Date(),
       },
     });
   }
@@ -58,6 +59,7 @@ async function upsertUser(args: {
       lastName: args.lastName,
       role: args.role,
       locale: Locale.fr,
+      emailVerifiedAt: new Date(),
     },
   });
 }
