@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
+import { ActivitiesModule } from './activities/activities.module';
 import { AdminModule } from './admin/admin.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { AttendanceModule } from './attendance/attendance.module';
@@ -69,6 +70,7 @@ import { UsersModule } from './users/users.module';
     ClassesModule, // V4
     SubjectsModule, // V6
     JournalModule, // T2b
+    ActivitiesModule, // T2b
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6
