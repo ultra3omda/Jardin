@@ -1,6 +1,6 @@
 # T2b — Modules opérationnels (cantine, transport, santé, sécurité, discipline, journal, activités) — Design
 
-> **Statut :** En attente de validation utilisateur.
+> **Statut :** Validé par l'utilisateur (2026-05-30). Plan à produire après T2d.
 > **Date :** 2026-05-29
 > **Track :** Track 2 (capacités opérationnelles), sous-projet **T2b**.
 > **Références :** `docs/superpowers/specs/2026-05-29-school-admin-crud-remediation-design.md` (T2a — pattern CRUD MVP que T2b réutilise).

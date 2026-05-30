@@ -1,6 +1,6 @@
 # T2d — Admin SaaS (console SUPER_ADMIN plateforme) — Design
 
-> **Statut :** En attente de validation utilisateur.
+> **Statut :** Validé par l'utilisateur (2026-05-30). Plan d'implémentation en cours (`superpowers:writing-plans`).
 > **Date :** 2026-05-29
 > **Track :** Track 2 (capacités opérationnelles), sous-projet **T2d**.
 > **Références :** `docs/superpowers/specs/2026-05-29-school-admin-crud-remediation-design.md` (T2a — pattern CRUD MVP) · `docs/superpowers/specs/2026-05-29-subdomain-per-tenant-design.md` (Track 1).
