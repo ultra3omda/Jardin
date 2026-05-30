@@ -292,7 +292,11 @@ async function main(): Promise<void> {
   console.log(`    staff   : staff@demo-maternelle.klasso.tn`);
   console.log(`  Super-admin: super@klasso.tn`);
   console.log('');
-  console.log(`  Password (all accounts): ${password}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`  Password (all accounts): ${password}`);
+  } else {
+    console.log('  Password: (hidden — see seed.ts / team docs)');
+  }
   console.log('------------------------------------------------------------');
   console.log('  Demo-login endpoint: POST /api/auth/demo-login {"persona":"..."}');
   console.log('');
