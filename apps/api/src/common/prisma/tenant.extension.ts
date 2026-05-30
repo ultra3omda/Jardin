@@ -11,6 +11,9 @@ export const TENANT_SCOPED_MODELS = [
   'AuditLog',
   'Student',
   'ParentStudent', // V3-A
+  'DailyLogEntry', // T2b
+  'Activity', // T2b
+  'ActivityParticipation', // T2b
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 

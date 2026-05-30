@@ -2,6 +2,8 @@
 import { randomBytes } from 'node:crypto';
 import { createId } from '@paralleldrive/cuid2';
 import {
+  ActivityCategory,
+  ChildMood,
   Locale,
   PrismaClient,
   RelationType,
@@ -294,6 +296,71 @@ async function seedClass(tenantId: string, name: string, level: string, schoolYe
   return created.id;
 }
 
+// -- T2b -- Journal (cahier de liaison) + Activités fixtures ----------------
+// Fixed seed date (deterministic — never Date.now()/argless new Date()).
+const T2B_LOG_DATE = new Date('2026-05-29');
+
+const T2B_SEED_ACTIVITIES = [
+  { name: 'Chorale', category: ActivityCategory.MUSIC },
+  { name: 'Club Sciences', category: ActivityCategory.SPORT },
+  { name: 'Atelier Peinture', category: ActivityCategory.ART },
+];
+
+/**
+ * Seed idempotent Journal + Activités fixtures for one tenant.
+ * No-op for tenants without students (e.g. the kindergarten demo tenant),
+ * so it stays safe to call for every demo tenant. Re-runs create no
+ * duplicates: daily logs and participations are guarded by their unique
+ * constraints via upsert, activities by a (tenantId, name) findFirst guard.
+ */
+async function seedJournalAndActivities(tenantId: string): Promise<void> {
+  const author = await prisma.user.findFirst({
+    where: { tenantId, role: UserRole.SCHOOL_ADMIN },
+  });
+  const someStudents = await prisma.student.findMany({
+    where: { tenantId, deletedAt: null },
+    take: 3,
+  });
+  if (!author || someStudents.length === 0) return;
+
+  for (const s of someStudents) {
+    await prisma.dailyLogEntry.upsert({
+      where: { unique_daily_log_per_day: { tenantId, studentId: s.id, date: T2B_LOG_DATE } },
+      update: {},
+      create: {
+        id: createId(),
+        tenantId,
+        studentId: s.id,
+        date: T2B_LOG_DATE,
+        meals: 'A bien mangé',
+        nap: 'Sieste 13h-14h30',
+        mood: ChildMood.HAPPY,
+        generalNote: 'Belle journée.',
+        authorId: author.id,
+      },
+    });
+  }
+
+  for (const a of T2B_SEED_ACTIVITIES) {
+    const existing = await prisma.activity.findFirst({ where: { tenantId, name: a.name } });
+    const activity =
+      existing ??
+      (await prisma.activity.create({
+        data: { id: createId(), tenantId, name: a.name, category: a.category },
+      }));
+    await prisma.activityParticipation.upsert({
+      where: { unique_participation: { activityId: activity.id, studentId: someStudents[0].id } },
+      update: {},
+      create: {
+        id: createId(),
+        tenantId,
+        activityId: activity.id,
+        studentId: someStudents[0].id,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -379,6 +446,11 @@ async function main(): Promise<void> {
 
   // -- Parents -- one PARENT user per student, linked idempotently -----------
   const parentLinks = await seedParentLinks(ecole.id, [...cpA, ...ce1B, ...ce2A], passwordHash);
+
+  // -- T2b -- Journal + Activités fixtures (idempotent, students-only) -------
+  // Called for both demo tenants; no-op where there are no students yet.
+  await seedJournalAndActivities(ecole.id);
+  await seedJournalAndActivities(maternelle.id);
 
   // -- Demo requests (platform-level, event-sourced in AuditLog) -------------
   await seedDemoRequests(prisma, superAdmin.id);

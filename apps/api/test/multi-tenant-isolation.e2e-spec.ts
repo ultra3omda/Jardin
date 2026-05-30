@@ -14,7 +14,7 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createId } from '@paralleldrive/cuid2';
-import { Locale, Sex, TenantType, UserRole } from '@prisma/client';
+import { ActivityCategory, ChildMood, Locale, Sex, TenantType, UserRole } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { configuration } from '../src/common/config/configuration';
@@ -64,7 +64,13 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
   });
 
   beforeEach(async () => {
-    // Wipe tenant-scoped data, then seed two isolated tenants
+    // Wipe tenant-scoped data, then seed two isolated tenants.
+    // T2b — clear the new operational tables FIRST (they FK to students /
+    // activities / tenants), respecting FK order before the student/user/tenant
+    // deletes below.
+    await prisma.dailyLogEntry.deleteMany({});
+    await prisma.activityParticipation.deleteMany({});
+    await prisma.activity.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -303,5 +309,109 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     expect(survivorB?.tenantId).toBe(tenantBId);
     const goneA = await prisma.student.findUnique({ where: { id: studentAId } });
     expect(goneA).toBeNull();
+  });
+
+  // ==========================================================================
+  // T2b — DailyLogEntry + Activity isolation
+  // T2b added `DailyLogEntry` and `Activity` to TENANT_SCOPED_MODELS — these
+  // tests prove the extension scopes the new operational models the same way
+  // it scopes Student/User queries.
+  //
+  // The Activity + DailyLogEntry rows are seeded HERE (nested beforeEach, runs
+  // after the global one) rather than globally: `DailyLogEntry.authorId` → User
+  // is a RESTRICT FK, so seeding it globally would block the user-delete
+  // isolation test above from running `user.deleteMany({})` (P2003).
+  // ==========================================================================
+  describe('Operational models isolation (T2b)', () => {
+    let activityAId: string;
+    let activityBId: string;
+    let logEntryAId: string;
+    let logEntryBId: string;
+
+    beforeEach(async () => {
+      // Parent tenants/users/students already exist (global beforeEach ran).
+      // Seed one Activity + one DailyLogEntry per tenant; the log entry
+      // references the per-tenant student + the per-tenant SCHOOL_ADMIN author.
+      activityAId = createId();
+      activityBId = createId();
+      logEntryAId = createId();
+      logEntryBId = createId();
+
+      await prisma.activity.createMany({
+        data: [
+          { id: activityAId, tenantId: tenantAId, name: 'Chorale A', category: ActivityCategory.MUSIC },
+          { id: activityBId, tenantId: tenantBId, name: 'Chorale B', category: ActivityCategory.MUSIC },
+        ],
+      });
+
+      await prisma.dailyLogEntry.createMany({
+        data: [
+          {
+            id: logEntryAId,
+            tenantId: tenantAId,
+            studentId: studentAId,
+            date: new Date('2026-05-28'),
+            mood: ChildMood.HAPPY,
+            authorId: userAId,
+          },
+          {
+            id: logEntryBId,
+            tenantId: tenantBId,
+            studentId: studentBId,
+            date: new Date('2026-05-28'),
+            mood: ChildMood.CALM,
+            authorId: userBId,
+          },
+        ],
+      });
+    });
+
+    it('DailyLogEntry.findMany returns only tenant A entries from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.dailyLogEntry.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(logEntryAId);
+          expect(rows[0]!.tenantId).toBe(tenantAId);
+        },
+      );
+    });
+
+    it('DailyLogEntry.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.dailyLogEntry.findFirst({
+            where: { id: logEntryBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('Activity.findMany returns only tenant A activities from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.activity.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(activityAId);
+          expect(rows[0]!.tenantId).toBe(tenantAId);
+        },
+      );
+    });
+
+    it('Activity.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.activity.findFirst({
+            where: { id: activityBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
   });
 });
