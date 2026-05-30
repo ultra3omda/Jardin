@@ -14,6 +14,7 @@ import { BulletinsModule } from './bulletins/bulletins.module';
 import { DemoLoginModule } from './demo-login/demo-login.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { DisciplineModule } from './discipline/discipline.module';
+import { StudentHealthModule } from './student-health/student-health.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { TenantContextInterceptor } from './auth/interceptors/tenant-context.interceptor';
@@ -73,6 +74,7 @@ import { UsersModule } from './users/users.module';
     JournalModule, // T2b
     ActivitiesModule, // T2b
     DisciplineModule, // T2b PR-2
+    StudentHealthModule, // T2b PR-2
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6
