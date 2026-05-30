@@ -62,6 +62,100 @@ async function upsertUser(args: {
   });
 }
 
+const DEMO_REQUEST_SEEDS = [
+  {
+    requestId: 'dr_seed_el_amal',
+    email: 'direction@el-amal.tn',
+    schoolName: 'École El Amal',
+    studentsCount: 240,
+    locale: 'fr',
+    daysAgo: 14,
+    status: 'CONTACTED' as const,
+    note: 'Premier appel effectué, intéressés par l’offre annuelle.',
+  },
+  {
+    requestId: 'dr_seed_ibn_khaldoun',
+    email: 'contact@ibn-khaldoun.tn',
+    schoolName: 'Institut Ibn Khaldoun',
+    studentsCount: 520,
+    locale: 'ar',
+    daysAgo: 9,
+    status: 'SCHEDULED' as const,
+    note: 'Démo planifiée la semaine prochaine.',
+  },
+  {
+    requestId: 'dr_seed_les_pins',
+    email: 'admin@les-pins.tn',
+    schoolName: 'Jardin Les Pins',
+    studentsCount: 80,
+    locale: 'fr',
+    daysAgo: 4,
+    status: null,
+    note: null,
+  },
+  {
+    requestId: 'dr_seed_erriadh',
+    email: 'hello@erriadh.tn',
+    schoolName: 'École Erriadh',
+    studentsCount: 310,
+    locale: 'fr',
+    daysAgo: 1,
+    status: null,
+    note: null,
+  },
+];
+
+async function seedDemoRequests(prisma: PrismaClient, superAdminId: string): Promise<void> {
+  const now = Date.now();
+  for (const seed of DEMO_REQUEST_SEEDS) {
+    const existing = await prisma.auditLog.findFirst({
+      where: { action: 'demo.requested', metadata: { path: ['requestId'], equals: seed.requestId } },
+    });
+    const receivedAt = new Date(now - seed.daysAgo * 24 * 60 * 60 * 1000);
+    if (!existing) {
+      await prisma.auditLog.create({
+        data: {
+          id: createId(),
+          action: 'demo.requested',
+          resource: 'public',
+          tenantId: null,
+          userId: null,
+          metadata: {
+            requestId: seed.requestId,
+            email: seed.email,
+            schoolName: seed.schoolName,
+            studentsCount: seed.studentsCount,
+            locale: seed.locale,
+          },
+          ip: '127.0.0.1',
+          userAgent: 'seed',
+          createdAt: receivedAt,
+        },
+      });
+    }
+
+    if (!seed.status) continue;
+    const existingStatus = await prisma.auditLog.findFirst({
+      where: { action: 'demo.status_changed', metadata: { path: ['requestId'], equals: seed.requestId } },
+    });
+    if (!existingStatus) {
+      await prisma.auditLog.create({
+        data: {
+          id: createId(),
+          action: 'demo.status_changed',
+          resource: 'demo',
+          tenantId: null,
+          userId: superAdminId,
+          metadata: { requestId: seed.requestId, status: seed.status, ...(seed.note ? { note: seed.note } : {}) },
+          ip: '127.0.0.1',
+          userAgent: 'seed',
+          createdAt: new Date(receivedAt.getTime() + 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+}
+
 async function seedV6ForTenant(tenantId: string, schoolYear: string) {
   const subjects = [
     { name: 'Mathématiques', code: 'MATH' },
@@ -244,7 +338,14 @@ async function main(): Promise<void> {
   await upsertUser({ tenantId: maternelle.id, email: 'parent@demo-maternelle.klasso.tn', firstName: 'Fatma',   lastName: 'Zouari',   role: UserRole.PARENT,       passwordHash });
   await upsertUser({ tenantId: maternelle.id, email: 'staff@demo-maternelle.klasso.tn',  firstName: 'Nour',    lastName: 'Hamdi',    role: UserRole.STAFF,        passwordHash });
 
-  await upsertUser({ tenantId: null, email: 'super@klasso.tn', firstName: 'Super', lastName: 'Admin', role: UserRole.SUPER_ADMIN, passwordHash });
+  const superAdmin = await upsertUser({
+    tenantId: null,
+    email: 'super@klasso.tn',
+    firstName: 'Super',
+    lastName: 'Admin',
+    role: UserRole.SUPER_ADMIN,
+    passwordHash,
+  });
 
   // -- V6 academic seed (subjects + grade periods) ---------------------------
   await seedV6ForTenant(ecole.id, '2025-2026');
@@ -276,6 +377,9 @@ async function main(): Promise<void> {
 
   // -- Parents -- one PARENT user per student, linked idempotently -----------
   const parentLinks = await seedParentLinks(ecole.id, [...cpA, ...ce1B, ...ce2A], passwordHash);
+
+  // -- Demo requests (platform-level, event-sourced in AuditLog) -------------
+  await seedDemoRequests(prisma, superAdmin.id);
 
   console.log('');
   console.log(`Demo data seeded successfully (T2a): ${parentLinks} new parent link(s).`);

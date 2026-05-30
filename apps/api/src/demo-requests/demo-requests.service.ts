@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
 import * as React from 'react';
@@ -7,7 +7,9 @@ import type { RequestMeta } from '../auth/utils/request-meta.utils';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { ResendService } from '../common/email/resend.service';
 import { DemoRequestEmail, demoRequestSubject } from '../common/email/templates/demo-request';
+import { deriveDemoRequests, MAX_DEMO_AUDIT_ROWS, type DemoRequestRecord } from './demo-status.util';
 import type { DemoRequestDto } from './dto/demo-request.dto';
+import type { UpdateDemoStatusDto } from './dto/demo-admin.dto';
 
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
@@ -65,6 +67,56 @@ export class DemoRequestsService {
 
     this.logger.log(`Demo request: ${requestId} from ${dto.email}`);
     return { success: true, requestId };
+  }
+
+  async listForAdmin(): Promise<DemoRequestRecord[]> {
+    const [requested, statuses] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: { action: 'demo.requested' },
+        orderBy: { createdAt: 'desc' },
+        take: MAX_DEMO_AUDIT_ROWS,
+      }),
+      this.prisma.auditLog.findMany({
+        where: { action: 'demo.status_changed' },
+        orderBy: { createdAt: 'desc' },
+        take: MAX_DEMO_AUDIT_ROWS,
+      }),
+    ]);
+    return deriveDemoRequests(requested, statuses);
+  }
+
+  async updateStatus(
+    superAdminId: string,
+    requestId: string,
+    dto: UpdateDemoStatusDto,
+    meta: RequestMeta,
+  ): Promise<DemoRequestRecord> {
+    const existing = await this.prisma.auditLog.findFirst({
+      where: { action: 'demo.requested', metadata: { path: ['requestId'], equals: requestId } },
+    });
+    if (!existing) {
+      throw new NotFoundException({ code: 'DEMO_REQUEST_NOT_FOUND', message: 'Demande de démo introuvable.' });
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        id: createId(),
+        action: 'demo.status_changed',
+        resource: 'demo',
+        tenantId: null,
+        userId: superAdminId,
+        metadata: { requestId, status: dto.status, ...(dto.note ? { note: dto.note } : {}) },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      },
+    });
+
+    const all = await this.listForAdmin();
+    const updated = all.find((r) => r.requestId === requestId);
+    if (!updated) {
+      throw new NotFoundException({ code: 'DEMO_REQUEST_NOT_FOUND', message: 'Demande de démo introuvable.' });
+    }
+    return updated;
   }
 
   private async verifyTurnstile(token: string, ip?: string): Promise<void> {

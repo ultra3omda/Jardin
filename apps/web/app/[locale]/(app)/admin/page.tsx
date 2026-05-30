@@ -1,92 +1,81 @@
 'use client';
 
-import { Building2, Users, TrendingUp, Bell } from 'lucide-react';
-
 import { Link } from '@/i18n/routing';
+import { ResourceListPage } from '@/components/crud/resource-list-page';
+import { useResource } from '@/lib/hooks/use-resource';
+import { getOverview, type Overview } from '@/lib/api/admin-analytics';
 
-const PLATFORM_STATS = [
-  { label: 'Établissements actifs', value: '17', sub: '+2 ce mois', icon: Building2, color: 'bg-purple-50 text-purple-600', badge: 'bg-purple-100 text-purple-700' },
-  { label: 'Utilisateurs totaux', value: '1 247', sub: '+48 cette semaine', icon: Users, color: 'bg-blue-50 text-blue-600', badge: 'bg-blue-100 text-blue-700' },
-  { label: 'MRR', value: '4 980 TND', sub: '+12% vs mois préc.', icon: TrendingUp, color: 'bg-green-50 text-green-600', badge: 'bg-green-100 text-green-700' },
-  { label: 'Démos en attente', value: '3', sub: 'À traiter', icon: Bell, color: 'bg-orange-50 text-orange-600', badge: 'bg-orange-100 text-orange-700' },
-];
+interface StatCard {
+  label: string;
+  value: number;
+}
 
-const TENANTS = [
-  { name: 'École El Khadra — Tunis', type: 'Primaire', users: 87, status: 'Actif', plan: 'Pro', mrr: '290 TND', since: 'Sept. 2024' },
-  { name: 'Maternelle Les Étoiles — Sousse', type: 'Maternelle', users: 34, status: 'Actif', plan: 'Starter', mrr: '150 TND', since: 'Oct. 2024' },
-  { name: 'École Carthage International', type: 'Primaire', users: 142, status: 'Actif', plan: 'Enterprise', mrr: '490 TND', since: 'Janv. 2024' },
-  { name: 'Groupe scolaire Ibn Sina', type: 'Mixte', users: 215, status: 'Actif', plan: 'Enterprise', mrr: '690 TND', since: 'Janv. 2024' },
-  { name: 'École Privée Les Jasmins', type: 'Primaire', users: 76, status: 'Suspendu', plan: 'Pro', mrr: '0 TND', since: 'Mars 2025' },
-];
+export default function AdminOverviewPage() {
+  const overview = useResource<Overview>(['admin', 'overview'], (token) => getOverview(token));
 
-const STATUS_COLORS: Record<string, string> = {
-  'Actif': 'bg-green-100 text-green-700',
-  'Suspendu': 'bg-red-100 text-red-700',
-  'Essai': 'bg-yellow-100 text-yellow-700',
-};
+  const cards: StatCard[] = overview.data
+    ? [
+        { label: 'Établissements', value: overview.data.tenants },
+        { label: 'Utilisateurs', value: overview.data.users },
+        { label: 'Élèves', value: overview.data.students },
+        { label: 'Demandes de démo en attente', value: overview.data.pendingDemoRequests },
+      ]
+    : [];
 
-export default function AdminDashboardPage() {
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Vue plateforme</h1>
-        <p className="text-sm text-muted-foreground">Tableau de bord Klasso — tous les établissements.</p>
-      </header>
-
+    <ResourceListPage
+      title="Tableau de bord plateforme"
+      description="Vue d'ensemble de tous les établissements."
+      isLoading={overview.isLoading}
+      isError={overview.isError}
+      isEmpty={false}
+      onRetry={overview.refetch}
+      errorMessage="Impossible de charger les indicateurs de la plateforme."
+      emptyTitle=""
+      skeletonCols={4}
+    >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {PLATFORM_STATS.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="rounded-xl border bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${s.color}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${s.badge}`}>{s.sub}</span>
-              </div>
-              <p className="mt-3 text-2xl font-bold text-navy-900">{s.value}</p>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-            </div>
-          );
-        })}
+        {cards.map((card) => (
+          <div key={card.label} className="rounded-xl border bg-white p-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">{card.label}</p>
+            <p className="mt-1 text-3xl font-semibold text-navy-900">{card.value}</p>
+          </div>
+        ))}
+        <div className="rounded-xl border border-dashed bg-white p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Revenu mensuel récurrent (MRR)</p>
+          <p className="mt-1 text-lg font-medium text-muted-foreground">À venir</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            La facturation par abonnement n&apos;est pas encore activée.
+          </p>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-sm font-semibold text-navy-900">Établissements</h2>
-          <Link href="/admin/tenants" className="text-xs text-ambre-600 hover:underline">Voir tous →</Link>
-        </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-navy-700">
-              <th className="px-4 py-3">Établissement</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Utilisateurs</th>
-              <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">MRR</th>
-              <th className="px-4 py-3">Depuis</th>
-              <th className="px-4 py-3">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {TENANTS.map((t) => (
-              <tr key={t.name} className="border-b last:border-0 hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-navy-900">{t.name}</td>
-                <td className="px-4 py-3 text-muted-foreground">{t.type}</td>
-                <td className="px-4 py-3">{t.users}</td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{t.plan}</span>
-                </td>
-                <td className="px-4 py-3 font-mono text-sm">{t.mrr}</td>
-                <td className="px-4 py-3 text-muted-foreground">{t.since}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[t.status] ?? 'bg-slate-100 text-slate-600'}`}>{t.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          href="/admin/tenants"
+          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+        >
+          Gérer les établissements
+        </Link>
+        <Link
+          href="/admin/demo"
+          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+        >
+          Demandes de démo
+        </Link>
+        <Link
+          href="/admin/analytics"
+          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+        >
+          Analytique
+        </Link>
+        <Link
+          href="/admin/audit"
+          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+        >
+          Journal d&apos;audit
+        </Link>
       </div>
-    </div>
+    </ResourceListPage>
   );
 }
