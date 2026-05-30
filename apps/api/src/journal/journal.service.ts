@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createId } from '@paralleldrive/cuid2';
 
@@ -74,7 +79,7 @@ export class JournalService {
       return this.toResponse(row);
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ForbiddenException({ code: 'DAILY_LOG_ALREADY_EXISTS' });
+        throw new BadRequestException({ code: 'DAILY_LOG_ALREADY_EXISTS' });
       }
       throw e;
     }
