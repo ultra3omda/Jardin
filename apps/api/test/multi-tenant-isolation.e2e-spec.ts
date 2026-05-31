@@ -101,6 +101,9 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     await prisma.employmentContract.deleteMany({});
     // T2c V2 — leave requests (userId/reviewedById FK → before user delete).
     await prisma.leaveRequest.deleteMany({});
+    // T2c V3 — payroll (components → payslips → before user delete).
+    await prisma.payslipComponent.deleteMany({});
+    await prisma.payslip.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -388,6 +391,9 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     // T2c V2 — RH congés
     let leaveAId: string;
     let leaveBId: string;
+    // T2c V3 — RH paie
+    let payslipAId: string;
+    let payslipBId: string;
 
     beforeEach(async () => {
       // Parent tenants/users/students already exist (global beforeEach ran).
@@ -661,6 +667,34 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
             type: 'SICK',
             startDate: new Date('2026-07-01T00:00:00.000Z'),
             endDate: new Date('2026-07-03T00:00:00.000Z'),
+          },
+        ],
+      });
+
+      // T2c V3 — one Payslip per tenant (userId → per-tenant admin).
+      payslipAId = createId();
+      payslipBId = createId();
+      await prisma.payslip.createMany({
+        data: [
+          {
+            id: payslipAId,
+            tenantId: tenantAId,
+            userId: userAId,
+            period: '2026-05',
+            baseSalary: new Prisma.Decimal('2200.000'),
+            grossSalary: new Prisma.Decimal('2200.000'),
+            totalDeductions: new Prisma.Decimal('0.000'),
+            netSalary: new Prisma.Decimal('2200.000'),
+          },
+          {
+            id: payslipBId,
+            tenantId: tenantBId,
+            userId: userBId,
+            period: '2026-05',
+            baseSalary: new Prisma.Decimal('1800.000'),
+            grossSalary: new Prisma.Decimal('1800.000'),
+            totalDeductions: new Prisma.Decimal('0.000'),
+            netSalary: new Prisma.Decimal('1800.000'),
           },
         ],
       });
@@ -1008,6 +1042,29 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
           const stolen = await tenantPrisma.client.leaveRequest.findFirst({
             where: { id: leaveBId },
           });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    // ── T2c V3 — RH paie isolation ───────────────────────────────────────────
+
+    it('Payslip.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.payslip.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(payslipAId);
+        },
+      );
+    });
+
+    it('Payslip.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.payslip.findFirst({ where: { id: payslipBId } });
           expect(stolen).toBeNull();
         },
       );
