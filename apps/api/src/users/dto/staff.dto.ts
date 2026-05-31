@@ -30,6 +30,34 @@ export class UpdateTeacherDto {
   isActive?: boolean;
 }
 
+export class CreateStaffDto {
+  @ApiProperty({ example: 'amel.staff@ecole.tn' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({ example: 'Amel' })
+  @IsString() @MinLength(1) @MaxLength(100)
+  firstName!: string;
+
+  @ApiProperty({ example: 'Khelifi' })
+  @IsString() @MinLength(1) @MaxLength(100)
+  lastName!: string;
+}
+
+export class UpdateStaffDto {
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(100)
+  firstName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(100)
+  lastName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
+  isActive?: boolean;
+}
+
 export class CreateParentDto {
   @ApiProperty()
   @IsEmail()

@@ -24,6 +24,8 @@ import {
   CreateTeacherDto,
   UpdateTeacherDto,
   CreateParentDto,
+  CreateStaffDto,
+  UpdateStaffDto,
   StaffUserResponseDto,
   ListStaffResponseDto,
 } from './dto/staff.dto';
@@ -114,6 +116,86 @@ export class StaffController {
       where: { id, tenantId: user.tenantId, role: UserRole.TEACHER },
     });
     if (!existing) throw new NotFoundException('Teacher not found');
+    await this.prisma.user.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  // ── Staff (T2c V1) ──────────────────────────────────────────────────────────
+
+  @Get('staff')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List staff (non-teaching employees) for the tenant (T2c)' })
+  async listStaff(@CurrentUser() user: AuthenticatedUser): Promise<ListStaffResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const items = await this.prisma.user.findMany({
+      where: { tenantId: user.tenantId, role: UserRole.STAFF, deletedAt: null },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, deletedAt: true },
+    });
+    return { items, total: items.length };
+  }
+
+  @Post('staff')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a staff account (T2c)' })
+  async createStaff(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateStaffDto,
+  ): Promise<StaffUserResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    const tempPassword = `${dto.firstName.toLowerCase().replace(/\s/g, '')}${rand}`;
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    const created = await this.prisma.user.create({
+      data: {
+        id: createId(),
+        tenantId: user.tenantId,
+        email: dto.email.toLowerCase().trim(),
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        passwordHash,
+        role: UserRole.STAFF,
+      },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, deletedAt: true },
+    });
+    return { ...created, tempPassword };
+  }
+
+  @Patch('staff/:id')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update a staff member (T2c)' })
+  async updateStaff(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateStaffDto,
+  ): Promise<StaffUserResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const existing = await this.prisma.user.findFirst({
+      where: { id, tenantId: user.tenantId, role: UserRole.STAFF },
+    });
+    if (!existing) throw new NotFoundException('Staff member not found');
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(dto.firstName !== undefined && { firstName: dto.firstName }),
+        ...(dto.lastName !== undefined && { lastName: dto.lastName }),
+        ...(dto.isActive === false && { deletedAt: new Date() }),
+        ...(dto.isActive === true && { deletedAt: null }),
+      },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, deletedAt: true },
+    });
+    return updated;
+  }
+
+  @Delete('staff/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Soft-delete a staff member (T2c)' })
+  async deleteStaff(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string): Promise<void> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const existing = await this.prisma.user.findFirst({
+      where: { id, tenantId: user.tenantId, role: UserRole.STAFF },
+    });
+    if (!existing) throw new NotFoundException('Staff member not found');
     await this.prisma.user.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
