@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 
+import { Eyebrow } from './atoms/eyebrow';
 import { Section } from './atoms/section';
 
 const ITEMS = [
@@ -14,6 +15,7 @@ export function SchoolSegments() {
   return (
     <Section id="segments">
       <div className="mx-auto max-w-2xl text-center">
+        <Eyebrow className="mb-4 justify-center">Pour chaque établissement</Eyebrow>
         <h2 className="font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
           {t('title')}
         </h2>

@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import { Eyebrow } from './atoms/eyebrow';
 import { Section } from './atoms/section';
 
 type Status = 'available' | 'soon' | 'later';
@@ -39,6 +40,7 @@ export function ModulesGrid() {
   return (
     <Section id="features">
       <div className="mx-auto max-w-2xl text-center">
+        <Eyebrow className="mb-4 justify-center">Modules &amp; roadmap</Eyebrow>
         <h2 className="font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
           {t('title')}
         </h2>
