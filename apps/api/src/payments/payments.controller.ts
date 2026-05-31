@@ -24,6 +24,14 @@ import {
 export class PaymentsController {
   constructor(private readonly service: PaymentsService) {}
 
+  @Get('payments/plans')
+  @ApiBearerAuth('access-token')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List active subscription plans' })
+  listPlans() {
+    return this.service.listPlans();
+  }
+
   @Post('payments/checkout')
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth('access-token')
