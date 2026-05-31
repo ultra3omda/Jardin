@@ -13,6 +13,7 @@ import {
 } from '@/lib/api/classes';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { requireToken } from '@/lib/auth/require-token';
+import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import { useResource } from '@/lib/hooks/use-resource';
 import { useToast } from '@/lib/ui/use-toast';
 import { CrudModal } from '@/components/crud/crud-modal';
@@ -27,6 +28,8 @@ export function ClassesList() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === 'SCHOOL_ADMIN' || role === 'SUPER_ADMIN';
+  const terms = useSchoolTerms();
+  const newClassLabel = `+ ${terms.isKindergarten ? 'Nouveau groupe' : 'Nouvelle classe'}`;
   const queryClient = useQueryClient();
   const toast = useToast();
 
@@ -105,8 +108,8 @@ export function ClassesList() {
   return (
     <>
       <ResourceListPage
-        title="Classes"
-        description="Gérez les classes de l'établissement."
+        title={terms.classes}
+        description={`Gérez les ${terms.classes.toLowerCase()} de l'établissement.`}
         action={
           isAdmin ? (
             <button
@@ -117,7 +120,7 @@ export function ClassesList() {
               }}
               className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
             >
-              + Nouvelle classe
+              {newClassLabel}
             </button>
           ) : undefined
         }
@@ -125,13 +128,13 @@ export function ClassesList() {
         isError={isError}
         isEmpty={items.length === 0}
         onRetry={refetch}
-        errorMessage="Impossible de charger les classes."
-        emptyTitle="Aucune classe enregistrée"
-        emptyDescription="Créez votre première classe pour commencer."
+        errorMessage={`Impossible de charger les ${terms.classes.toLowerCase()}.`}
+        emptyTitle={terms.isKindergarten ? "Aucun groupe enregistré" : 'Aucune classe enregistrée'}
+        emptyDescription={`Créez ${terms.isKindergarten ? 'votre premier groupe' : 'votre première classe'} pour commencer.`}
         emptyAction={
           isAdmin
             ? {
-                label: '+ Nouvelle classe',
+                label: newClassLabel,
                 onClick: () => {
                   setFormError(null);
                   setShowCreate(true);
@@ -149,7 +152,7 @@ export function ClassesList() {
               <Link href={`/classes/${c.id}` as never} className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{c.name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Niveau {c.level} · Année {c.schoolYear}
+                  {terms.level} {c.level} · Année {c.schoolYear}
                 </p>
               </Link>
               {isAdmin && (
@@ -177,7 +180,7 @@ export function ClassesList() {
 
       <CrudModal
         open={showCreate}
-        title="Nouvelle classe"
+        title={terms.isKindergarten ? 'Nouveau groupe' : 'Nouvelle classe'}
         onClose={() => {
           setShowCreate(false);
           setFormError(null);
@@ -190,7 +193,7 @@ export function ClassesList() {
               onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} />
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="cls-level">Niveau *</label>
+            <label className="text-sm font-medium" htmlFor="cls-level">{terms.level} *</label>
             <input id="cls-level" value={createForm.level} placeholder="CP" className={INPUT}
               onChange={(e) => setCreateForm({ ...createForm, level: e.target.value })} />
           </div>
@@ -212,7 +215,7 @@ export function ClassesList() {
 
       <CrudModal
         open={editing !== null}
-        title="Modifier la classe"
+        title={terms.isKindergarten ? 'Modifier le groupe' : 'Modifier la classe'}
         onClose={() => {
           setEditing(null);
           setFormError(null);
@@ -225,7 +228,7 @@ export function ClassesList() {
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="edit-level">Niveau *</label>
+            <label className="text-sm font-medium" htmlFor="edit-level">{terms.level} *</label>
             <input id="edit-level" value={editForm.level} className={INPUT}
               onChange={(e) => setEditForm({ ...editForm, level: e.target.value })} />
           </div>
