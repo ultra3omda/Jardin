@@ -39,6 +39,7 @@ describe('Commercial pipeline + onboarding (e2e)', () => {
   let prisma: PrismaService;
   let superToken: string;
   let commercialToken: string;
+  let orgId: string;
 
   beforeAll(async () => {
     const noopResend = { send: vi.fn().mockResolvedValue({ success: true }) };
@@ -140,7 +141,7 @@ describe('Commercial pipeline + onboarding (e2e)', () => {
     expect(orgRes.body.organization.contractsCount).toBe(1);
     const inviteUrl: string = orgRes.body.invite.url;
     expect(inviteUrl).toMatch(/\/register\?token=/);
-    const orgId: string = orgRes.body.organization.id;
+    orgId = orgRes.body.organization.id;
 
     // The invited admin registers WITHOUT tenant details — must attach to org.
     const token = tokenFromInviteUrl(inviteUrl);
@@ -242,6 +243,32 @@ describe('Commercial pipeline + onboarding (e2e)', () => {
       .expect(200);
     const allSlugs = (all.body as Array<{ slug: string }>).map((o) => o.slug);
     expect(allSlugs).toContain(`${SLUG_PREFIX}avenir`);
+  });
+
+  it('GET a single organization returns its summary (commercial)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/commercial/organizations/${orgId}`)
+      .set('Authorization', `Bearer ${commercialToken}`)
+      .expect(200);
+    expect(res.body.id).toBe(orgId);
+    expect(res.body.slug).toBe(`${SLUG_PREFIX}avenir`);
+  });
+
+  it('GET commercial agents lists the created COMMERCIAL (SUPER_ADMIN)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/commercial/agents')
+      .set('Authorization', `Bearer ${superToken}`)
+      .expect(200);
+    const emails = (res.body as Array<{ email: string }>).map((a) => a.email);
+    expect(emails).toContain(`commercial@${DOMAIN}`);
+  });
+
+  it('contract download URL endpoint responds (200 if R2 configured, else 503)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/commercial/organizations/${orgId}/contract`)
+      .set('Authorization', `Bearer ${commercialToken}`);
+    // R2 may be disabled in CI/dev → 503; when configured → 200 with a URL.
+    expect([200, 503]).toContain(res.status);
   });
 });
 

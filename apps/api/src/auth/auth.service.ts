@@ -56,6 +56,20 @@ export class AuthService {
 
   async register(dto: RegisterDto, meta: RequestMeta): Promise<AuthResponseDto> {
     const email = this.normalizeEmail(dto.admin.email);
+    const slug = dto.tenant?.slug.toLowerCase();
+
+    // When the registrant brings new-tenant details, reject a taken slug up
+    // front — a cheap check before we even validate (and later consume) the
+    // invite. Tenant-bound invites (commercial flow) carry no slug here.
+    if (slug) {
+      const existing = await this.prisma.tenant.findUnique({ where: { slug } });
+      if (existing) {
+        throw new BadRequestException({
+          code: 'TENANT_SLUG_TAKEN',
+          message: `Tenant slug "${slug}" is already taken`,
+        });
+      }
+    }
 
     // V1.5: /register is invite-only (Q4=B). Validate the token BEFORE
     // touching the DB. The actual consume happens inside the tx below so
@@ -73,28 +87,18 @@ export class AuthService {
     }
 
     // GTM — two registration shapes depending on the invite:
-    //  • invite.tenantId set  → the commercial already created the organization;
-    //    we attach the new admin to it (no new tenant, no slug needed). The org
+    //  • invite bound to a tenant → the commercial already created the org;
+    //    attach the new admin to it (no new tenant, no slug needed). The org
     //    stays PENDING_ONBOARDING so the admin is forced through the wizard.
-    //  • invite.tenantId null → legacy self-serve: the admin creates a brand-new
+    //  • unbound invite → legacy self-serve: the admin creates a brand-new
     //    tenant from dto.tenant (still PENDING_ONBOARDING).
-    const boundToExistingTenant = invite.tenantId !== null;
+    //  NB: use Boolean() — a mock/DB row may carry `undefined` vs `null`.
+    const boundToExistingTenant = Boolean(invite.tenantId);
     if (!boundToExistingTenant && !dto.tenant) {
       throw new BadRequestException({
         code: 'TENANT_DETAILS_REQUIRED',
         message: 'Cette invitation nécessite les informations de l’organisation.',
       });
-    }
-
-    const slug = dto.tenant?.slug.toLowerCase();
-    if (!boundToExistingTenant && slug) {
-      const existing = await this.prisma.tenant.findUnique({ where: { slug } });
-      if (existing) {
-        throw new BadRequestException({
-          code: 'TENANT_SLUG_TAKEN',
-          message: `Tenant slug "${slug}" is already taken`,
-        });
-      }
     }
 
     const rounds = this.config.get<number>('bcryptRounds', 12);
