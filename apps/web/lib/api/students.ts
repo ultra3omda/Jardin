@@ -22,6 +22,8 @@ export interface StudentSummary {
   sex: 'M' | 'F';
   nationality: string | null;
   classroom: string;
+  classId: string | null;
+  class: { id: string; name: string; level: string } | null;
   enrollmentDate: string;
   previousSchooling: string | null;
   parentEmail: string;
@@ -100,12 +102,13 @@ async function jsonRequest<T>(
 
 export async function listStudents(
   token: string,
-  params: { page?: number; pageSize?: number; search?: string } = {},
+  params: { page?: number; pageSize?: number; search?: string; classId?: string } = {},
 ): Promise<ListStudentsResponse> {
   const qs = new URLSearchParams();
   if (params.page) qs.set('page', String(params.page));
   if (params.pageSize) qs.set('pageSize', String(params.pageSize));
   if (params.search) qs.set('search', params.search);
+  if (params.classId) qs.set('classId', params.classId);
   const q = qs.toString();
   return jsonRequest(`${BASE}${q ? `?${q}` : ''}`, { method: 'GET', auth: token });
 }

@@ -15,6 +15,7 @@ interface Subject {
   code?: string | null;
   emoji?: string | null;
   coefficient: number;
+  levels?: string[];
 }
 
 async function apiFetch<T>(
@@ -172,6 +173,7 @@ export default function SubjectsSettingsPage() {
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-navy-700">
                 <th className="px-4 py-3 w-12">Emoji</th>
                 <th className="px-4 py-3">Nom</th>
+                <th className="px-4 py-3">Niveaux</th>
                 <th className="px-4 py-3 w-32">Coefficient</th>
                 <th className="px-4 py-3 w-28 text-right">Actions</th>
               </tr>
@@ -189,6 +191,22 @@ export default function SubjectsSettingsPage() {
                   </td>
                   <td className="px-4 py-3 font-medium text-navy-900">
                     {subject.name}
+                  </td>
+                  <td className="px-4 py-3">
+                    {subject.levels && subject.levels.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {subject.levels.map((lvl) => (
+                          <span
+                            key={lvl}
+                            className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs text-navy-700"
+                          >
+                            {lvl}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Tous niveaux</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-navy-700">
                     {subject.coefficient}
@@ -231,6 +249,7 @@ export default function SubjectsSettingsPage() {
                 name: editTarget.name,
                 emoji: editTarget.emoji ?? '',
                 coefficient: editTarget.coefficient,
+                levels: editTarget.levels ?? [],
               }
             : undefined
         }

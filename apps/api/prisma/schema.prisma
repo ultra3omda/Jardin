@@ -313,7 +313,8 @@ model Student {
   nationality String? // ISO 3166-1 alpha-2 (ex: 'TN', 'FR', 'DZ')
 
   // — Scolarité —
-  classroom         String // V2: string libre (ex: "CP-A"). V4: relation Class
+  classroom         String // V2: string libre (ex: "CP-A"). Conservé & synchronisé avec `class.name`.
+  classId           String? // Lot 3: FK vers Class (source de vérité). Nullable pour élèves non assignés / classe legacy non résolue.
   enrollmentDate    DateTime @default(now()) @db.Date
   previousSchooling String?  @db.Text
 
@@ -342,6 +343,7 @@ model Student {
   deletedAt DateTime? // soft-delete
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class  Class? @relation(fields: [classId], references: [id], onDelete: SetNull)
 
   parentRelations ParentStudent[]
   grades          Grade[] // V6
@@ -365,6 +367,7 @@ model Student {
 
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
+  @@index([tenantId, classId])
   @@index([tenantId, parentEmail])
   @@map("students")
 }
@@ -460,6 +463,7 @@ model Class {
   deletedAt  DateTime? // soft-delete
 
   tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  students    Student[] // Lot 3: élèves rattachés à cette classe (FK)
   teachers    ClassTeacher[]
   timeSlots   TimeSlot[]
   evaluations Evaluation[] // V6
@@ -534,6 +538,7 @@ model Subject {
   code        String? // ex. "MATH", "FR"
   emoji       String? // optional emoji icon e.g. "📐"
   coefficient Float     @default(1) // grade weight 1-10
+  levels      String[]  @default([]) // Lot 3: niveaux où la matière s'applique (ex. ["CP","CE1"]). Vide = tous niveaux.
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime? // soft-delete

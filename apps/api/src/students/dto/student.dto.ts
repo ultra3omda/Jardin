@@ -51,11 +51,26 @@ export class CreateStudentDto {
   nationality?: string;
 
   // — Scolarité —
-  @ApiProperty({ example: 'CP-A', maxLength: 50, description: 'V2: string libre. V4: relation Class.' })
+  @ApiPropertyOptional({
+    example: 'CP-A',
+    maxLength: 50,
+    description:
+      "Nom de classe (texte). Optionnel si `classId` est fourni — alors dérivé du nom de la classe. Au moins l'un des deux (classId/classroom) est requis à la création.",
+  })
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(50)
-  classroom!: string;
+  classroom?: string;
+
+  @ApiPropertyOptional({
+    example: 'cl_abc123',
+    description: 'Lot 3 — id (cuid2) de la classe rattachée. Source de vérité ; synchronise `classroom`.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  classId?: string;
 
   @ApiPropertyOptional({ example: '2024-09-01', description: 'ISO 8601 date; défaut = today' })
   @IsOptional()
@@ -133,6 +148,12 @@ export class CreateStudentDto {
 
 export class UpdateStudentDto extends PartialType(CreateStudentDto) {}
 
+export class ClassSummaryDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty() level!: string;
+}
+
 export class StudentResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() tenantId!: string;
@@ -142,6 +163,10 @@ export class StudentResponseDto {
   @ApiProperty({ enum: Sex }) sex!: Sex;
   @ApiProperty({ nullable: true }) nationality!: string | null;
   @ApiProperty() classroom!: string;
+  @ApiProperty({ nullable: true, description: 'Lot 3 — FK classe (null si non rattaché)' })
+  classId!: string | null;
+  @ApiPropertyOptional({ type: ClassSummaryDto, nullable: true })
+  class!: ClassSummaryDto | null;
   @ApiProperty({ format: 'date' }) enrollmentDate!: string;
   @ApiProperty({ nullable: true }) previousSchooling!: string | null;
   @ApiProperty() parentEmail!: string;
@@ -184,6 +209,12 @@ export class ListStudentsQueryDto {
   @IsString()
   @MaxLength(100)
   classroom?: string;
+
+  @ApiPropertyOptional({ maxLength: 40, description: 'Lot 3 — filtre exact sur la classe rattachée (classId)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  classId?: string;
 }
 
 export class ListStudentsResponseDto {

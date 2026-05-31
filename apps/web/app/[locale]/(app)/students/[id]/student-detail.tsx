@@ -199,6 +199,7 @@ function asFormValues(s: StudentSummary): UpdateStudentFormValues {
     dateOfBirth: s.dateOfBirth,
     sex: s.sex,
     nationality: s.nationality ?? '',
+    classId: s.classId ?? '',
     classroom: s.classroom,
     enrollmentDate: s.enrollmentDate,
     previousSchooling: s.previousSchooling ?? '',
@@ -296,16 +297,17 @@ function EditPanel(props: {
         </label>
         <label className="block">
           <span className="text-sm font-medium">Classe</span>
-          <input
-            list="edit-classroom-options"
-            {...form.register('classroom')}
+          <select
+            {...form.register('classId')}
             className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
-          />
-          <datalist id="edit-classroom-options">
+          >
+            <option value="">— Non assigné —</option>
             {classOptions.map((c) => (
-              <option key={c.id} value={c.name} />
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.level})
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
         <label className="block">
           <span className="text-sm font-medium">Email parent</span>

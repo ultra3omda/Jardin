@@ -13,6 +13,7 @@ import {
   type TimeSlot,
 } from '@/lib/api/classes';
 import { listTeachers } from '@/lib/api/staff';
+import { listStudents } from '@/lib/api/students';
 import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
@@ -24,6 +25,7 @@ interface SubjectOption {
   id: string;
   name: string;
   emoji?: string | null;
+  levels?: string[];
 }
 
 const DAYS: { value: number; label: string }[] = [
@@ -76,6 +78,13 @@ export function ClassDetail({ id }: Props) {
     queryFn: () => listTeachers(accessToken!),
     enabled: !!accessToken && canManage,
   });
+
+  const { data: rosterData } = useQuery({
+    queryKey: ['students', 'by-class', id],
+    queryFn: () => listStudents(accessToken!, { classId: id, pageSize: 100 }),
+    enabled: !!accessToken,
+  });
+  const roster = rosterData?.items ?? [];
 
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects', 'all'],
@@ -164,6 +173,11 @@ export function ClassDetail({ id }: Props) {
     return subjects.find((s) => s.name === subjectName)?.emoji ?? '📘';
   }
 
+  // Lot 3 — matières applicables au niveau de la classe (levels vide = tous niveaux).
+  const applicableSubjects = subjects.filter(
+    (s) => !s.levels || s.levels.length === 0 || s.levels.includes(data.level),
+  );
+
   return (
     <div className="container mx-auto max-w-7xl px-1 py-2 sm:px-4 sm:py-8">
       <Link href="/classes" className="text-sm text-primary hover:underline">
@@ -204,6 +218,31 @@ export function ClassDetail({ id }: Props) {
           </div>
         </section>
       )}
+
+      {/* ── Élèves de la classe (roster via FK classId) ─────────────────── */}
+      <section className="mt-8">
+        <h2 className="font-display text-lg font-medium">
+          {terms.students} <span className="text-muted-foreground">({roster.length})</span>
+        </h2>
+        {roster.length ? (
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {roster.map((s) => (
+              <li key={s.id}>
+                <Link
+                  href={`/students/${s.id}` as never}
+                  className="block rounded-md border bg-card px-3 py-2 text-sm transition hover:bg-muted"
+                >
+                  {s.lastName} {s.firstName}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Aucun {terms.student.toLowerCase()} rattaché à cette {terms.class.toLowerCase()}.
+          </p>
+        )}
+      </section>
 
       {/* ── Enseignants assignés ────────────────────────────────────────── */}
       <section className="mt-8">
@@ -260,7 +299,7 @@ export function ClassDetail({ id }: Props) {
                 className="mt-1 h-10 w-full rounded-md border px-2"
               >
                 <option value="">— Choisir —</option>
-                {subjects.map((s) => (
+                {applicableSubjects.map((s) => (
                   <option key={s.id} value={s.name}>
                     {s.emoji ? `${s.emoji} ` : ''}{s.name}
                   </option>
@@ -374,7 +413,7 @@ export function ClassDetail({ id }: Props) {
               className="mt-1 h-10 w-full rounded-md border px-2"
             >
               <option value="">— Choisir —</option>
-              {subjects.map((s) => (
+              {applicableSubjects.map((s) => (
                 <option key={s.id} value={s.name}>
                   {s.emoji ? `${s.emoji} ` : ''}{s.name}
                 </option>

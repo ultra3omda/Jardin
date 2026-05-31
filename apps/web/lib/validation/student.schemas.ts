@@ -22,7 +22,9 @@ export const createStudentSchema = z.object({
     .or(z.literal('')),
 
   // — Scolarité —
-  classroom: z.string().min(1, 'Classe requise').max(50),
+  // Lot 3 — classId = FK (source de vérité). classroom (texte) reste accepté/dérivé.
+  classId: z.string().max(40).optional().or(z.literal('')),
+  classroom: z.string().max(50).optional().or(z.literal('')),
   enrollmentDate: z.string().regex(ISO_DATE, 'Format YYYY-MM-DD').optional().or(z.literal('')),
   previousSchooling: z.string().max(2000).optional().or(z.literal('')),
 

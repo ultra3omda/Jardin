@@ -24,6 +24,8 @@ function makeRow(overrides: Partial<any> = {}) {
     sex: Sex.F,
     nationality: 'TN',
     classroom: 'CP-A',
+    classId: null,
+    class: null,
     enrollmentDate: new Date('2024-09-01'),
     previousSchooling: null,
     parentEmail: 'parent@example.tn',
@@ -86,6 +88,8 @@ describe('StudentsService', () => {
             create: vi.fn().mockResolvedValue(makeRow()),
             update: vi.fn().mockResolvedValue(makeRow()),
           },
+          // Lot 3 — resolveClassAssignment résout la classe par id/nom dans la tx.
+          class: { findFirst: vi.fn().mockResolvedValue({ id: 'cls_1', name: 'CP-A' }) },
           auditLog: { create: vi.fn().mockResolvedValue({}) },
         }),
       ),
