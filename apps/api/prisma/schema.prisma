@@ -135,6 +135,10 @@ model Tenant {
   payslips            Payslip[] // T2c V3
   payslipComponents   PayslipComponent[] // T2c V3
 
+  // GTM — Abonnements & paiements (ClicToPay)
+  subscriptions       TenantSubscription[]
+  paymentTransactions PaymentTransaction[]
+
   @@index([slug])
   @@map("tenants")
 }
@@ -1362,4 +1366,93 @@ model PayslipComponent {
   @@index([tenantId])
   @@index([tenantId, payslipId])
   @@map("payslip_components")
+}
+
+// ============================================================================
+// GTM — Abonnements SaaS & paiements (ClicToPay / Monétique Tunisie)
+// ============================================================================
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// Catalogue de plans (global, non tenant-scoped). Prix en Decimal(10,3)/TND.
+model SubscriptionPlan {
+  id          String          @id
+  code        String          @unique
+  name        String          @db.VarChar(120)
+  interval    BillingInterval @default(MONTHLY)
+  price       Decimal         @db.Decimal(10, 3)
+  currency    String          @default("TND")
+  maxStudents Int?
+  features    Json?
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  subscriptions TenantSubscription[]
+
+  @@map("subscription_plans")
+}
+
+// Abonnement d'un établissement à un plan.
+model TenantSubscription {
+  id                 String             @id
+  tenantId           String
+  planId             String
+  status             SubscriptionStatus @default(TRIALING)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  trialEnd           DateTime?
+  canceledAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan     @relation(fields: [planId], references: [id])
+  transactions PaymentTransaction[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_subscriptions")
+}
+
+// Transaction de paiement ClicToPay. orderNumber = idempotence côté marchand,
+// gatewayOrderId = mdOrder côté ClicToPay. Montants Decimal(10,3)/TND.
+model PaymentTransaction {
+  id             String        @id
+  tenantId       String
+  subscriptionId String?
+  orderNumber    String        @unique
+  gatewayOrderId String?
+  amount         Decimal       @db.Decimal(10, 3)
+  currency       String        @default("TND")
+  status         PaymentStatus @default(PENDING)
+  gatewayStatus  Int?
+  rawPayload     Json?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription TenantSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_transactions")
 }
