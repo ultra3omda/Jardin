@@ -8,41 +8,6 @@ interface ClassOption { id: string; name: string }
 interface SubjectOption { id: string; name: string; emoji: string | null }
 interface PeriodOption { id: string; name: string; schoolYear: string }
 
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_CLASSES: ClassOption[] = [
-  { id: 'demo-class-1', name: 'CP-A' },
-  { id: 'demo-class-2', name: 'CE1-B' },
-  { id: 'demo-class-3', name: 'CM1-A' },
-  { id: 'demo-class-4', name: 'CM2-B' },
-];
-
-const DEMO_SUBJECTS: SubjectOption[] = [
-  { id: 'demo-subj-1', name: 'Mathématiques', emoji: '🔢' },
-  { id: 'demo-subj-2', name: 'Français', emoji: '📝' },
-  { id: 'demo-subj-3', name: 'Sciences Naturelles', emoji: '🌿' },
-  { id: 'demo-subj-4', name: 'Histoire-Géographie', emoji: '🌍' },
-  { id: 'demo-subj-5', name: 'Éducation Physique', emoji: '⚽' },
-];
-
-const DEMO_PERIODS: PeriodOption[] = [
-  { id: 'demo-period-1', name: '1er Trimestre', schoolYear: '2025-2026' },
-  { id: 'demo-period-2', name: '2ème Trimestre', schoolYear: '2025-2026' },
-  { id: 'demo-period-3', name: '3ème Trimestre', schoolYear: '2025-2026' },
-];
-
-const DEMO_EVALUATIONS: Evaluation[] = [
-  { id: 'deval-1', title: 'Contrôle Mathématiques — Fractions', date: '2026-03-10', maxScore: 20, classId: 'demo-class-3', subjectId: 'demo-subj-1', gradePeriodId: 'demo-period-2' },
-  { id: 'deval-2', title: 'Dictée N°4 — Accord du participe', date: '2026-03-12', maxScore: 20, classId: 'demo-class-3', subjectId: 'demo-subj-2', gradePeriodId: 'demo-period-2' },
-  { id: 'deval-3', title: 'Exposé Sciences Naturelles', date: '2026-02-25', maxScore: 20, classId: 'demo-class-2', subjectId: 'demo-subj-3', gradePeriodId: 'demo-period-1' },
-  { id: 'deval-4', title: 'Évaluation lecture — CM2', date: '2026-03-15', maxScore: 10, classId: 'demo-class-4', subjectId: 'demo-subj-2', gradePeriodId: 'demo-period-2' },
-  { id: 'deval-5', title: 'Calcul mental T2', date: '2026-02-28', maxScore: 20, classId: 'demo-class-1', subjectId: 'demo-subj-1', gradePeriodId: 'demo-period-2' },
-  { id: 'deval-6', title: 'Histoire — La Révolution française', date: '2026-03-05', maxScore: 20, classId: 'demo-class-4', subjectId: 'demo-subj-4', gradePeriodId: 'demo-period-2' },
-  { id: 'deval-7', title: 'Brevet blanc Mathématiques', date: '2026-03-20', maxScore: 40, classId: 'demo-class-3', subjectId: 'demo-subj-1', gradePeriodId: 'demo-period-3' },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...opts,
@@ -85,15 +50,15 @@ export default function EvaluationsPage() {
       const subItems = subRes.status === 'fulfilled' ? (subRes.value?.items ?? []) : [];
       const perItems = perRes.status === 'fulfilled' ? (perRes.value?.items ?? []) : [];
 
-      setEvaluations(evItems.length > 0 ? evItems : DEMO_EVALUATIONS);
-      setClasses(clItems.length > 0 ? clItems : DEMO_CLASSES);
-      setSubjects(subItems.length > 0 ? subItems : DEMO_SUBJECTS);
-      setPeriods(perItems.length > 0 ? perItems : DEMO_PERIODS);
+      setEvaluations(evItems);
+      setClasses(clItems);
+      setSubjects(subItems);
+      setPeriods(perItems);
     } catch (e) {
-      setEvaluations(DEMO_EVALUATIONS);
-      setClasses(DEMO_CLASSES);
-      setSubjects(DEMO_SUBJECTS);
-      setPeriods(DEMO_PERIODS);
+      setEvaluations([]);
+      setClasses([]);
+      setSubjects([]);
+      setPeriods([]);
       setFetchError(e instanceof Error ? e.message : 'Erreur');
     } finally { setLoading(false); }
   }, [token]);
@@ -121,9 +86,8 @@ export default function EvaluationsPage() {
     try {
       await apiFetch(`/api/evaluations/${id}`, token, { method: 'DELETE' });
       void load();
-    } catch (_) {
-      // In demo mode, remove from local state
-      setEvaluations((prev) => prev.filter((ev) => ev.id !== id));
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : 'Suppression impossible');
     }
   }
   async function handleSubmit(e: React.FormEvent) {
@@ -137,15 +101,8 @@ export default function EvaluationsPage() {
         await apiFetch('/api/evaluations', token, { method: 'POST', body: JSON.stringify(form) });
       }
       setModalOpen(false); void load();
-    } catch (_) {
-      // In demo mode, simulate success with local state update
-      if (editTarget) {
-        setEvaluations((prev) => prev.map((ev) => ev.id === editTarget.id ? { ...ev, ...form } : ev));
-      } else {
-        const newEval: Evaluation = { id: `deval-new-${Date.now()}`, ...form };
-        setEvaluations((prev) => [newEval, ...prev]);
-      }
-      setModalOpen(false);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Enregistrement impossible');
     } finally { setSubmitting(false); }
   }
 

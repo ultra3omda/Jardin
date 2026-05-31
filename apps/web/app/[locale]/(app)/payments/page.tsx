@@ -38,28 +38,19 @@ const STATUS_COLORS: Record<string, string> = {
   PARTIAL: 'bg-blue-100 text-blue-800',
 };
 
-const DEMO_STATS: BillingStats = {
-  totalBilled: 12450,
-  totalPaid: 9250,
-  totalPending: 3200,
-  totalOverdue: 1350,
-  overdueCount: 4,
-  pendingCount: 6,
+const EMPTY_STATS: BillingStats = {
+  totalBilled: 0,
+  totalPaid: 0,
+  totalPending: 0,
+  totalOverdue: 0,
+  overdueCount: 0,
+  pendingCount: 0,
 };
-
-const DEMO_INVOICES: Invoice[] = [
-  { id: '1', title: 'Scolarité — Ahmed Ben Ali', studentId: null, amount: 450, currency: 'TND', status: 'PAID', dueDate: '2025-01-15', paidAt: '2025-01-12' },
-  { id: '2', title: 'Scolarité — Fatma Trabelsi', studentId: null, amount: 450, currency: 'TND', status: 'PENDING', dueDate: '2025-02-15', paidAt: null },
-  { id: '3', title: 'Scolarité — Mohamed Chaabane', studentId: null, amount: 450, currency: 'TND', status: 'OVERDUE', dueDate: '2025-01-15', paidAt: null },
-  { id: '4', title: 'Scolarité — Yasmine Gharbi', studentId: null, amount: 450, currency: 'TND', status: 'PAID', dueDate: '2025-01-15', paidAt: '2025-01-14' },
-  { id: '5', title: 'Scolarité — Khalil Mejri', studentId: null, amount: 450, currency: 'TND', status: 'PAID', dueDate: '2025-02-15', paidAt: '2025-02-10' },
-  { id: '6', title: 'Scolarité — Nour Baccouche', studentId: null, amount: 450, currency: 'TND', status: 'OVERDUE', dueDate: '2025-01-15', paidAt: null },
-];
 
 export default function PaymentsPage() {
   const token = useAuthStore((s) => s.accessToken);
-  const [invoices, setInvoices] = useState<Invoice[]>(DEMO_INVOICES);
-  const [stats, setStats] = useState<BillingStats>(DEMO_STATS);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [stats, setStats] = useState<BillingStats>(EMPTY_STATS);
   const [filterStatus, setFilterStatus] = useState('');
 
   const load = useCallback(async () => {
@@ -71,10 +62,11 @@ export default function PaymentsPage() {
       ]);
       const invData = invRes.ok ? (await invRes.json() as { items: Invoice[] }) : null;
       const statsData = statsRes.ok ? (await statsRes.json() as BillingStats) : null;
-      if (invData?.items?.length) setInvoices(invData.items);
+      setInvoices(invData?.items ?? []);
       if (statsData) setStats(statsData);
     } catch {
-      /* keep demo data */
+      setInvoices([]);
+      setStats(EMPTY_STATS);
     }
   }, [token]);
 

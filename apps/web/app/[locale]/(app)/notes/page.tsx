@@ -5,13 +5,6 @@ import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 interface ClassOption { id: string; name: string; level: string; schoolYear: string }
 
-const DEMO_CLASSES_NOTES: ClassOption[] = [
-  { id: 'demo-class-1', name: 'CP-A', level: 'CP', schoolYear: '2025-2026' },
-  { id: 'demo-class-2', name: 'CE1-B', level: 'CE1', schoolYear: '2025-2026' },
-  { id: 'demo-class-3', name: 'CM1-A', level: 'CM1', schoolYear: '2025-2026' },
-  { id: 'demo-class-4', name: 'CM2-B', level: 'CM2', schoolYear: '2025-2026' },
-];
-
 export default function NotesPage() {
   const token = useAuthStore((s) => s.accessToken);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -28,7 +21,6 @@ export default function NotesPage() {
       setClasses(items);
     } catch {
       setClasses([]);
-      setError(true);
     } finally {
       setLoading(false);
     }

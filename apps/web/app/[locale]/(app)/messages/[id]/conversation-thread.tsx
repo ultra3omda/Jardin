@@ -18,34 +18,6 @@ import {
   type MessageNewPayload,
 } from '@/lib/messaging/socket';
 
-// ─── Demo fallback data (used when the conversation ID is a client-side demo ID) ───
-
-const DEMO_SELF = '__demo_self__';
-
-const DEMO_MESSAGES_BY_CONV: Record<string, Message[]> = {
-  'demo-conv-1': [
-    { id: 'dm-1-1', conversationId: 'demo-conv-1', senderId: 'demo-parent-1', body: 'Bonjour, pouvez-vous me confirmer les horaires de la réunion parents-professeurs ?', createdAt: new Date(Date.now() - 5 * 3600_000).toISOString() },
-    { id: 'dm-1-2', conversationId: 'demo-conv-1', senderId: DEMO_SELF, body: 'Bonjour Mme Trabelsi ! La réunion aura lieu le jeudi 20 mars à 17h30, en salle polyvalente.', createdAt: new Date(Date.now() - 4.5 * 3600_000).toISOString() },
-    { id: 'dm-1-3', conversationId: 'demo-conv-1', senderId: 'demo-parent-1', body: 'Merci beaucoup. Est-ce que je dois apporter quelque chose ?', createdAt: new Date(Date.now() - 4 * 3600_000).toISOString() },
-    { id: 'dm-1-4', conversationId: 'demo-conv-1', senderId: DEMO_SELF, body: 'Non, rien de particulier. Les bulletins du trimestre précédent si vous les avez.', createdAt: new Date(Date.now() - 3 * 3600_000).toISOString() },
-    { id: 'dm-1-5', conversationId: 'demo-conv-1', senderId: 'demo-parent-1', body: 'Parfait, à jeudi alors !', createdAt: new Date(Date.now() - 2 * 3600_000).toISOString() },
-  ],
-  'demo-conv-2': [
-    { id: 'dm-2-1', conversationId: 'demo-conv-2', senderId: 'demo-parent-2', body: 'Bonjour, je voulais savoir si le bulletin du 2ème trimestre était prêt ?', createdAt: new Date(Date.now() - 2 * 86400_000 - 2 * 3600_000).toISOString() },
-    { id: 'dm-2-2', conversationId: 'demo-conv-2', senderId: DEMO_SELF, body: 'Bonjour M. Ben Ali. Oui, le bulletin sera téléchargeable vendredi soir depuis votre espace parent.', createdAt: new Date(Date.now() - 2 * 86400_000 - 1.5 * 3600_000).toISOString() },
-    { id: 'dm-2-3', conversationId: 'demo-conv-2', senderId: 'demo-parent-2', body: "D'accord merci ! J'ai aussi une question sur les frais scolaires du 3ème trimestre.", createdAt: new Date(Date.now() - 2 * 86400_000 - 1 * 3600_000).toISOString() },
-    { id: 'dm-2-4', conversationId: 'demo-conv-2', senderId: DEMO_SELF, body: 'Bien sûr, les frais seront exigibles à partir du 1er avril. Vous recevrez un rappel par email.', createdAt: new Date(Date.now() - 1 * 86400_000).toISOString() },
-  ],
-  'demo-conv-3': [
-    { id: 'dm-3-1', conversationId: 'demo-conv-3', senderId: 'demo-teacher-1', body: 'Rappel : sortie pédagogique mercredi, prévoir une tenue adaptée.', createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
-    { id: 'dm-3-2', conversationId: 'demo-conv-3', senderId: DEMO_SELF, body: "Bonjour Mme Martin, est-ce qu'on a besoin d'une autorisation parentale supplémentaire ?", createdAt: new Date(Date.now() - 2.5 * 86400_000).toISOString() },
-    { id: 'dm-3-3', conversationId: 'demo-conv-3', senderId: 'demo-teacher-1', body: "Non, l'autorisation annuelle suffit pour cette sortie.", createdAt: new Date(Date.now() - 2 * 86400_000).toISOString() },
-    { id: 'dm-3-4', conversationId: 'demo-conv-3', senderId: DEMO_SELF, body: "Très bien, je ferai passer l'information aux parents concernés.", createdAt: new Date(Date.now() - 1.5 * 86400_000).toISOString() },
-  ],
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface Props {
   conversationId: string;
 }
@@ -69,17 +41,9 @@ export function ConversationThread({ conversationId }: Props) {
 
   const allMessages = useMemo<Message[]>(() => {
     const history = data?.items ?? [];
-    // For client-side demo conversation IDs, inject demo messages when the API
-    // returns nothing (the real API doesn't know about these fake IDs).
-    if (conversationId.startsWith('demo-') && history.length === 0 && currentUser) {
-      const demoMsgs = DEMO_MESSAGES_BY_CONV[conversationId] ?? [];
-      return demoMsgs.map((m) =>
-        m.senderId === DEMO_SELF ? { ...m, senderId: currentUser.id } : m,
-      );
-    }
     const seen = new Set(history.map((m) => m.id));
     return [...history, ...liveMessages.filter((m) => !seen.has(m.id))];
-  }, [data?.items, liveMessages, conversationId, currentUser]);
+  }, [data?.items, liveMessages]);
 
   useEffect(() => {
     if (!accessToken || !currentUser) return;

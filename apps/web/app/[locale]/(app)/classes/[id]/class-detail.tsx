@@ -5,7 +5,6 @@ import { useState } from 'react';
 
 import { Link } from '@/i18n/routing';
 import { createTimeSlot, deleteTimeSlot, getClass, type TimeSlot } from '@/lib/api/classes';
-import { findDemoClass } from '@/lib/demo/classes';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 interface Props {
@@ -48,10 +47,7 @@ export function ClassDetail({ id }: Props) {
     enabled: !!accessToken,
   });
 
-  // Fall back to shared demo fixtures when the API errors or returns nothing,
-  // so a demo list → detail click never shows "Class not found".
-  const data = apiClass ?? findDemoClass(id);
-  const isDemo = !apiClass && !!data;
+  const data = apiClass;
 
   const addSlotMutation = useMutation({
     mutationFn: () =>
@@ -102,15 +98,13 @@ export function ClassDetail({ id }: Props) {
             Niveau {data.level} · Année {data.schoolYear}
           </p>
         </div>
-        {!isDemo && (
-          <button
-            type="button"
-            onClick={() => setShowAdd((v) => !v)}
-            className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-          >
-            {showAdd ? 'Annuler' : '+ Créneau EDT'}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setShowAdd((v) => !v)}
+          className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+        >
+          {showAdd ? 'Annuler' : '+ Créneau EDT'}
+        </button>
       </div>
 
       <section className="mt-8">
@@ -248,16 +242,14 @@ export function ClassDetail({ id }: Props) {
                                   {slot.teacher.firstName?.[0] ?? ''}. {slot.teacher.lastName}
                                 </p>
                               )}
-                              {!isDemo && (
-                                <button
-                                  type="button"
-                                  onClick={() => deleteMutation.mutate(slot.id)}
-                                  className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded text-xs text-rose-600 hover:bg-rose-50 group-hover:flex"
-                                  title="Supprimer"
-                                >
-                                  ×
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => deleteMutation.mutate(slot.id)}
+                                className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded text-xs text-rose-600 hover:bg-rose-50 group-hover:flex"
+                                title="Supprimer"
+                              >
+                                ×
+                              </button>
                             </div>
                           ) : null}
                         </td>

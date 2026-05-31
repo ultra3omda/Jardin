@@ -87,8 +87,8 @@ import { UsersModule } from './users/users.module';
     TransportModule, // T2b PR-3
     SecurityModule, // T2b PR-4
     HrModule, // T2c V1
-    PaymentsModule,
-    DashboardModule, // GTM payments
+    PaymentsModule, // GTM payments
+    DashboardModule, // Real dashboard overview aggregation
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6
