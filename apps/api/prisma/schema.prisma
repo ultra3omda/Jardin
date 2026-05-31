@@ -123,6 +123,11 @@ model Tenant {
   busStops             BusStop[]
   transportAssignments TransportAssignment[]
 
+  // T2b PR-4 — Sécurité
+  securityIncidents SecurityIncident[]
+  visitorLogs       VisitorLog[]
+  safetyDrills      SafetyDrill[]
+
   @@index([slug])
   @@map("tenants")
 }
@@ -169,6 +174,10 @@ model User {
   healthRecordsUpdated       HealthRecord[]            @relation("HealthRecordsUpdated") // T2b PR-2
   infirmaryVisitsRecorded    InfirmaryVisit[]          @relation("InfirmaryVisitsRecorded") // T2b PR-2
   vaccinationsRecorded       Vaccination[]             @relation("VaccinationsRecorded") // T2b PR-2
+  securityReported           SecurityIncident[]        @relation("SecurityReported") // T2b PR-4
+  securityResolved           SecurityIncident[]        @relation("SecurityResolved") // T2b PR-4
+  visitorLogsRecorded        VisitorLog[]              @relation("VisitorLogsRecorded") // T2b PR-4
+  safetyDrillsRecorded       SafetyDrill[]             @relation("SafetyDrillsRecorded") // T2b PR-4
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -1101,4 +1110,97 @@ model TransportAssignment {
   @@index([tenantId, routeId])
   @@index([tenantId, studentId])
   @@map("transport_assignments")
+}
+
+// ============================================================================
+// T2b — Sécurité (niveau école)
+// ============================================================================
+
+enum SecurityIncidentType {
+  INTRUSION
+  THEFT
+  INJURY
+  FIRE
+  OTHER
+}
+
+enum SecuritySeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DrillType {
+  FIRE
+  EARTHQUAKE
+  LOCKDOWN
+  OTHER
+}
+
+// T2b — Incident de sécurité (réutilise IncidentStatus de PR-2).
+model SecurityIncident {
+  id             String               @id
+  tenantId       String
+  type           SecurityIncidentType
+  severity       SecuritySeverity     @default(LOW)
+  location       String?              @db.VarChar(160)
+  occurredAt     DateTime
+  description    String               @db.Text
+  status         IncidentStatus       @default(OPEN)
+  resolutionNote String?              @db.Text
+  resolvedAt     DateTime?
+  reportedById   String
+  resolvedById   String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reportedBy User   @relation("SecurityReported", fields: [reportedById], references: [id])
+  resolvedBy User?  @relation("SecurityResolved", fields: [resolvedById], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("security_incidents")
+}
+
+// T2b — Journal des visiteurs.
+model VisitorLog {
+  id           String    @id
+  tenantId     String
+  visitorName  String    @db.VarChar(160)
+  reason       String?   @db.VarChar(300)
+  checkInAt    DateTime
+  checkOutAt   DateTime?
+  badgeNumber  String?   @db.VarChar(40)
+  recordedById String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recordedBy User   @relation("VisitorLogsRecorded", fields: [recordedById], references: [id])
+
+  @@index([tenantId, checkInAt])
+  @@map("visitor_logs")
+}
+
+// T2b — Exercice de sécurité (incendie, confinement…).
+model SafetyDrill {
+  id           String    @id
+  tenantId     String
+  type         DrillType
+  conductedAt  DateTime
+  durationMin  Int?
+  notes        String?   @db.Text
+  recordedById String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recordedBy User   @relation("SafetyDrillsRecorded", fields: [recordedById], references: [id])
+
+  @@index([tenantId, conductedAt])
+  @@map("safety_drills")
 }

@@ -92,6 +92,10 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     await prisma.busRoute.deleteMany({});
     await prisma.mealPlan.deleteMany({});
     await prisma.canteenMenu.deleteMany({});
+    // T2b PR-4 — security (RESTRICT *ById FKs → before user delete).
+    await prisma.securityIncident.deleteMany({});
+    await prisma.visitorLog.deleteMany({});
+    await prisma.safetyDrill.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -366,6 +370,13 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     let routeBId: string;
     let assignmentAId: string;
     let assignmentBId: string;
+    // T2b PR-4 — sécurité
+    let secIncidentAId: string;
+    let secIncidentBId: string;
+    let visitorAId: string;
+    let visitorBId: string;
+    let drillAId: string;
+    let drillBId: string;
 
     beforeEach(async () => {
       // Parent tenants/users/students already exist (global beforeEach ran).
@@ -524,6 +535,74 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
         data: [
           { id: assignmentAId, tenantId: tenantAId, studentId: studentAId, routeId: routeAId },
           { id: assignmentBId, tenantId: tenantBId, studentId: studentBId, routeId: routeBId },
+        ],
+      });
+
+      // T2b PR-4 — one SecurityIncident / VisitorLog / SafetyDrill per tenant
+      // (reportedById/recordedById → the per-tenant SCHOOL_ADMIN).
+      secIncidentAId = createId();
+      secIncidentBId = createId();
+      visitorAId = createId();
+      visitorBId = createId();
+      drillAId = createId();
+      drillBId = createId();
+
+      await prisma.securityIncident.createMany({
+        data: [
+          {
+            id: secIncidentAId,
+            tenantId: tenantAId,
+            type: 'INTRUSION',
+            occurredAt: new Date('2026-05-23T10:30:00.000Z'),
+            description: 'A',
+            reportedById: userAId,
+          },
+          {
+            id: secIncidentBId,
+            tenantId: tenantBId,
+            type: 'THEFT',
+            occurredAt: new Date('2026-05-23T10:30:00.000Z'),
+            description: 'B',
+            reportedById: userBId,
+          },
+        ],
+      });
+
+      await prisma.visitorLog.createMany({
+        data: [
+          {
+            id: visitorAId,
+            tenantId: tenantAId,
+            visitorName: 'Visiteur A',
+            checkInAt: new Date('2026-05-23T08:15:00.000Z'),
+            recordedById: userAId,
+          },
+          {
+            id: visitorBId,
+            tenantId: tenantBId,
+            visitorName: 'Visiteur B',
+            checkInAt: new Date('2026-05-23T08:15:00.000Z'),
+            recordedById: userBId,
+          },
+        ],
+      });
+
+      await prisma.safetyDrill.createMany({
+        data: [
+          {
+            id: drillAId,
+            tenantId: tenantAId,
+            type: 'FIRE',
+            conductedAt: new Date('2026-05-22T11:00:00.000Z'),
+            recordedById: userAId,
+          },
+          {
+            id: drillBId,
+            tenantId: tenantBId,
+            type: 'LOCKDOWN',
+            conductedAt: new Date('2026-05-22T11:00:00.000Z'),
+            recordedById: userBId,
+          },
         ],
       });
     });
@@ -753,6 +832,73 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
           const stolen = await tenantPrisma.client.transportAssignment.findFirst({
             where: { id: assignmentBId },
           });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    // ── T2b PR-4 — Sécurité isolation ────────────────────────────────────────
+
+    it('SecurityIncident.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.securityIncident.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(secIncidentAId);
+        },
+      );
+    });
+
+    it('SecurityIncident.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.securityIncident.findFirst({
+            where: { id: secIncidentBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('VisitorLog.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.visitorLog.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(visitorAId);
+        },
+      );
+    });
+
+    it('VisitorLog.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.visitorLog.findFirst({ where: { id: visitorBId } });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('SafetyDrill.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.safetyDrill.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(drillAId);
+        },
+      );
+    });
+
+    it('SafetyDrill.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.safetyDrill.findFirst({ where: { id: drillBId } });
           expect(stolen).toBeNull();
         },
       );

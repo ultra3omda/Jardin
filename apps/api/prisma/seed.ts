@@ -5,12 +5,15 @@ import {
   ActivityCategory,
   ChildMood,
   DisciplineSeverity,
+  DrillType,
   InfirmaryOutcome,
   Locale,
   MealRegime,
   PrismaClient,
   RelationType,
   RouteStatus,
+  SecurityIncidentType,
+  SecuritySeverity,
   Sex,
   TenantType,
   TransportDirection,
@@ -549,6 +552,77 @@ async function seedCanteenAndTransport(tenantId: string): Promise<void> {
   });
 }
 
+// -- T2b PR-4 -- Sécurité fixtures -------------------------------------------
+// Fixed seed dates (deterministic — never Date.now()/argless new Date()).
+const T2B_SECURITY_INCIDENT_AT = new Date('2026-05-23T10:30:00.000Z');
+const T2B_SECURITY_INCIDENT_DESC = 'Individu non identifié observé près de la clôture nord.';
+const T2B_VISITOR_AT = new Date('2026-05-23T08:15:00.000Z');
+const T2B_DRILL_AT = new Date('2026-05-22T11:00:00.000Z');
+
+/**
+ * Seed idempotent Sécurité fixtures for one tenant.
+ * No-op for tenants without a SCHOOL_ADMIN (used as reporter/recorder).
+ * Re-runs create no duplicates via deterministic findFirst guards.
+ */
+async function seedSecurity(tenantId: string): Promise<void> {
+  const author = await prisma.user.findFirst({
+    where: { tenantId, role: UserRole.SCHOOL_ADMIN },
+  });
+  if (!author) return;
+
+  const existingIncident = await prisma.securityIncident.findFirst({
+    where: { tenantId, description: T2B_SECURITY_INCIDENT_DESC },
+  });
+  if (!existingIncident) {
+    await prisma.securityIncident.create({
+      data: {
+        id: createId(),
+        tenantId,
+        type: SecurityIncidentType.INTRUSION,
+        severity: SecuritySeverity.MEDIUM,
+        location: 'Zone nord',
+        occurredAt: T2B_SECURITY_INCIDENT_AT,
+        description: T2B_SECURITY_INCIDENT_DESC,
+        reportedById: author.id,
+      },
+    });
+  }
+
+  const existingVisitor = await prisma.visitorLog.findFirst({
+    where: { tenantId, visitorName: 'M. Gharbi', checkInAt: T2B_VISITOR_AT },
+  });
+  if (!existingVisitor) {
+    await prisma.visitorLog.create({
+      data: {
+        id: createId(),
+        tenantId,
+        visitorName: 'M. Gharbi',
+        reason: 'Rendez-vous direction',
+        checkInAt: T2B_VISITOR_AT,
+        badgeNumber: 'N°142',
+        recordedById: author.id,
+      },
+    });
+  }
+
+  const existingDrill = await prisma.safetyDrill.findFirst({
+    where: { tenantId, type: DrillType.FIRE, conductedAt: T2B_DRILL_AT },
+  });
+  if (!existingDrill) {
+    await prisma.safetyDrill.create({
+      data: {
+        id: createId(),
+        tenantId,
+        type: DrillType.FIRE,
+        conductedAt: T2B_DRILL_AT,
+        durationMin: 15,
+        notes: 'Évacuation complète en 3 min.',
+        recordedById: author.id,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -647,6 +721,10 @@ async function main(): Promise<void> {
   // -- T2b PR-3 -- Cantine + Transport fixtures (idempotent, students-only) --
   await seedCanteenAndTransport(ecole.id);
   await seedCanteenAndTransport(maternelle.id);
+
+  // -- T2b PR-4 -- Sécurité fixtures (idempotent, admin-required) ------------
+  await seedSecurity(ecole.id);
+  await seedSecurity(maternelle.id);
 
   // -- Demo requests (platform-level, event-sourced in AuditLog) -------------
   await seedDemoRequests(prisma, superAdmin.id);
