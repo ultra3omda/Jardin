@@ -54,8 +54,15 @@ export function CreateStudentForm() {
   const classOptions = classesData?.items ?? [];
 
   const mutation = useMutation({
-    mutationFn: (values: CreateStudentFormValues) =>
-      createStudent(accessToken!, values),
+    mutationFn: (values: CreateStudentFormValues) => {
+      // Lot 3 — on envoie classId (FK) ; classroom est dérivé du nom de la classe
+      // choisie (l'API le re-synchronise de toute façon).
+      const picked = classOptions.find((c) => c.id === values.classId);
+      return createStudent(accessToken!, {
+        ...values,
+        classroom: picked?.name ?? values.classroom ?? '',
+      });
+    },
     onSuccess: (data) => setCreated(data),
   });
 
@@ -94,7 +101,13 @@ export function CreateStudentForm() {
     );
   }
 
-  const onSubmit = form.handleSubmit((values) => mutation.mutate(values));
+  const onSubmit = form.handleSubmit((values) => {
+    if (!values.classId) {
+      form.setError('classId', { type: 'required', message: `${terms.class} requise` });
+      return;
+    }
+    mutation.mutate(values);
+  });
   const fieldError = (name: keyof CreateStudentFormValues) =>
     form.formState.errors[name]?.message?.toString();
 
@@ -208,23 +221,33 @@ export function CreateStudentForm() {
         <h2 className="text-lg font-semibold">Scolarité</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-sm font-medium" htmlFor="classroom">
+            <label className="text-sm font-medium" htmlFor="classId">
               {terms.class} *
             </label>
-            <input
-              id="classroom"
-              list="classroom-options"
-              {...form.register('classroom')}
-              placeholder={classOptions.length ? 'Choisir ou saisir…' : 'ex: CP-A'}
+            <select
+              id="classId"
+              {...form.register('classId')}
               className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
-            />
-            <datalist id="classroom-options">
+              disabled={classOptions.length === 0}
+            >
+              <option value="">— Choisir —</option>
               {classOptions.map((c) => (
-                <option key={c.id} value={c.name} />
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.level})
+                </option>
               ))}
-            </datalist>
-            {fieldError('classroom') && (
-              <p className="mt-1 text-xs text-rose-600">{fieldError('classroom')}</p>
+            </select>
+            {classOptions.length === 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Aucune {terms.class.toLowerCase()}.{' '}
+                <Link href={'/classes' as Route} className="text-primary underline">
+                  Créez-en une
+                </Link>{' '}
+                d&apos;abord.
+              </p>
+            )}
+            {fieldError('classId') && (
+              <p className="mt-1 text-xs text-rose-600">{fieldError('classId')}</p>
             )}
           </div>
           <div>

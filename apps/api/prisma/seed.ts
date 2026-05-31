@@ -189,18 +189,18 @@ async function seedDemoRequests(prisma: PrismaClient, superAdminId: string): Pro
 
 async function seedV6ForTenant(tenantId: string, schoolYear: string) {
   const subjects = [
-    { name: 'Mathématiques', code: 'MATH' },
-    { name: 'Français', code: 'FR' },
-    { name: 'Sciences', code: 'SCI' },
-    { name: 'Histoire-Géographie', code: 'HG' },
-    { name: 'Anglais', code: 'EN' },
-    { name: 'Éducation Physique', code: 'EPS' },
+    { name: 'Mathématiques', code: 'MATH', coefficient: 4, levels: ['CP', 'CE1', 'CE2'] },
+    { name: 'Français', code: 'FR', coefficient: 4, levels: ['CP', 'CE1', 'CE2'] },
+    { name: 'Sciences', code: 'SCI', coefficient: 2, levels: ['CE1', 'CE2'] },
+    { name: 'Histoire-Géographie', code: 'HG', coefficient: 2, levels: ['CE2'] },
+    { name: 'Anglais', code: 'EN', coefficient: 2, levels: ['CE1', 'CE2'] },
+    { name: 'Éducation Physique', code: 'EPS', coefficient: 1, levels: [] }, // tous niveaux
   ];
   for (const s of subjects) {
     await prisma.subject.upsert({
       where: { unique_subject_per_tenant: { tenantId, name: s.name } },
-      update: {},
-      create: { id: createId(), tenantId, name: s.name, code: s.code },
+      update: { coefficient: s.coefficient, levels: s.levels },
+      create: { id: createId(), tenantId, name: s.name, code: s.code, coefficient: s.coefficient, levels: s.levels },
     });
   }
 
@@ -240,6 +240,7 @@ async function seedStudents(
   classroom: string,
   names: Array<[string, string]>,
   parentEmailDomain = 'demo-ecole.klasso.tn',
+  classId?: string,
 ): Promise<SeededStudent[]> {
   const seeded: SeededStudent[] = [];
   for (let i = 0; i < names.length; i += 1) {
@@ -254,6 +255,10 @@ async function seedStudents(
       where: { tenantId, firstName, lastName, classroom },
     });
     if (existing) {
+      // Lot 3 — relier les élèves déjà semés à leur classe (FK) lors d'un re-seed.
+      if (classId && existing.classId !== classId) {
+        await prisma.student.update({ where: { id: existing.id }, data: { classId } });
+      }
       seeded.push({ id: existing.id, firstName, lastName, classroom, parentEmail });
       continue;
     }
@@ -268,6 +273,7 @@ async function seedStudents(
         sex: i % 2 === 0 ? Sex.F : Sex.M,
         nationality: 'TN',
         classroom,
+        ...(classId ? { classId } : {}),
         parentEmail,
         siblingsCount: i % 3,
         country: 'TN',
@@ -1092,18 +1098,18 @@ async function main(): Promise<void> {
     ['Adam', 'Hadj'], ['Sara', 'Belhaj'], ['Anis', 'Riahi'], ['Nour', 'Khaldi'],
     ['Inès', 'Bouaziz'], ['Rayan', 'Mejri'], ['Aya', 'Hammami'], ['Wassim', 'Lassoued'],
     ['Yasmine', 'Saidi'], ['Mehdi', 'Chaabane'], ['Sirine', 'Karoui'], ['Hamza', 'Jbeli'],
-  ]);
+  ], undefined, cpAId);
   const ce1B = await seedStudents(ecole.id, 'CE1-B', [
     ['Iheb', 'Gharbi'], ['Emna', 'Sassi'], ['Mohamed', 'Ayari'], ['Amani', 'Jelassi'],
     ['Oussama', 'Nasri'], ['Farah', 'Brahim'], ['Bilel', 'Ouni'], ['Asma', 'Ferchichi'],
     ['Chedi', 'Baccouche'], ['Maram', 'Sghaier'], ['Slim', 'Toumi'], ['Khaoula', 'Guesmi'],
     ['Montassar', 'Khelil'], ['Bochra', 'Aouadi'], ['Aymen', 'Dridi'], ['Salima', 'Largueche'],
-  ]);
+  ], undefined, ce1BId);
   const ce2A = await seedStudents(ecole.id, 'CE2-A', [
     ['Tarek', 'Trabelsi'], ['Lilia', 'Bouaziz'], ['Skander', 'Ben Hassine'], ['Mariem', 'Mejri'],
     ['Aziz', 'Lassoued'], ['Nadia', 'Hammami'], ['Bilel', 'Karoui'], ['Donia', 'Jbeli'],
     ['Hatem', 'Saidi'], ['Ines', 'Khaldi'], ['Walid', 'Riahi'], ['Habiba', 'Chaabane'],
-  ]);
+  ], undefined, ce2AId);
 
   // -- Parents -- one PARENT user per student, linked idempotently -----------
   const parentLinks = await seedParentLinks(ecole.id, [...cpA, ...ce1B, ...ce2A], passwordHash);
@@ -1132,6 +1138,7 @@ async function main(): Promise<void> {
       ['Rayan', 'Hamdi'], ['Lina', 'Marzouki'], ['Adam', 'Zouari'],
     ],
     'demo-maternelle.klasso.tn',
+    matPSId,
   );
   const matGS = await seedStudents(
     maternelle.id,
@@ -1141,6 +1148,7 @@ async function main(): Promise<void> {
       ['Mariem', 'Brahmi'], ['Aymen', 'Saadaoui'], ['Farah', 'Nasri'],
     ],
     'demo-maternelle.klasso.tn',
+    matGSId,
   );
   const maternelleParentLinks = await seedParentLinks(
     maternelle.id,

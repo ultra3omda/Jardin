@@ -9,6 +9,7 @@ export interface SubjectFormValues {
   name: string;
   emoji: string;
   coefficient: number;
+  levels: string[];
 }
 
 interface Props {
@@ -18,7 +19,17 @@ interface Props {
   onSubmit: (values: SubjectFormValues) => Promise<void>;
 }
 
-const EMPTY: SubjectFormValues = { name: '', emoji: '', coefficient: 1 };
+const EMPTY: SubjectFormValues = { name: '', emoji: '', coefficient: 1, levels: [] };
+
+/** "CP, CE1 , CM2" -> ["CP","CE1","CM2"] (trim + dédup + non vides). */
+function parseLevels(raw: string): string[] {
+  const seen = new Set<string>();
+  for (const part of raw.split(',')) {
+    const v = part.trim();
+    if (v) seen.add(v);
+  }
+  return [...seen];
+}
 
 /** Modal dialog for creating / editing a subject. */
 export function SubjectModal({ open, initial, onClose, onSubmit }: Props) {
@@ -51,7 +62,7 @@ export function SubjectModal({ open, initial, onClose, onSubmit }: Props) {
     setError(null);
     startTransition(async () => {
       try {
-        await onSubmit({ name, emoji: values.emoji.trim(), coefficient });
+        await onSubmit({ name, emoji: values.emoji.trim(), coefficient, levels: values.levels });
         onClose();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Une erreur est survenue.');
@@ -118,6 +129,19 @@ export function SubjectModal({ open, initial, onClose, onSubmit }: Props) {
               value={values.coefficient}
               onChange={(e) => set('coefficient', Number(e.target.value))}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="subject-levels">Niveaux concernés (facultatif)</Label>
+            <Input
+              id="subject-levels"
+              defaultValue={values.levels.join(', ')}
+              onChange={(e) => set('levels', parseLevels(e.target.value))}
+              placeholder="ex. CP, CE1, CE2 — vide = tous niveaux"
+            />
+            <p className="text-xs text-muted-foreground">
+              Séparez par des virgules. Laissez vide pour appliquer à tous les niveaux.
+            </p>
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}

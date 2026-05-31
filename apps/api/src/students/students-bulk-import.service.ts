@@ -134,7 +134,23 @@ export class StudentsBulkImportService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.student.createMany({ data: validRows });
+      // Lot 3 — rattache chaque ligne à une classe (FK) par nom == classroom
+      // (année scolaire la plus récente). classId reste null si aucune ne matche.
+      const classes = await tx.class.findMany({
+        where: { tenantId, deletedAt: null },
+        orderBy: { schoolYear: 'desc' },
+        select: { id: true, name: true },
+      });
+      const classIdByName = new Map<string, string>();
+      for (const c of classes) {
+        if (!classIdByName.has(c.name)) classIdByName.set(c.name, c.id); // 1er = année la plus récente
+      }
+      const rowsWithClass = validRows.map((row) => ({
+        ...row,
+        classId: classIdByName.get(row.classroom) ?? null,
+      }));
+
+      await tx.student.createMany({ data: rowsWithClass });
       await tx.auditLog.create({
         data: {
           id: createId(),

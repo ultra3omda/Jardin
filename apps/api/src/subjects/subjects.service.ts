@@ -31,6 +31,7 @@ export class SubjectsService {
           code: dto.code ?? null,
           emoji: dto.emoji ?? null,
           coefficient: dto.coefficient ?? 1,
+          levels: dto.levels ?? [],
         },
       });
       return this.toResponse(created);
@@ -64,6 +65,7 @@ export class SubjectsService {
         ...(dto.code !== undefined ? { code: dto.code } : {}),
         ...(dto.emoji !== undefined ? { emoji: dto.emoji } : {}),
         ...(dto.coefficient !== undefined ? { coefficient: dto.coefficient } : {}),
+        ...(dto.levels !== undefined ? { levels: dto.levels } : {}),
       },
     });
     return this.toResponse(updated);
@@ -83,6 +85,7 @@ export class SubjectsService {
     code: string | null;
     emoji: string | null;
     coefficient: number;
+    levels: string[];
     createdAt: Date;
     updatedAt: Date;
   }): SubjectResponseDto {
@@ -92,6 +95,7 @@ export class SubjectsService {
       code: s.code,
       emoji: s.emoji,
       coefficient: s.coefficient,
+      levels: s.levels,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
     };

@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsNumber,
   IsOptional,
   IsString,
@@ -34,6 +36,18 @@ export class CreateSubjectDto {
   @Min(1)
   @Max(10)
   coefficient?: number;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['CP', 'CE1'],
+    description: 'Lot 3 — niveaux où la matière s\'applique. Vide = tous niveaux.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(30, { each: true })
+  levels?: string[];
 }
 
 export class UpdateSubjectDto {
@@ -62,6 +76,14 @@ export class UpdateSubjectDto {
   @Min(1)
   @Max(10)
   coefficient?: number;
+
+  @ApiPropertyOptional({ type: [String], example: ['CP', 'CE1'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(30, { each: true })
+  levels?: string[];
 }
 
 export class SubjectResponseDto {
@@ -70,6 +92,7 @@ export class SubjectResponseDto {
   @ApiPropertyOptional() code?: string | null;
   @ApiPropertyOptional() emoji?: string | null;
   @ApiProperty() coefficient!: number;
+  @ApiProperty({ type: [String] }) levels!: string[];
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }
