@@ -279,17 +279,26 @@ async function seedStudents(
   return seeded;
 }
 
+// Plausible Tunisian mother first names — assigned deterministically per family
+// so a re-seed is stable and parent users have realistic, varied names.
+const MOTHER_FIRST_NAMES = [
+  'Mouna', 'Sonia', 'Leila', 'Faten', 'Rania', 'Sawsen', 'Ibtissem', 'Hayet',
+  'Najet', 'Olfa', 'Wafa', 'Sabrine', 'Imen', 'Dorra', 'Amel', 'Hela',
+];
+
 async function seedParentLinks(
   tenantId: string,
   students: SeededStudent[],
   passwordHash: string,
 ): Promise<number> {
   let links = 0;
-  for (const s of students) {
+  for (let i = 0; i < students.length; i += 1) {
+    const s = students[i];
+    const motherFirstName = MOTHER_FIRST_NAMES[i % MOTHER_FIRST_NAMES.length];
     const parent = await upsertUser({
       tenantId,
       email: s.parentEmail,
-      firstName: 'Parent',
+      firstName: motherFirstName,
       lastName: s.lastName,
       role: UserRole.PARENT,
       passwordHash,
@@ -818,6 +827,201 @@ async function seedLeaves(
   }
 }
 
+// -- Academic life: class teachers, timetable, evaluations+grades, attendance,
+//    announcements, invoices. Idempotent. Makes the SCHOOL_ADMIN (direction)
+//    dashboard coherent: classes have teachers, students have grades & attendance.
+const T_ANNOUNCE_AT = new Date('2026-05-20T08:00:00.000Z');
+const T_EVAL_DATE = new Date('2026-02-12');
+const T_ATTENDANCE_DAYS = [
+  new Date('2026-05-25'),
+  new Date('2026-05-26'),
+  new Date('2026-05-27'),
+];
+
+interface ClassRef {
+  id: string;
+  name: string;
+  students: SeededStudent[];
+}
+
+async function seedAcademicLife(
+  tenantId: string,
+  classes: ClassRef[],
+  schoolYear: string,
+): Promise<void> {
+  const teachers = await prisma.user.findMany({
+    where: { tenantId, role: UserRole.TEACHER, deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+  });
+  const admin = await prisma.user.findFirst({
+    where: { tenantId, role: UserRole.SCHOOL_ADMIN },
+  });
+  const subjects = await prisma.subject.findMany({ where: { tenantId } });
+  const period = await prisma.gradePeriod.findFirst({
+    where: { tenantId, schoolYear, name: 'T2' },
+  });
+  if (teachers.length === 0 || subjects.length === 0 || !admin) return;
+
+  const subjMath = subjects.find((s) => s.code === 'MATH') ?? subjects[0];
+  const subjFr = subjects.find((s) => s.code === 'FR') ?? subjects[0];
+
+  for (let ci = 0; ci < classes.length; ci += 1) {
+    const cls = classes[ci];
+    const mainTeacher = teachers[ci % teachers.length];
+
+    // 1. Main teacher assignment (idempotent).
+    const hasTeacher = await prisma.classTeacher.findFirst({
+      where: { tenantId, classId: cls.id, teacherUserId: mainTeacher.id },
+    });
+    if (!hasTeacher) {
+      await prisma.classTeacher.create({
+        data: {
+          id: createId(),
+          tenantId,
+          classId: cls.id,
+          teacherUserId: mainTeacher.id,
+          subject: subjMath.name,
+          isMainTeacher: true,
+        },
+      });
+    }
+
+    // 2. Timetable — two slots Monday (idempotent on classId+day+start).
+    for (const slot of [
+      { dayOfWeek: 1, periodStart: '08:30', periodEnd: '10:00', subject: subjMath.name, room: 'Salle 3' },
+      { dayOfWeek: 1, periodStart: '10:15', periodEnd: '11:45', subject: subjFr.name, room: 'Salle 3' },
+    ]) {
+      const exists = await prisma.timeSlot.findFirst({
+        where: { tenantId, classId: cls.id, dayOfWeek: slot.dayOfWeek, periodStart: slot.periodStart },
+      });
+      if (!exists) {
+        await prisma.timeSlot.create({
+          data: {
+            id: createId(),
+            tenantId,
+            classId: cls.id,
+            teacherUserId: mainTeacher.id,
+            ...slot,
+          },
+        });
+      }
+    }
+
+    // 3. One evaluation in T2 (Maths) + grades for every student (idempotent).
+    if (period) {
+      let evaluation = await prisma.evaluation.findFirst({
+        where: { tenantId, classId: cls.id, gradePeriodId: period.id, subjectId: subjMath.id },
+      });
+      if (!evaluation) {
+        evaluation = await prisma.evaluation.create({
+          data: {
+            id: createId(),
+            tenantId,
+            classId: cls.id,
+            subjectId: subjMath.id,
+            gradePeriodId: period.id,
+            title: 'Contrôle de mathématiques',
+            date: T_EVAL_DATE,
+            maxScore: 20,
+            createdById: mainTeacher.id,
+          },
+        });
+      }
+      for (let si = 0; si < cls.students.length; si += 1) {
+        const st = cls.students[si];
+        const hasGrade = await prisma.grade.findFirst({
+          where: { tenantId, evaluationId: evaluation.id, studentId: st.id },
+        });
+        if (!hasGrade) {
+          // Plausible spread 10–18/20.
+          const score = 10 + ((si * 7) % 9);
+          await prisma.grade.create({
+            data: {
+              id: createId(),
+              tenantId,
+              evaluationId: evaluation.id,
+              studentId: st.id,
+              score,
+            },
+          });
+        }
+      }
+    }
+
+    // 4. Attendance over 3 recent days; most present, a couple absent/late.
+    for (let di = 0; di < T_ATTENDANCE_DAYS.length; di += 1) {
+      const day = T_ATTENDANCE_DAYS[di];
+      for (let si = 0; si < cls.students.length; si += 1) {
+        const st = cls.students[si];
+        const exists = await prisma.attendance.findFirst({
+          where: { tenantId, studentId: st.id, date: day },
+        });
+        if (exists) continue;
+        const mod = (si + di) % 12;
+        const status =
+          mod === 0 ? 'ABSENT' : mod === 5 ? 'LATE' : mod === 9 ? 'EXCUSED' : 'PRESENT';
+        await prisma.attendance.create({
+          data: {
+            id: createId(),
+            tenantId,
+            studentId: st.id,
+            classId: cls.id,
+            date: day,
+            status: status as never,
+            recordedById: mainTeacher.id,
+          },
+        });
+      }
+    }
+  }
+
+  // 5. Announcements (idempotent on title).
+  for (const ann of [
+    { title: 'Réunion parents-professeurs', body: 'La réunion trimestrielle se tiendra le 5 juin à 17h dans la salle polyvalente.', audience: 'PARENTS' as const },
+    { title: 'Sortie pédagogique au musée du Bardo', body: 'Les classes de CE2 visiteront le musée le 12 juin. Autorisation à signer.', audience: 'ALL' as const },
+  ]) {
+    const exists = await prisma.announcement.findFirst({ where: { tenantId, title: ann.title } });
+    if (!exists) {
+      await prisma.announcement.create({
+        data: {
+          id: createId(),
+          tenantId,
+          title: ann.title,
+          body: ann.body,
+          audience: ann.audience as never,
+          authorId: admin.id,
+          publishAt: T_ANNOUNCE_AT,
+        },
+      });
+    }
+  }
+
+  // 6. Invoices — school fees for the first few students (idempotent on title+student).
+  const allStudents = classes.flatMap((c) => c.students);
+  for (let i = 0; i < Math.min(6, allStudents.length); i += 1) {
+    const st = allStudents[i];
+    const title = 'Frais de scolarité — 2e trimestre';
+    const exists = await prisma.invoice.findFirst({
+      where: { tenantId, studentId: st.id, title },
+    });
+    if (exists) continue;
+    const paid = i % 3 !== 0;
+    await prisma.invoice.create({
+      data: {
+        id: createId(),
+        tenantId,
+        studentId: st.id,
+        title,
+        amount: new Prisma.Decimal('450.000'),
+        currency: 'TND',
+        status: paid ? 'PAID' : 'PENDING',
+        dueDate: new Date('2026-04-30'),
+        paidAt: paid ? new Date('2026-04-15') : null,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -851,7 +1055,7 @@ async function main(): Promise<void> {
   });
 
   // -- 4 personas per tenant + super-admin -----------------------------------
-  await upsertUser({ tenantId: ecole.id, email: 'admin@demo-ecole.klasso.tn',  firstName: 'Amadou',  lastName: 'Koné',     role: UserRole.SCHOOL_ADMIN, passwordHash });
+  await upsertUser({ tenantId: ecole.id, email: 'admin@demo-ecole.klasso.tn',  firstName: 'Hatem',   lastName: 'Bouzid',   role: UserRole.SCHOOL_ADMIN, passwordHash });
   await upsertUser({ tenantId: ecole.id, email: 'prof@demo-ecole.klasso.tn',   firstName: 'Sami',    lastName: 'Hadj',     role: UserRole.TEACHER,      passwordHash });
   await upsertUser({ tenantId: ecole.id, email: 'prof.math@demo-ecole.klasso.tn', firstName: 'Nabil', lastName: 'Gharbi',  role: UserRole.TEACHER,      passwordHash });
   await upsertUser({ tenantId: ecole.id, email: 'prof.fr@demo-ecole.klasso.tn',   firstName: 'Rim',   lastName: 'Cherif',  role: UserRole.TEACHER,      passwordHash });
@@ -878,9 +1082,9 @@ async function main(): Promise<void> {
   await seedV6ForTenant(maternelle.id, '2025-2026');
 
   // -- Classes -- only PRIMARY_SCHOOL (V4) -----------------------------------
-  await seedClass(ecole.id, 'CP-A',  'CP',  '2025-2026');
-  await seedClass(ecole.id, 'CE1-B', 'CE1', '2025-2026');
-  await seedClass(ecole.id, 'CE2-A', 'CE2', '2025-2026');
+  const cpAId = await seedClass(ecole.id, 'CP-A',  'CP',  '2025-2026');
+  const ce1BId = await seedClass(ecole.id, 'CE1-B', 'CE1', '2025-2026');
+  const ce2AId = await seedClass(ecole.id, 'CE2-A', 'CE2', '2025-2026');
 
   // -- Students -- realistic, ~50 split across 3 classes ---------------------
   const cpA = await seedStudents(ecole.id, 'CP-A', [
@@ -890,10 +1094,10 @@ async function main(): Promise<void> {
     ['Yasmine', 'Saidi'], ['Mehdi', 'Chaabane'], ['Sirine', 'Karoui'], ['Hamza', 'Jbeli'],
   ]);
   const ce1B = await seedStudents(ecole.id, 'CE1-B', [
-    ['Ibrahim', 'Ba'], ['Aïcha', 'Sow'], ['Mohamed', 'Diop'], ['Aminata', 'Cissé'],
-    ['Ousmane', 'Diallo'], ['Fatou', 'Niang'], ['Bakary', 'Touré'], ['Awa', 'Ndiaye'],
-    ['Cheikh', 'Fall'], ['Mariama', 'Sy'], ['Souleymane', 'Sarr'], ['Khadidja', 'Gueye'],
-    ['Modibo', 'Konaté'], ['Bintou', 'Camara'], ['Lamine', 'Diakité'], ['Salimata', 'Doumbia'],
+    ['Iheb', 'Gharbi'], ['Emna', 'Sassi'], ['Mohamed', 'Ayari'], ['Amani', 'Jelassi'],
+    ['Oussama', 'Nasri'], ['Farah', 'Brahim'], ['Bilel', 'Ouni'], ['Asma', 'Ferchichi'],
+    ['Chedi', 'Baccouche'], ['Maram', 'Sghaier'], ['Slim', 'Toumi'], ['Khaoula', 'Guesmi'],
+    ['Montassar', 'Khelil'], ['Bochra', 'Aouadi'], ['Aymen', 'Dridi'], ['Salima', 'Largueche'],
   ]);
   const ce2A = await seedStudents(ecole.id, 'CE2-A', [
     ['Tarek', 'Trabelsi'], ['Lilia', 'Bouaziz'], ['Skander', 'Ben Hassine'], ['Mariem', 'Mejri'],
@@ -904,10 +1108,22 @@ async function main(): Promise<void> {
   // -- Parents -- one PARENT user per student, linked idempotently -----------
   const parentLinks = await seedParentLinks(ecole.id, [...cpA, ...ce1B, ...ce2A], passwordHash);
 
+  // -- Academic life (teachers, timetable, grades, attendance, announcements,
+  //    invoices) so the SCHOOL_ADMIN dashboard is coherent (primary school).
+  await seedAcademicLife(
+    ecole.id,
+    [
+      { id: cpAId, name: 'CP-A', students: cpA },
+      { id: ce1BId, name: 'CE1-B', students: ce1B },
+      { id: ce2AId, name: 'CE2-A', students: ce2A },
+    ],
+    '2025-2026',
+  );
+
   // -- Maternelle (KINDERGARTEN) — classes + children + families -------------
   // So journal, activités, cantine, transport, santé are demoable on the KG too.
-  await seedClass(maternelle.id, 'Petite Section', 'PS', '2025-2026');
-  await seedClass(maternelle.id, 'Grande Section', 'GS', '2025-2026');
+  const matPSId = await seedClass(maternelle.id, 'Petite Section', 'PS', '2025-2026');
+  const matGSId = await seedClass(maternelle.id, 'Grande Section', 'GS', '2025-2026');
   const matPS = await seedStudents(
     maternelle.id,
     'Petite Section',
@@ -930,6 +1146,17 @@ async function main(): Promise<void> {
     maternelle.id,
     [...matPS, ...matGS],
     passwordHash,
+  );
+
+  // -- Academic life for the kindergarten (attendance, announcements, invoices;
+  //    grades/timetable are light for KG but the function is shared & idempotent).
+  await seedAcademicLife(
+    maternelle.id,
+    [
+      { id: matPSId, name: 'Petite Section', students: matPS },
+      { id: matGSId, name: 'Grande Section', students: matGS },
+    ],
+    '2025-2026',
   );
 
   // -- T2b -- Journal + Activités fixtures (idempotent, students-only) -------
