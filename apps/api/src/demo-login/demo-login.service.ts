@@ -91,6 +91,10 @@ export class DemoLoginService {
             slug: user.tenant.slug,
             type: user.tenant.type,
             brand: user.tenant.brand,
+            // GTM — demo tenants are ACTIVE; expose the onboarding signal so the
+            // web's blocking gate never bounces a 1-click demo login.
+            status: user.tenant.status,
+            onboardingCompleted: user.tenant.onboardingCompletedAt !== null,
           }
         : null,
       accessToken: tokens.accessToken,
@@ -128,7 +132,14 @@ export class DemoLoginService {
       }
       tenant = await this.prisma.tenant.upsert({
         where: { slug: config.tenantSlug },
-        update: { name: tenantData.name, type: tenantData.type },
+        // GTM — demo tenants are always fully onboarded so the 1-click demo
+        // login lands straight on the dashboard (no blocking onboarding gate).
+        update: {
+          name: tenantData.name,
+          type: tenantData.type,
+          status: 'ACTIVE',
+          onboardingCompletedAt: new Date(),
+        },
         create: {
           id: createId(),
           slug: config.tenantSlug,
@@ -136,6 +147,8 @@ export class DemoLoginService {
           type: tenantData.type,
           locale: Locale.fr,
           timezone: 'Africa/Tunis',
+          status: 'ACTIVE',
+          onboardingCompletedAt: new Date(),
         },
       });
     }

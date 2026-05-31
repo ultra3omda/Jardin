@@ -56,14 +56,19 @@ export class AuthService {
 
   async register(dto: RegisterDto, meta: RequestMeta): Promise<AuthResponseDto> {
     const email = this.normalizeEmail(dto.admin.email);
-    const slug = dto.tenant.slug.toLowerCase();
+    const slug = dto.tenant?.slug.toLowerCase();
 
-    const existing = await this.prisma.tenant.findUnique({ where: { slug } });
-    if (existing) {
-      throw new BadRequestException({
-        code: 'TENANT_SLUG_TAKEN',
-        message: `Tenant slug "${slug}" is already taken`,
-      });
+    // When the registrant brings new-tenant details, reject a taken slug up
+    // front — a cheap check before we even validate (and later consume) the
+    // invite. Tenant-bound invites (commercial flow) carry no slug here.
+    if (slug) {
+      const existing = await this.prisma.tenant.findUnique({ where: { slug } });
+      if (existing) {
+        throw new BadRequestException({
+          code: 'TENANT_SLUG_TAKEN',
+          message: `Tenant slug "${slug}" is already taken`,
+        });
+      }
     }
 
     // V1.5: /register is invite-only (Q4=B). Validate the token BEFORE
@@ -71,10 +76,9 @@ export class AuthService {
     // tenant + user creation + token consume are atomic.
     const invite = await this.inviteTokens.validate(dto.inviteToken, email);
 
-    // V1.5 simplification: only SCHOOL_ADMIN role is supported via the
-    // /register flow (creating a brand-new tenant). Other intended roles
-    // (TEACHER, PARENT, STAFF) will be supported via invite-to-existing-
-    // tenant flows in V2+. SUPER_ADMIN can never be created via /register.
+    // Only SCHOOL_ADMIN can be created via /register (creating/joining a tenant).
+    // Other roles (TEACHER, PARENT, STAFF) are provisioned by a SCHOOL_ADMIN
+    // inside their tenant; SUPER_ADMIN/COMMERCIAL never via /register.
     if (invite.intendedRole !== UserRole.SCHOOL_ADMIN) {
       throw new BadRequestException({
         code: 'INVITE_ROLE_NOT_SUPPORTED_FOR_REGISTER',
@@ -82,10 +86,25 @@ export class AuthService {
       });
     }
 
+    // GTM — two registration shapes depending on the invite:
+    //  • invite bound to a tenant → the commercial already created the org;
+    //    attach the new admin to it (no new tenant, no slug needed). The org
+    //    stays PENDING_ONBOARDING so the admin is forced through the wizard.
+    //  • unbound invite → legacy self-serve: the admin creates a brand-new
+    //    tenant from dto.tenant (still PENDING_ONBOARDING).
+    //  NB: use Boolean() — a mock/DB row may carry `undefined` vs `null`.
+    const boundToExistingTenant = Boolean(invite.tenantId);
+    if (!boundToExistingTenant && !dto.tenant) {
+      throw new BadRequestException({
+        code: 'TENANT_DETAILS_REQUIRED',
+        message: 'Cette invitation nécessite les informations de l’organisation.',
+      });
+    }
+
     const rounds = this.config.get<number>('bcryptRounds', 12);
     const passwordHash = await bcrypt.hash(dto.admin.password, rounds);
 
-    // V1.6: when the invite is bound to a specific email, the super-admin has
+    // V1.6: when the invite is bound to a specific email, the inviter has
     // already vetted that exact address (and validate() above just confirmed
     // admin.email matches it). We therefore trust it and mark the email as
     // verified at registration, so the invitee can re-login immediately without
@@ -94,20 +113,22 @@ export class AuthService {
     const autoVerified = invite.invitedEmail !== null;
 
     const { tenant, user } = await this.prisma.$transaction(async (tx) => {
-      const newTenant = await tx.tenant.create({
-        data: {
-          id: createId(),
-          name: dto.tenant.name.trim(),
-          slug,
-          type: dto.tenant.type,
-          locale: dto.tenant.locale ?? 'fr',
-          timezone: dto.tenant.timezone ?? 'Europe/Paris',
-        },
-      });
+      const targetTenant = boundToExistingTenant
+        ? await tx.tenant.findUniqueOrThrow({ where: { id: invite.tenantId! } })
+        : await tx.tenant.create({
+            data: {
+              id: createId(),
+              name: dto.tenant!.name.trim(),
+              slug: slug!,
+              type: dto.tenant!.type,
+              locale: dto.tenant!.locale ?? 'fr',
+              timezone: dto.tenant!.timezone ?? 'Europe/Paris',
+            },
+          });
       const newUser = await tx.user.create({
         data: {
           id: createId(),
-          tenantId: newTenant.id,
+          tenantId: targetTenant.id,
           email,
           passwordHash,
           firstName: dto.admin.firstName.trim(),
@@ -123,7 +144,7 @@ export class AuthService {
         where: { id: invite.id },
         data: { consumedAt: new Date(), consumedByUserId: newUser.id },
       });
-      return { tenant: newTenant, user: newUser };
+      return { tenant: targetTenant, user: newUser };
     });
 
     await this.logAudit('auth.register', {
@@ -496,6 +517,9 @@ export class AuthService {
       // V1.6 — pass-through the raw JSONB brand (TenantBrand partial or null).
       // The web layout merges over DEFAULT_BRAND before injecting CSS vars.
       brand: (tenant.brand ?? null) as TenantDto['brand'],
+      // GTM — onboarding gate signal for the web.
+      status: tenant.status,
+      onboardingCompleted: tenant.onboardingCompletedAt !== null,
     };
   }
 }

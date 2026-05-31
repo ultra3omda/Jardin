@@ -95,10 +95,17 @@ export class RegisterDto {
   @Length(20, 256)
   inviteToken!: string;
 
-  @ApiProperty({ type: RegisterTenantDto })
+  @ApiProperty({
+    type: RegisterTenantDto,
+    required: false,
+    description:
+      "Détails de la nouvelle organisation. OMIS quand l'invitation est liée à " +
+      'une organisation déjà créée par le commercial (l’org existe alors déjà).',
+  })
+  @IsOptional()
   @ValidateNested()
   @Type(() => RegisterTenantDto)
-  tenant!: RegisterTenantDto;
+  tenant?: RegisterTenantDto;
 
   @ApiProperty({ type: RegisterAdminDto })
   @ValidateNested()

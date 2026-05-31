@@ -5,7 +5,7 @@ import { defaultLocale, locales } from '@/i18n';
 import { REFRESH_COOKIE_NAME } from '@/lib/auth/cookies';
 import { resolveBrandedRewrite } from '@/lib/tenant/subdomain-rewrite';
 
-const PROTECTED_PREFIXES = ['/dashboard'];
+const PROTECTED_PREFIXES = ['/dashboard', '/onboarding', '/commercial', '/platform'];
 const AUTH_PREFIXES = ['/login', '/register'];
 
 const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? 'klasso.tn';

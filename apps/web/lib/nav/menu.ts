@@ -31,6 +31,7 @@ interface BuildContext {
  */
 export function getNavForUser(user: AuthUser, tenant: AuthTenant | null): NavSection[] {
   if (user.role === 'SUPER_ADMIN') return platformNav();
+  if (user.role === 'COMMERCIAL') return commercialNav();
   if (!tenant) return [];
   const type = tenant.type as TenantType;
   const ctx: BuildContext = { user, tenant, type };
@@ -222,6 +223,23 @@ function staffNav(_: BuildContext): NavSection[] {
   ];
 }
 
+/**
+ * GTM — COMMERCIAL is a platform sub-admin: it only sees the commercial
+ * back-office (sign contracts + create organizations). No access to any
+ * tenant data nor to the Klasso platform console.
+ */
+function commercialNav(): NavSection[] {
+  return [
+    { id: 'commercial', label: 'Commercial', items: [
+      { id: 'organizations', label: 'Mes organisations', href: '/commercial',     icon: ICONS.tenants },
+      { id: 'newOrg',        label: 'Nouvelle org.',     href: '/commercial/new', icon: ICONS.enrollments },
+    ]},
+    { id: 'compte', label: 'Compte', items: [
+      { id: 'profile', label: 'Profil', href: '/profile', icon: ICONS.branding },
+    ]},
+  ];
+}
+
 function platformNav(): NavSection[] {
   return [
     { id: 'plateforme', label: 'Plateforme', items: [
@@ -229,6 +247,11 @@ function platformNav(): NavSection[] {
       { id: 'tenants',       label: 'Tenants',        href: '/admin/tenants',  icon: ICONS.tenants },
       { id: 'demoRequests',  label: 'Demandes démo',  href: '/admin/demo',     icon: ICONS.bell },
       { id: 'inviteTokens',  label: 'Invitations',    href: '/admin/invite-tokens', icon: ICONS.enrollments },
+    ]},
+    { id: 'commercial', label: 'Commercial', items: [
+      { id: 'organizations', label: 'Organisations', href: '/commercial',        icon: ICONS.tenants },
+      { id: 'newOrg',        label: 'Nouvelle org.', href: '/commercial/new',    icon: ICONS.enrollments },
+      { id: 'agents',        label: 'Commerciaux',   href: '/commercial/agents', icon: ICONS.teachers },
     ]},
     { id: 'systeme', label: 'Système', items: [
       { id: 'audit',     label: 'Audit logs', href: '/admin/audit',     icon: ICONS.audit },

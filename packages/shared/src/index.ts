@@ -36,11 +36,28 @@ export const DEFAULT_LOCALE: Locale = 'fr';
 // ============================================================================
 
 export type UserRole =
-  | 'super_admin' // plateforme SaaS
+  | 'super_admin' // plateforme SaaS (CEO Klasso)
+  | 'commercial' // sous-admin plateforme : signe les contrats & crée les organisations
   | 'school_admin' // directeur d'établissement
   | 'teacher'
   | 'parent'
   | 'staff'; // personnel non-enseignant
+
+/**
+ * Rôles « plateforme » (Klasso) — non rattachés à une organisation (tenantId null).
+ * Ils n'ont jamais accès aux données d'un établissement.
+ */
+export const PLATFORM_ROLES = ['super_admin', 'commercial'] as const;
+export type PlatformRole = (typeof PLATFORM_ROLES)[number];
+
+/**
+ * Cycle de vie d'une organisation, du contrat signé à l'usage.
+ * - `pending_onboarding` : créée par le commercial, l'admin n'a pas encore
+ *   personnalisé l'app (nom + couleurs + logo) → onboarding bloquant.
+ * - `active` : onboarding terminé, application utilisable.
+ * - `suspended` : accès coupé (impayé, fin de contrat…).
+ */
+export type TenantStatus = 'pending_onboarding' | 'active' | 'suspended';
 
 export interface User {
   id: string;
@@ -88,6 +105,23 @@ export * from './tenant-brand';
  * Constante configurable — sert au calcul du solde dérivé (jours pris vs alloués).
  */
 export const ANNUAL_LEAVE_ALLOWANCE_DAYS = 24;
+
+// ============================================================================
+// GTM — Contrats signés
+// ============================================================================
+
+/** Contrat signé rattaché à une organisation par le commercial. */
+export interface Contract {
+  id: string;
+  tenantId: TenantId;
+  reference: string | null;
+  fileName: string;
+  signedAt: string;
+  startDate: string;
+  endDate: string | null;
+  notes: string | null;
+  createdAt: string;
+}
 
 // ============================================================================
 // Version

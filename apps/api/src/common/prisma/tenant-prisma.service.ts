@@ -36,6 +36,7 @@ export class TenantPrismaService implements OnModuleInit {
       createTenantExtension({
         getTenantId: () => this.tenantContext.getTenantId(),
         shouldSkip: () => this.tenantContext.shouldSkipTenantFilter(),
+        getRole: () => this.tenantContext.get()?.role ?? null,
       }),
     );
   }

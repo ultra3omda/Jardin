@@ -39,6 +39,13 @@ export class InviteTokensService {
     superAdminId: string,
     dto: CreateInviteTokenDto,
     meta: RequestMeta = {},
+    /**
+     * GTM — when set, binds the invite to an existing organization created by
+     * the commercial. The /register flow then attaches the new SCHOOL_ADMIN to
+     * this tenant instead of creating a brand-new one. Not exposed on the admin
+     * endpoint — only set internally by the commercial flow.
+     */
+    tenantId: string | null = null,
   ): Promise<InviteTokenCreatedDto> {
     const plaintext = generateRefreshToken();
     const tokenHash = hashRefreshToken(plaintext);
@@ -54,6 +61,7 @@ export class InviteTokensService {
         tokenHash,
         invitedEmail,
         intendedRole,
+        tenantId,
         createdById: superAdminId,
         expiresAt,
       },
@@ -61,7 +69,7 @@ export class InviteTokensService {
 
     await this.writeAudit('admin.invite_token.mint', {
       userId: superAdminId,
-      metadata: { inviteTokenId: id, invitedEmail, intendedRole, expiresAt },
+      metadata: { inviteTokenId: id, invitedEmail, intendedRole, expiresAt, tenantId },
       ...meta,
     });
 

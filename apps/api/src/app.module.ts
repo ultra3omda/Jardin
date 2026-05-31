@@ -12,6 +12,8 @@ import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { BulletinsModule } from './bulletins/bulletins.module';
 import { CanteenModule } from './canteen/canteen.module';
+import { CommercialModule } from './commercial/commercial.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { DemoLoginModule } from './demo-login/demo-login.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { DisciplineModule } from './discipline/discipline.module';
@@ -69,6 +71,8 @@ import { UsersModule } from './users/users.module';
     ]),
     AuthModule,
     AdminModule,
+    CommercialModule, // GTM — commercial back-office (contrats + création d'org)
+    OnboardingModule, // GTM — onboarding bloquant (nom + couleurs + logo)
     DemoRequestsModule,
     UsersModule,
     HealthModule,
