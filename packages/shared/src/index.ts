@@ -80,6 +80,16 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 export * from './tenant-brand';
 
 // ============================================================================
+// RH / Paie (T2c)
+// ============================================================================
+
+/**
+ * Allocation annuelle de congés payés (jours), MVP T2c V2.
+ * Constante configurable — sert au calcul du solde dérivé (jours pris vs alloués).
+ */
+export const ANNUAL_LEAVE_ALLOWANCE_DAYS = 24;
+
+// ============================================================================
 // Version
 // ============================================================================
 
