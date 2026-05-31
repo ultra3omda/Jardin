@@ -110,6 +110,12 @@ model Tenant {
   activities             Activity[]
   activityParticipations ActivityParticipation[]
 
+  // T2b PR-2 — Discipline & Santé
+  disciplineIncidents DisciplineIncident[]
+  healthRecords       HealthRecord[]
+  infirmaryVisits     InfirmaryVisit[]
+  vaccinations        Vaccination[]
+
   @@index([slug])
   @@map("tenants")
 }
@@ -151,6 +157,11 @@ model User {
   announcementsAuthored      Announcement[]            @relation("AnnouncementsAuthored") // V9
   attendanceRecorded         Attendance[]              @relation("AttendanceRecorded") // V9
   dailyLogsAuthored          DailyLogEntry[]           @relation("DailyLogsAuthored") // T2b
+  disciplineReported         DisciplineIncident[]      @relation("DisciplineReported") // T2b PR-2
+  disciplineResolved         DisciplineIncident[]      @relation("DisciplineResolved") // T2b PR-2
+  healthRecordsUpdated       HealthRecord[]            @relation("HealthRecordsUpdated") // T2b PR-2
+  infirmaryVisitsRecorded    InfirmaryVisit[]          @relation("InfirmaryVisitsRecorded") // T2b PR-2
+  vaccinationsRecorded       Vaccination[]             @relation("VaccinationsRecorded") // T2b PR-2
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -311,6 +322,12 @@ model Student {
   dailyLogEntries        DailyLogEntry[]
   activityParticipations ActivityParticipation[]
 
+  // T2b PR-2 — Discipline & Santé
+  disciplineIncidents DisciplineIncident[]
+  healthRecords       HealthRecord[] // 1/student enforced by @@unique
+  infirmaryVisits     InfirmaryVisit[]
+  vaccinations        Vaccination[]
+
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
   @@index([tenantId, parentEmail])
@@ -412,6 +429,8 @@ model Class {
   timeSlots   TimeSlot[]
   evaluations Evaluation[] // V6
   attendances Attendance[] // V9
+
+  disciplineIncidents DisciplineIncident[] // T2b PR-2
 
   @@unique([tenantId, schoolYear, name], name: "unique_class_per_year")
   @@index([tenantId, schoolYear])
@@ -813,4 +832,135 @@ model ActivityParticipation {
   @@unique([activityId, studentId], name: "unique_participation")
   @@index([tenantId, activityId])
   @@map("activity_participations")
+}
+
+// ============================================================================
+// T2b — Discipline + Santé (PII médicale → RGPD strict)
+// ============================================================================
+
+// T2b — Gravité d'un incident de discipline.
+enum DisciplineSeverity {
+  MINOR
+  MAJOR
+  SUSPENSION
+}
+
+// T2b — Statut de résolution (partagé discipline / sécurité). OPEN par défaut.
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+// T2b — Issue d'un passage à l'infirmerie. SENT_HOME / EMERGENCY → notifie parents.
+enum InfirmaryOutcome {
+  RETURNED_TO_CLASS
+  SENT_HOME
+  REFERRED
+  EMERGENCY
+}
+
+// T2b — Incident de discipline rattaché à un élève (classe optionnelle).
+model DisciplineIncident {
+  id             String             @id
+  tenantId       String
+  studentId      String
+  classId        String?
+  type           DisciplineSeverity
+  occurredAt     DateTime           @db.Date
+  description    String             @db.Text
+  sanction       String?            @db.VarChar(500)
+  status         IncidentStatus     @default(OPEN)
+  resolutionNote String?            @db.Text
+  resolvedAt     DateTime?
+  reportedById   String
+  resolvedById   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  deletedAt      DateTime?
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class      Class?  @relation(fields: [classId], references: [id], onDelete: SetNull)
+  reportedBy User    @relation("DisciplineReported", fields: [reportedById], references: [id])
+  resolvedBy User?   @relation("DisciplineResolved", fields: [resolvedById], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, studentId])
+  @@index([tenantId, status])
+  @@map("discipline_incidents")
+}
+
+// T2b — Dossier de santé d'un élève (1 seul par élève, enforce DB).
+model HealthRecord {
+  id                    String    @id
+  tenantId              String
+  studentId             String
+  bloodType             String?   @db.VarChar(8)
+  allergies             String?   @db.Text
+  chronicConditions     String?   @db.Text
+  medications           String?   @db.Text
+  dietaryRestrictions   String?   @db.Text
+  doctorName            String?   @db.VarChar(160)
+  doctorPhone           String?   @db.VarChar(40)
+  emergencyContactName  String?   @db.VarChar(160)
+  emergencyContactPhone String?   @db.VarChar(40)
+  notes                 String?   @db.Text
+  updatedById           String
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  updatedBy User    @relation("HealthRecordsUpdated", fields: [updatedById], references: [id])
+
+  @@unique([tenantId, studentId], name: "unique_health_record_per_student")
+  @@index([tenantId])
+  @@map("health_records")
+}
+
+// T2b — Passage à l'infirmerie (journal des soins).
+model InfirmaryVisit {
+  id           String           @id
+  tenantId     String
+  studentId    String
+  visitedAt    DateTime
+  reason       String           @db.Text
+  treatment    String?          @db.Text
+  temperature  Float?
+  outcome      InfirmaryOutcome @default(RETURNED_TO_CLASS)
+  recordedById String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy User    @relation("InfirmaryVisitsRecorded", fields: [recordedById], references: [id])
+
+  @@index([tenantId, studentId])
+  @@index([tenantId, visitedAt])
+  @@map("infirmary_visits")
+}
+
+// T2b — Vaccination consignée pour un élève.
+model Vaccination {
+  id             String    @id
+  tenantId       String
+  studentId      String
+  vaccineName    String    @db.VarChar(120)
+  administeredAt DateTime  @db.Date
+  nextDueAt      DateTime? @db.Date
+  notes          String?   @db.VarChar(500)
+  recordedById   String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy User    @relation("VaccinationsRecorded", fields: [recordedById], references: [id])
+
+  @@index([tenantId, studentId])
+  @@map("vaccinations")
 }

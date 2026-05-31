@@ -1,1 +1,5 @@
 .vercel
+
+# typescript (Next.js auto-generates these; regenerated on build/CI)
+*.tsbuildinfo
+next-env.d.ts

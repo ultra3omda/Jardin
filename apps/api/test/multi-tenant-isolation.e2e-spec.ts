@@ -14,7 +14,16 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createId } from '@paralleldrive/cuid2';
-import { ActivityCategory, ChildMood, Locale, Sex, TenantType, UserRole } from '@prisma/client';
+import {
+  ActivityCategory,
+  ChildMood,
+  DisciplineSeverity,
+  InfirmaryOutcome,
+  Locale,
+  Sex,
+  TenantType,
+  UserRole,
+} from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { configuration } from '../src/common/config/configuration';
@@ -71,6 +80,12 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     await prisma.dailyLogEntry.deleteMany({});
     await prisma.activityParticipation.deleteMany({});
     await prisma.activity.deleteMany({});
+    // T2b PR-2 — medical / discipline rows have RESTRICT *ById FKs to User, so
+    // they must be cleared before the user-delete isolation tests below.
+    await prisma.disciplineIncident.deleteMany({});
+    await prisma.infirmaryVisit.deleteMany({});
+    await prisma.vaccination.deleteMany({});
+    await prisma.healthRecord.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -327,6 +342,15 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     let activityBId: string;
     let logEntryAId: string;
     let logEntryBId: string;
+    // T2b PR-2 — discipline + santé
+    let incidentAId: string;
+    let incidentBId: string;
+    let recordAId: string;
+    let recordBId: string;
+    let visitAId: string;
+    let visitBId: string;
+    let vaccinationAId: string;
+    let vaccinationBId: string;
 
     beforeEach(async () => {
       // Parent tenants/users/students already exist (global beforeEach ran).
@@ -361,6 +385,91 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
             date: new Date('2026-05-28'),
             mood: ChildMood.CALM,
             authorId: userBId,
+          },
+        ],
+      });
+
+      // T2b PR-2 — one DisciplineIncident / HealthRecord / InfirmaryVisit /
+      // Vaccination per tenant, referencing the per-tenant student + admin.
+      incidentAId = createId();
+      incidentBId = createId();
+      recordAId = createId();
+      recordBId = createId();
+      visitAId = createId();
+      visitBId = createId();
+      vaccinationAId = createId();
+      vaccinationBId = createId();
+
+      await prisma.disciplineIncident.createMany({
+        data: [
+          {
+            id: incidentAId,
+            tenantId: tenantAId,
+            studentId: studentAId,
+            type: DisciplineSeverity.MINOR,
+            occurredAt: new Date('2026-05-20'),
+            description: 'Incident A',
+            reportedById: userAId,
+          },
+          {
+            id: incidentBId,
+            tenantId: tenantBId,
+            studentId: studentBId,
+            type: DisciplineSeverity.MAJOR,
+            occurredAt: new Date('2026-05-20'),
+            description: 'Incident B',
+            reportedById: userBId,
+          },
+        ],
+      });
+
+      await prisma.healthRecord.createMany({
+        data: [
+          { id: recordAId, tenantId: tenantAId, studentId: studentAId, allergies: 'A', updatedById: userAId },
+          { id: recordBId, tenantId: tenantBId, studentId: studentBId, allergies: 'B', updatedById: userBId },
+        ],
+      });
+
+      await prisma.infirmaryVisit.createMany({
+        data: [
+          {
+            id: visitAId,
+            tenantId: tenantAId,
+            studentId: studentAId,
+            visitedAt: new Date('2026-05-21T09:00:00.000Z'),
+            reason: 'A',
+            outcome: InfirmaryOutcome.RETURNED_TO_CLASS,
+            recordedById: userAId,
+          },
+          {
+            id: visitBId,
+            tenantId: tenantBId,
+            studentId: studentBId,
+            visitedAt: new Date('2026-05-21T09:00:00.000Z'),
+            reason: 'B',
+            outcome: InfirmaryOutcome.RETURNED_TO_CLASS,
+            recordedById: userBId,
+          },
+        ],
+      });
+
+      await prisma.vaccination.createMany({
+        data: [
+          {
+            id: vaccinationAId,
+            tenantId: tenantAId,
+            studentId: studentAId,
+            vaccineName: 'DTP',
+            administeredAt: new Date('2025-09-15'),
+            recordedById: userAId,
+          },
+          {
+            id: vaccinationBId,
+            tenantId: tenantBId,
+            studentId: studentBId,
+            vaccineName: 'DTP',
+            administeredAt: new Date('2025-09-15'),
+            recordedById: userBId,
           },
         ],
       });
@@ -408,6 +517,100 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
         async () => {
           const stolen = await tenantPrisma.client.activity.findFirst({
             where: { id: activityBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    // ── T2b PR-2 — Discipline + Santé isolation ──────────────────────────────
+
+    it('DisciplineIncident.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.disciplineIncident.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(incidentAId);
+        },
+      );
+    });
+
+    it('DisciplineIncident.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.disciplineIncident.findFirst({
+            where: { id: incidentBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('HealthRecord.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.healthRecord.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(recordAId);
+        },
+      );
+    });
+
+    it('HealthRecord.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.healthRecord.findFirst({
+            where: { id: recordBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('InfirmaryVisit.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.infirmaryVisit.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(visitAId);
+        },
+      );
+    });
+
+    it('InfirmaryVisit.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.infirmaryVisit.findFirst({
+            where: { id: visitBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('Vaccination.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.vaccination.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(vaccinationAId);
+        },
+      );
+    });
+
+    it('Vaccination.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.vaccination.findFirst({
+            where: { id: vaccinationBId },
           });
           expect(stolen).toBeNull();
         },
