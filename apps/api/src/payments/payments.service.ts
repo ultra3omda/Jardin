@@ -35,6 +35,23 @@ export class PaymentsService {
   ) {}
 
   /** SCHOOL_ADMIN/SUPER_ADMIN starts a subscription payment for their tenant. */
+  /** Active subscription plans offered to schools. */
+  async listPlans(): Promise<
+    Array<{ code: string; name: string; interval: string; price: string; currency: string }>
+  > {
+    const plans = await this.prisma.subscriptionPlan.findMany({
+      where: { active: true },
+      orderBy: { price: 'asc' },
+    });
+    return plans.map((p) => ({
+      code: p.code,
+      name: p.name,
+      interval: p.interval,
+      price: p.price.toString(),
+      currency: p.currency,
+    }));
+  }
+
   async checkout(planCode: string, user: AuthenticatedUser): Promise<CheckoutResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
     const plan = await this.prisma.subscriptionPlan.findFirst({
