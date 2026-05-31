@@ -30,6 +30,8 @@ export const TENANT_SCOPED_MODELS = [
   'LeaveRequest', // T2c V2
   'Payslip', // T2c V3
   'PayslipComponent', // T2c V3
+  'TenantSubscription', // GTM payments
+  'PaymentTransaction', // GTM payments
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 
