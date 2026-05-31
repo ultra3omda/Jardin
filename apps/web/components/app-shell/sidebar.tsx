@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpenText, LogOut } from 'lucide-react';
+import { BookOpenText, LogOut, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 
 import { getNavForUser } from '@/lib/nav/menu';
@@ -11,9 +11,13 @@ import { UserPill } from './user-pill';
 
 interface Props {
   onLogout: () => void;
+  /** Mobile drawer open state. Ignored on lg+ where the sidebar is static. */
+  open?: boolean;
+  /** Called to close the mobile drawer (backdrop tap, nav click, close button). */
+  onClose?: () => void;
 }
 
-export function Sidebar({ onLogout }: Props) {
+export function Sidebar({ onLogout, open = false, onClose }: Props) {
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
   if (!user) return null;
@@ -21,34 +25,66 @@ export function Sidebar({ onLogout }: Props) {
   const sections = getNavForUser(user, tenant);
 
   return (
-    <aside className="flex h-screen w-[260px] flex-col bg-navy-900 text-[#c8cdd6]">
-      <Link href="/dashboard" className="flex items-center gap-3 px-5 py-5 border-b border-white/5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-ambre-500 to-ambre-600 text-white shadow-md">
-          <BookOpenText className="h-5 w-5" aria-hidden="true" />
-        </span>
-        <span className="flex flex-col leading-tight">
-          <span className="font-serif text-[17px] font-bold text-white">Klasso</span>
-          {tenant && <span className="text-[11px] text-navy-600 truncate">{tenant.name}</span>}
-        </span>
-      </Link>
+    <>
+      {/* Mobile backdrop — only visible while the drawer is open on < lg */}
+      <div
+        className={`fixed inset-0 z-40 bg-navy-900/60 backdrop-blur-sm transition-opacity lg:hidden ${
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden="true"
+        onClick={onClose}
+      />
 
-      <nav className="flex-1 overflow-y-auto py-2">
-        {sections.map((section) => (
-          <NavSection key={section.id} section={section} />
-        ))}
-      </nav>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[82vw] max-w-[300px] flex-col bg-navy-900 text-[#c8cdd6] transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-[260px] lg:max-w-none lg:translate-x-0 ${
+          open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+        aria-label="Navigation principale"
+      >
+        <div className="flex items-center justify-between border-b border-white/5 pr-2">
+          <Link
+            href="/dashboard"
+            onClick={onClose}
+            className="flex flex-1 items-center gap-3 px-5 py-5"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-ambre-500 to-ambre-600 text-white shadow-md">
+              <BookOpenText className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="flex flex-col leading-tight">
+              <span className="font-serif text-[17px] font-bold text-white">Klasso</span>
+              {tenant && <span className="text-[11px] text-navy-600 truncate">{tenant.name}</span>}
+            </span>
+          </Link>
+          {/* Close button — mobile only */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-2 text-[#c8cdd6] hover:bg-white/5 hover:text-white lg:hidden"
+            aria-label="Fermer le menu"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
 
-      <div className="border-t border-white/5 mx-3 my-2 px-2 py-3">
-        <UserPill variant="sidebar" />
-        <button
-          type="button"
-          onClick={onLogout}
-          className="mt-2 flex w-full items-center gap-2.5 px-2 py-1.5 text-xs text-[#c8cdd6] hover:text-white"
-        >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          Déconnexion
-        </button>
-      </div>
-    </aside>
+        {/* Closing the drawer when a nav link is tapped (no-op on desktop). */}
+        <nav className="flex-1 overflow-y-auto py-2" onClick={onClose}>
+          {sections.map((section) => (
+            <NavSection key={section.id} section={section} />
+          ))}
+        </nav>
+
+        <div className="border-t border-white/5 mx-3 my-2 px-2 py-3">
+          <UserPill variant="sidebar" />
+          <button
+            type="button"
+            onClick={onLogout}
+            className="mt-2 flex w-full items-center gap-2.5 px-2 py-1.5 text-xs text-[#c8cdd6] hover:text-white"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Déconnexion
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

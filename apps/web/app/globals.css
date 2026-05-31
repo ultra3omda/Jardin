@@ -37,7 +37,7 @@
     --radius: 0.85rem;
 
     /* ── Médina moderne palette (B, 2026) — landing + app theme ───────────── */
-    /* Cream paper, cool teal brand, deep navy ink, warm amber accent. */
+    /* Cream paper, cool teal brand, deep navy ink, warm coral accent. */
     --paper:        0.975 0.008 190;   /* cool cream paper */
     --paper-2:      0.945 0.012 190;   /* alt section */
     --paper-edge:   0.90 0.015 195;    /* borders, dividers */
@@ -49,7 +49,7 @@
     /* "terracotta" token kept as the landing PRIMARY name, now médina teal */
     --terracotta:   0.60 0.105 192;    /* médina teal (landing primary) */
     --terracotta-2: 0.52 0.110 193;    /* darker hover */
-    --ochre:        0.80 0.135 80;     /* warm amber accent (badges) */
+    --ochre:        0.685 0.155 34;    /* warm coral accent (badges) — complements teal */
     --teal-deep:    0.42 0.075 200;    /* deep teal (featured) */
     --olive:        0.55 0.085 160;    /* success/trust (teal-green) */
     --rose-dust:    0.72 0.09 30;      /* dusty coral (AR accents) */
@@ -61,12 +61,13 @@
     --navy-600: #6b7280;
     --navy-500: #94a3b8;
 
-    /* ─── V7 accent ambre ────────────────────────────────── */
-    --ambre-50:  #fff7e0;
-    --ambre-100: #fef3c7;
-    --ambre-500: #fbb13c;
-    --ambre-600: #e89218;
-    --ambre-700: #b45309;
+    /* ─── Accent corail (remplace l'ancien ambre/jaune) ──── */
+    /* Coral/terracotta — warm complement to the Médina teal brand. */
+    --ambre-50:  #fff3ef;
+    --ambre-100: #ffe1d7;
+    --ambre-500: #f2683f;
+    --ambre-600: #df4f2a;
+    --ambre-700: #b03a1d;
 
     /* ─── V7 surface ─────────────────────────────────────── */
     --paper-50:  #f4f4ef;

@@ -21,7 +21,7 @@ export function SchoolSegments() {
         </h2>
         <p className="mt-4 text-lg text-ink-muted">{t('subtitle')}</p>
       </div>
-      <div className="mt-14 grid gap-8 md:grid-cols-3">
+      <div className="mt-14 grid gap-8 sm:grid-cols-2 md:grid-cols-3">
         {ITEMS.map(({ key, icon }) => (
           <article
             key={key}

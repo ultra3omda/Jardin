@@ -26,7 +26,7 @@ export function Pricing() {
         <p className="mt-4 text-lg text-ink-muted">{t('subtitle')}</p>
       </div>
 
-      <div className="mt-14 grid gap-8 lg:grid-cols-3">
+      <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {TIERS.map(({ key, featured }) => {
           const features = t.raw(`tiers.${key}.features`) as string[];
           return (

@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from '@/i18n/routing';
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DEFAULT_BRAND, type TenantBrand } from '@ecole-saas/shared';
 
 import { Sidebar } from '@/components/app-shell/sidebar';
@@ -34,6 +34,7 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   const setHydrated = useAuthStore((s) => s.setHydrated);
   const clear = useAuthStore((s) => s.clear);
   const refreshedRef = useRef(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -115,10 +116,14 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen bg-paper-50">
-        <Sidebar onLogout={handleLogout} />
-        <div className="flex flex-1 flex-col">
-          <Topbar />
-          <main className="flex-1 px-6 pb-6">{children}</main>
+        <Sidebar
+          onLogout={handleLogout}
+          open={mobileNavOpen}
+          onClose={() => setMobileNavOpen(false)}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar onMenuClick={() => setMobileNavOpen(true)} />
+          <main className="flex-1 px-4 pb-6 sm:px-6">{children}</main>
         </div>
       </div>
       <Toaster />

@@ -131,7 +131,7 @@ export function BillingClient({ initialCreateOpen = false }: Props) {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Total facturé"
           value={stats ? formatAmount(stats.totalBilled) : '—'}
@@ -188,7 +188,7 @@ export function BillingClient({ initialCreateOpen = false }: Props) {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher par ID élève…"
           aria-label="Rechercher par ID élève"
-          className="h-10 w-64 rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500"
+          className="h-10 w-full rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500 sm:w-64"
         />
       </div>
 
@@ -245,7 +245,7 @@ export function BillingClient({ initialCreateOpen = false }: Props) {
                       {rowNum}
                     </td>
                     <td className="px-4 py-3 text-sm">{studentLabel}</td>
-                    <td className="max-w-[200px] truncate px-4 py-3 text-sm font-medium">
+                    <td className="max-w-[140px] truncate px-4 py-3 text-sm font-medium sm:max-w-[200px]">
                       {inv.title}
                     </td>
                     <td className="px-4 py-3 text-sm tabular-nums">

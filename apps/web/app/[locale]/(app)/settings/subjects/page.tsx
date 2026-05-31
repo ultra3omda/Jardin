@@ -166,7 +166,7 @@ export default function SubjectsSettingsPage() {
 
       {/* Subjects table */}
       {!loading && subjects.length > 0 && (
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
           <table className="w-full text-sm" aria-label="Liste des matières">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-navy-700">

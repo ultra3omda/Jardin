@@ -15,7 +15,7 @@ export function Footer() {
   return (
     <footer className="border-t border-paper-edge bg-paper-alt">
       <div className="container mx-auto px-4 py-16">
-        <div className="grid gap-12 md:grid-cols-3">
+        <div className="grid gap-12 sm:grid-cols-2 md:grid-cols-3">
           <div>
             <p className="font-display text-2xl font-semibold text-ink">Klasso</p>
             <p className="mt-2 text-sm text-ink-muted">{t('tagline')}</p>
