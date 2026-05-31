@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Klasso — Maquette B · Médina moderne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f4f7f7; --ink:#0f2a33; --ink-soft:#4a6770;
+    --teal:#0fa3a3; --teal-deep:#0b7d80; --navy:#0c2e3a;
+    --amber:#f6a623; --amber-soft:#ffe9c2; --rose:#ef6f6c;
+    --card:#ffffff; --line:#e2ecec;
+    --shadow:0 20px 44px -24px rgba(12,46,58,.4);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  h1,h2,h3,.display{font-family:'Fraunces',serif;font-weight:600}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+  a{text-decoration:none;color:inherit}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+  .logo{display:flex;align-items:center;gap:11px;font-family:'Fraunces';font-weight:700;font-size:23px}
+  .logo .mark{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;color:#fff;font-weight:700;
+    background:linear-gradient(135deg,var(--teal),var(--navy));box-shadow:var(--shadow)}
+  .navlinks{display:flex;gap:28px;align-items:center;font-weight:600;color:var(--ink-soft)}
+  .btn{border:0;cursor:pointer;font-weight:700;border-radius:12px;padding:13px 22px;font-size:15px;display:inline-block}
+  .btn-primary{color:#fff;background:linear-gradient(135deg,var(--teal),var(--teal-deep));box-shadow:var(--shadow)}
+  .btn-ghost{background:#fff;color:var(--teal-deep);border:1.5px solid var(--line)}
+  .btn-amber{color:var(--navy);background:var(--amber)}
+
+  /* hero — editorial, asymmetric */
+  .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:34px 0 30px;position:relative}
+  .hero::before{content:"";position:absolute;right:-160px;top:-120px;width:480px;height:480px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,#bff0ef,transparent 65%);z-index:-1;filter:blur(6px)}
+  .pill{display:inline-flex;gap:8px;align-items:center;background:#fff;border:1.5px solid var(--line);color:var(--teal-deep);font-weight:700;font-size:13px;padding:7px 14px;border-radius:999px}
+  .hero h1{font-size:clamp(40px,5.6vw,64px);line-height:1.04;letter-spacing:-.01em;margin:18px 0 16px}
+  .hero h1 em{font-style:italic;color:var(--teal-deep)}
+  .hero h1 .u{box-shadow:inset 0 -.18em 0 var(--amber-soft)}
+  .lead{font-size:18px;color:var(--ink-soft);max-width:48ch;margin-bottom:26px}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap}
+  .meta{margin-top:26px;display:flex;gap:26px;flex-wrap:wrap}
+  .meta div b{font-family:'Fraunces';font-size:26px;display:block;color:var(--navy)}
+  .meta div small{color:var(--ink-soft);font-weight:600}
+
+  /* dashboard preview */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+  .panel .top{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .tl{width:11px;height:11px;border-radius:50%}
+  .panel .body{padding:18px}
+  .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .row h4{font-family:'Fraunces';font-size:17px}
+  .chip{font-size:12px;font-weight:700;color:var(--teal-deep);background:#e2f6f5;padding:4px 10px;border-radius:8px}
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .stat .s{border:1px solid var(--line);border-radius:14px;padding:12px}
+  .stat .s b{font-family:'Fraunces';font-size:22px;color:var(--navy)}
+  .stat .s small{color:var(--ink-soft);font-weight:600;font-size:12px}
+  .list .li{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px dashed var(--line);font-size:14px;font-weight:600}
+  .badge{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px}
+
+  section{padding:66px 0}
+  .eyebrow{font-weight:700;color:var(--teal-deep);letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+  h2.sec{font-size:clamp(28px,3.6vw,42px);margin:8px 0;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);max-width:56ch}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
+  .seg{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px;transition:.25s}
+  .seg:hover{transform:translateY(-5px);box-shadow:var(--shadow)}
+  .seg .ic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;font-size:24px;margin-bottom:14px}
+  .seg h3{font-size:20px;margin-bottom:6px}.seg p{color:var(--ink-soft);font-size:15px}
+  .i-teal{background:#dff5f4}.i-amber{background:var(--amber-soft)}.i-navy{background:#dfeaef}
+
+  .features{background:var(--navy);color:#eaf6f6;border-radius:28px;padding:48px;margin-top:6px}
+  .features .eyebrow{color:var(--amber)}
+  .features h2{color:#fff}
+  .fgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:26px}
+  .f{display:flex;gap:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px}
+  .f .ic{width:42px;height:42px;border-radius:12px;background:rgba(15,163,163,.25);display:grid;place-items:center;font-size:20px;flex:0 0 auto}
+  .f b{font-family:'Fraunces';font-size:16px}.f p{color:#bcd7d7;font-size:14px}
+
+  .final{display:grid;grid-template-columns:1.3fr .7fr;gap:24px;align-items:center;background:linear-gradient(135deg,var(--teal),var(--teal-deep));border-radius:28px;color:#fff;padding:48px;box-shadow:var(--shadow)}
+  .final h2{color:#fff;font-size:clamp(28px,3.4vw,40px)}
+  .final p{opacity:.92;margin-top:8px}
+  footer{padding:42px 0;color:var(--ink-soft);text-align:center;font-weight:600}
+  @media(max-width:900px){.hero{grid-template-columns:1fr}.grid3{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}.final{grid-template-columns:1fr}.navlinks{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="logo"><span class="mark">K</span> Klasso</div>
+    <div class="navlinks"><a href="#">Produit</a><a href="#">Tarifs</a><a href="#">FAQ</a>
+      <a class="btn btn-ghost" href="#">Se connecter</a></div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <span class="pill">✦ La plateforme des écoles tunisiennes</span>
+      <h1>Gérez votre école avec <em>sérénité</em> et <span class="u">clarté</span></h1>
+      <p class="lead">Élèves, parents, enseignants, finances et opérations — réunis dans un tableau de bord élégant, rassurant et pensé pour la direction.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#">Demander une démo</a>
+        <a class="btn btn-ghost" href="#">Découvrir les modules</a>
+      </div>
+      <div class="meta">
+        <div><b>100%</b><small>Conforme RGPD</small></div>
+        <div><b>4</b><small>Langues · FR EN AR ES</small></div>
+        <div><b>24h</b><small>Support dédié</small></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="top"><span class="tl" style="background:#ef6f6c"></span><span class="tl" style="background:var(--amber)"></span><span class="tl" style="background:var(--teal)"></span>
+        <span style="margin-left:auto;font-size:12px;color:var(--ink-soft);font-weight:600">École Démo Pilote</span></div>
+      <div class="body">
+        <div class="row"><h4>Tableau de bord — direction</h4><span class="chip">Trimestre 2</span></div>
+        <div class="stat">
+          <div class="s"><b>44</b><small>Élèves</small></div>
+          <div class="s"><b>3</b><small>Classes</small></div>
+          <div class="s"><b>96%</b><small>Présence</small></div>
+        </div>
+        <div class="list">
+          <div class="li"><span class="badge" style="background:#e2f6f5">📊</span> Bulletins T2 publiés — CE2-A</div>
+          <div class="li"><span class="badge" style="background:var(--amber-soft)">👨‍🏫</span> M. Sami Hadj assigné à CP-A</div>
+          <div class="li"><span class="badge" style="background:#fde8e7">💳</span> 6 factures de scolarité émises</div>
+        </div>
+      </div>
+    </div>
+  </header>
+</div>
+
+<section class="wrap">
+  <span class="eyebrow">Pour chaque établissement</span>
+  <h2 class="sec">Une plateforme, deux métiers</h2>
+  <p class="sub">Klasso s'adapte à votre structure pédagogique sans jamais mélanger les données.</p>
+  <div class="grid3">
+    <div class="seg"><div class="ic i-amber">🧸</div><h3>Jardins d'enfants</h3><p>Cahier de liaison, activités, présences et photos partagées aux familles.</p></div>
+    <div class="seg"><div class="ic i-teal">📚</div><h3>Écoles primaires</h3><p>Notes, bulletins, emploi du temps et communication structurée.</p></div>
+    <div class="seg"><div class="ic i-navy">🏫</div><h3>Groupes mixtes</h3><p>Vue consolidée pour les établissements multi-niveaux.</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="features">
+    <span class="eyebrow">Pourquoi Klasso</span>
+    <h2 class="sec">Tout ce qu'il faut, rien de superflu</h2>
+    <div class="fgrid">
+      <div class="f"><div class="ic">⏱️</div><div><b>Gain de temps</b><p>Présences et bulletins en quelques clics.</p></div></div>
+      <div class="f"><div class="ic">🔒</div><div><b>Données isolées</b><p>Chaque école, son espace, conforme RGPD.</p></div></div>
+      <div class="f"><div class="ic">📱</div><div><b>App parents</b><p>L'essentiel de l'enfant sur le téléphone.</p></div></div>
+      <div class="f"><div class="ic">💳</div><div><b>Paiements TN</b><p>Facturation et règlement en dinars, intégrés.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="final">
+    <div><h2>Voyons Klasso dans votre école</h2><p>Démo gratuite de 30 minutes, sans engagement. Réponse sous 24 h.</p></div>
+    <div style="text-align:right"><a class="btn btn-amber" href="#">Demander une démo →</a></div>
+  </div>
+</section>
+<footer class="wrap">Klasso · L'école à l'ère numérique — Tunis · contact@klasso.tn</footer>
+</body>
+</html>
