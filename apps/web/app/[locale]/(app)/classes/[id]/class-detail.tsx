@@ -13,6 +13,7 @@ import {
   type TimeSlot,
 } from '@/lib/api/classes';
 import { listTeachers } from '@/lib/api/staff';
+import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 interface Props {
@@ -46,6 +47,7 @@ export function ClassDetail({ id }: Props) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const canManage = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  const terms = useSchoolTerms();
   const queryClient = useQueryClient();
 
   const [showAdd, setShowAdd] = useState(false);
@@ -165,14 +167,14 @@ export function ClassDetail({ id }: Props) {
   return (
     <div className="container mx-auto max-w-7xl px-1 py-2 sm:px-4 sm:py-8">
       <Link href="/classes" className="text-sm text-primary hover:underline">
-        ← Toutes les classes
+        ← {terms.isKindergarten ? 'Tous les groupes' : 'Toutes les classes'}
       </Link>
 
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-medium tracking-tight sm:text-3xl">{data.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Niveau {data.level} · Année {data.schoolYear}
+            {terms.level} {data.level} · Année {data.schoolYear}
           </p>
         </div>
         {canManage && (

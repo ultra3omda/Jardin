@@ -17,6 +17,7 @@ import {
   type StaffUser,
   type StaffMutationResult,
 } from '@/lib/api/staff';
+import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import type { CreateStaffValues, EditStaffValues } from '@/lib/validation/staff.schemas';
 
 const TEACHERS_KEY = ['teachers', 'list'] as const;
@@ -25,6 +26,7 @@ export default function TeachersPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  const terms = useSchoolTerms();
   const queryClient = useQueryClient();
   const toast = useToast();
 
@@ -74,17 +76,17 @@ export default function TeachersPage() {
   return (
     <>
       <ResourceListPage
-        title="Enseignants"
-        description="Gérez les enseignants de votre établissement."
-        action={isAdmin ? <Button onClick={() => setCreateOpen(true)}>Ajouter un enseignant</Button> : undefined}
+        title={terms.teachers}
+        description={`Gérez les ${terms.teachers.toLowerCase()} de votre établissement.`}
+        action={isAdmin ? <Button onClick={() => setCreateOpen(true)}>{`Ajouter un ${terms.teacher.toLowerCase()}`}</Button> : undefined}
         isLoading={isLoading}
         isError={isError}
         isEmpty={teachers.length === 0}
         onRetry={refetch}
-        errorMessage="Impossible de charger les enseignants."
-        emptyTitle="Aucun enseignant"
-        emptyDescription="Commencez par ajouter un enseignant à votre établissement."
-        emptyAction={isAdmin ? { label: 'Ajouter un enseignant', onClick: () => setCreateOpen(true) } : undefined}
+        errorMessage={`Impossible de charger les ${terms.teachers.toLowerCase()}.`}
+        emptyTitle={`Aucun ${terms.teacher.toLowerCase()}`}
+        emptyDescription={`Commencez par ajouter un ${terms.teacher.toLowerCase()} à votre établissement.`}
+        emptyAction={isAdmin ? { label: `Ajouter un ${terms.teacher.toLowerCase()}`, onClick: () => setCreateOpen(true) } : undefined}
         skeletonCols={isAdmin ? 5 : 4}
       >
         <div className="overflow-x-auto rounded-lg border">

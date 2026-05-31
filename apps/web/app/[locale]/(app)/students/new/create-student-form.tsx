@@ -14,6 +14,7 @@ import {
   type StudentSummary,
 } from '@/lib/api/students';
 import { listClasses } from '@/lib/api/classes';
+import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import {
   createStudentSchema,
@@ -33,6 +34,7 @@ const LANGUAGES = ['ar', 'fr', 'en', 'es', 'de', 'it'];
 export function CreateStudentForm() {
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const terms = useSchoolTerms();
   const [created, setCreated] = useState<StudentSummary | null>(null);
 
   const form = useForm<CreateStudentFormValues>({
@@ -207,7 +209,7 @@ export function CreateStudentForm() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="text-sm font-medium" htmlFor="classroom">
-              Classe *
+              {terms.class} *
             </label>
             <input
               id="classroom"
