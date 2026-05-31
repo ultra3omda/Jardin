@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type { Route } from 'next';
 import { Link } from '@/i18n/routing';
 import { useRouter } from '@/i18n/routing';
@@ -13,6 +13,7 @@ import {
   StudentsApiError,
   type StudentSummary,
 } from '@/lib/api/students';
+import { listClasses } from '@/lib/api/classes';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import {
   createStudentSchema,
@@ -42,6 +43,13 @@ export function CreateStudentForm() {
       siblingsCount: 0,
     },
   });
+
+  const { data: classesData } = useQuery({
+    queryKey: ['classes', 'options'],
+    queryFn: () => listClasses(accessToken!),
+    enabled: !!accessToken,
+  });
+  const classOptions = classesData?.items ?? [];
 
   const mutation = useMutation({
     mutationFn: (values: CreateStudentFormValues) =>
@@ -203,10 +211,16 @@ export function CreateStudentForm() {
             </label>
             <input
               id="classroom"
+              list="classroom-options"
               {...form.register('classroom')}
-              placeholder="ex: CP-A"
+              placeholder={classOptions.length ? 'Choisir ou saisir…' : 'ex: CP-A'}
               className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
             />
+            <datalist id="classroom-options">
+              {classOptions.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
             {fieldError('classroom') && (
               <p className="mt-1 text-xs text-rose-600">{fieldError('classroom')}</p>
             )}

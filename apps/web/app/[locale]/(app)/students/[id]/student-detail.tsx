@@ -14,7 +14,10 @@ import {
   updateStudent,
   type StudentSummary,
 } from '@/lib/api/students';
+import { listClasses } from '@/lib/api/classes';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+
+import { ParentsSection } from './parents-section';
 import {
   updateStudentSchema,
   type UpdateStudentFormValues,
@@ -143,6 +146,8 @@ export function StudentDetail({ id }: Props) {
         <ReadOnlyPanel student={student} />
       )}
 
+      {!editing && <ParentsSection studentId={id} />}
+
       {confirmDelete && (
         <div
           role="dialog"
@@ -262,6 +267,13 @@ function EditPanel(props: {
   error: string | null;
 }) {
   const { form, onCancel, onSubmit, pending, error } = props;
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { data: classesData } = useQuery({
+    queryKey: ['classes', 'options'],
+    queryFn: () => listClasses(accessToken!),
+    enabled: !!accessToken,
+  });
+  const classOptions = classesData?.items ?? [];
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit)}
@@ -285,9 +297,15 @@ function EditPanel(props: {
         <label className="block">
           <span className="text-sm font-medium">Classe</span>
           <input
+            list="edit-classroom-options"
             {...form.register('classroom')}
             className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
           />
+          <datalist id="edit-classroom-options">
+            {classOptions.map((c) => (
+              <option key={c.id} value={c.name} />
+            ))}
+          </datalist>
         </label>
         <label className="block">
           <span className="text-sm font-medium">Email parent</span>

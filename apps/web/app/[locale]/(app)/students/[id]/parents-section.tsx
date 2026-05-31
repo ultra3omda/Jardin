@@ -10,6 +10,7 @@ import {
   type ParentRelation,
   type RelationType,
 } from '@/lib/api/parent-relations';
+import { listParents } from '@/lib/api/staff';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 interface Props {
@@ -26,8 +27,8 @@ const RELATION_LABELS: Record<RelationType, string> = {
 /**
  * V3-A — Section "Parents" sur la page détail élève.
  * Affiche les liens parent existants + formulaire d'ajout (SCHOOL_ADMIN only).
- * Le parent DOIT déjà exister comme User(role=PARENT) dans le tenant — saisie
- * par parentUserId (cuid2). V3-B exposera un picker par email.
+ * Saisie par email du parent (datalist des parents existants du tenant) ; le
+ * backend résout l'email → User(role=PARENT).
  */
 export function ParentsSection({ studentId }: Props) {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -42,6 +43,13 @@ export function ParentsSection({ studentId }: Props) {
     enabled: !!accessToken,
   });
 
+  const parentsQ = useQuery({
+    queryKey: ['parents', 'all'],
+    queryFn: () => listParents(accessToken!),
+    enabled: !!accessToken && canWrite,
+  });
+  const parentOptions = (parentsQ.data?.items ?? []).filter((p) => !p.deletedAt);
+
   const [parentUserId, setParentUserId] = useState('');
   const [relationType, setRelationType] = useState<RelationType>('MOTHER');
   const [isPrimaryContact, setIsPrimaryContact] = useState(false);
@@ -50,7 +58,7 @@ export function ParentsSection({ studentId }: Props) {
   const createMut = useMutation({
     mutationFn: () =>
       createParentRelation(accessToken!, {
-        parentUserId: parentUserId.trim(),
+        parentUserId,
         studentId,
         relationType,
         isPrimaryContact,
@@ -61,7 +69,12 @@ export function ParentsSection({ studentId }: Props) {
       setSubmitError(null);
       qc.invalidateQueries({ queryKey });
     },
-    onError: (e: Error) => setSubmitError(e.message),
+    onError: (e: Error) =>
+      setSubmitError(
+        e.message.includes('CONFLICT') || e.message.includes('unique')
+          ? 'Ce parent est déjà lié à cet élève.'
+          : e.message,
+      ),
   });
 
   const deleteMut = useMutation({
@@ -127,8 +140,8 @@ export function ParentsSection({ studentId }: Props) {
           className="mt-6 space-y-3 border-t pt-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!parentUserId.trim()) {
-              setSubmitError('parentUserId requis');
+            if (!parentUserId) {
+              setSubmitError('Sélectionnez un parent');
               return;
             }
             createMut.mutate();
@@ -138,16 +151,27 @@ export function ParentsSection({ studentId }: Props) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="parentUserId" className="text-xs font-medium">
-                Parent User ID (cuid2) *
+                Parent *
               </label>
-              <input
+              <select
                 id="parentUserId"
                 value={parentUserId}
                 onChange={(e) => setParentUserId(e.target.value)}
-                placeholder="cuid2_xxx"
-                className="mt-1 h-9 w-full rounded-md border px-2 text-sm"
+                className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
                 required
-              />
+              >
+                <option value="">— Choisir un parent —</option>
+                {parentOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.lastName} · {p.email}
+                  </option>
+                ))}
+              </select>
+              {parentOptions.length === 0 && (
+                <span className="mt-1 block text-[11px] text-muted-foreground">
+                  Aucun parent. Créez-en un dans « Parents ».
+                </span>
+              )}
             </div>
             <div>
               <label htmlFor="relationType" className="text-xs font-medium">

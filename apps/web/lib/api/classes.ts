@@ -117,6 +117,29 @@ export async function deleteTimeSlot(token: string, slotId: string): Promise<voi
   if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
 }
 
+/** Assign a teacher (User role=TEACHER) to a class for a given subject. */
+export async function assignTeacher(
+  token: string,
+  classId: string,
+  payload: { teacherUserId: string; subject: string; isMainTeacher?: boolean },
+): Promise<ClassTeacher> {
+  const res = await fetch(`${BASE}/${classId}/teachers`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return ok(res);
+}
+
+/** Remove a teacher↔class assignment by its ClassTeacher id. */
+export async function removeClassTeacher(token: string, assignmentId: string): Promise<void> {
+  const res = await fetch(`${BASE}/teachers/${assignmentId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+}
+
 export async function updateClass(
   token: string,
   id: string,
