@@ -29,3 +29,20 @@ export const leaveRequestSchema = z
     path: ['endDate'],
   });
 export type LeaveRequestValues = z.infer<typeof leaveRequestSchema>;
+
+// ─── Payslips (T2c V3) ──────────────────────────────────────────────────────
+export const PAYSLIP_COMPONENT_KINDS = ['EARNING', 'DEDUCTION'] as const;
+
+export const generatePayslipSchema = z.object({
+  userId: z.string().min(1, 'Employé requis'),
+  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Période au format AAAA-MM'),
+  notes: z.string().max(2000).optional(),
+});
+export type GeneratePayslipValues = z.infer<typeof generatePayslipSchema>;
+
+export const payslipComponentSchema = z.object({
+  label: z.string().min(1, 'Libellé requis').max(160),
+  kind: z.enum(PAYSLIP_COMPONENT_KINDS),
+  amount: z.coerce.number().min(0, 'Montant invalide').max(9_999_999),
+});
+export type PayslipComponentValues = z.infer<typeof payslipComponentSchema>;
