@@ -33,7 +33,6 @@ describe('Payments (e2e)', () => {
   let tenantId: string;
   let admin: Actor;
   let teacher: Actor;
-  let planId: string;
 
   beforeAll(async () => {
     const fakeR2 = {
@@ -57,7 +56,7 @@ describe('Payments (e2e)', () => {
       data: { id: createId(), name: 'GTM Pay A', slug: TENANT_SLUG, type: TenantType.PRIMARY_SCHOOL, locale: Locale.fr },
     });
     tenantId = t.id;
-    const plan = await prisma.subscriptionPlan.create({
+    await prisma.subscriptionPlan.create({
       data: {
         id: createId(),
         code: PLAN_CODE,
@@ -67,7 +66,6 @@ describe('Payments (e2e)', () => {
         currency: 'TND',
       },
     });
-    planId = plan.id;
 
     const pw = await bcrypt.hash(PASSWORD, 4);
     admin = await seedUser(prisma, app, tenantId, UserRole.SCHOOL_ADMIN, 'admin', pw);
