@@ -51,6 +51,14 @@ export interface AppConfig {
     /** Optional Expo access token for enhanced push security; empty = anonymous */
     expoAccessToken: string | undefined;
   };
+  /** GTM — SMS (Orange Tunisie BulkSmsAPI). All optional; disabled when unset. */
+  sms: {
+    bearerToken: string | undefined;
+    email: string | undefined;
+    password: string | undefined;
+    host: string;
+    sendPath: string;
+  };
   r2: {
     accountId: string | undefined;
     accessKeyId: string | undefined;
@@ -91,6 +99,14 @@ export function configuration(): AppConfig {
     },
     push: {
       expoAccessToken: process.env.EXPO_ACCESS_TOKEN,
+    },
+    sms: {
+      bearerToken: process.env.ORANGE_SMS_BEARER_TOKEN,
+      email: process.env.ORANGE_SMS_EMAIL,
+      password: process.env.ORANGE_SMS_PASSWORD,
+      host: process.env.ORANGE_SMS_HOST ?? 'inside.api.orange.tn',
+      sendPath:
+        process.env.ORANGE_SMS_UNITE_SEND_URL ?? '/BulkSmsAPI/1.0/campaigns/basicApi/sendSms',
     },
     r2: {
       accountId: process.env.R2_ACCOUNT_ID,
