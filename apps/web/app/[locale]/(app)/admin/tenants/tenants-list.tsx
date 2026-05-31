@@ -4,14 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@/i18n/routing';
 
 import { listTenants, type TenantSummary } from '@/lib/api/admin-tenants';
-import { DEMO_TENANTS } from '@/lib/demo/tenants';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
-
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-// Fixtures live in @/lib/demo/tenants so the tenant detail view falls back to
-// the SAME data — a demo list → detail click never shows an error banner.
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<NonNullable<TenantSummary['inviteStatus']> | 'none', { text: string; className: string }> = {
   pending: { text: 'En attente', className: 'bg-amber-100 text-amber-800' },
@@ -30,9 +23,16 @@ export function TenantsList() {
   });
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Chargement...</p>;
+  if (error) return <p className="text-sm text-destructive">Impossible de charger les établissements.</p>;
 
-  // Fall back to demo data on API error or empty response
-  const effectiveData = (error || !data || data.length === 0) ? DEMO_TENANTS : data;
+  const effectiveData = data ?? [];
+  if (effectiveData.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+        Aucun établissement pour l&apos;instant.
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card">

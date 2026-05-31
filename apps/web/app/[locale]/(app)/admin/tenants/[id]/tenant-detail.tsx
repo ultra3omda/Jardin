@@ -10,7 +10,6 @@ import {
   resendInvite,
   type InviteSummary,
 } from '@/lib/api/admin-tenants';
-import { findDemoTenant } from '@/lib/demo/tenants';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
 export function TenantDetail({ id }: { id: string }) {
@@ -24,9 +23,7 @@ export function TenantDetail({ id }: { id: string }) {
     enabled: !!accessToken,
   });
 
-  // Fall back to shared demo fixtures so a demo list → detail click never errors.
-  const tenant = data ?? findDemoTenant(id);
-  const isDemo = !data && !!tenant;
+  const tenant = data;
 
   const resendMutation = useMutation({
     mutationFn: () => resendInvite(accessToken!, id),
@@ -42,7 +39,7 @@ export function TenantDetail({ id }: { id: string }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ecole-saas-weld.vercel.app';
   const webUrl = `${appUrl}/t/${tenant.slug}/login`;
   const mobileUrl = 'https://klasso-mobile.vercel.app';
-  const canResend = !isDemo && tenant.inviteStatus !== 'consumed' && !tenant.adminOnboarded;
+  const canResend = tenant.inviteStatus !== 'consumed' && !tenant.adminOnboarded;
 
   return (
     <div className="space-y-6">

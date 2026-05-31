@@ -6,43 +6,6 @@ import { Link } from '@/i18n/routing';
 import { listConversations, type Conversation } from '@/lib/api/messaging';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
-const CURRENT_USER_DEMO = { userId: 'demo-current', firstName: '', lastName: '', email: '' };
-const DEMO_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'demo-conv-1',
-    createdAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
-    participants: [
-      { userId: 'demo-parent-1', firstName: 'Fatma', lastName: 'Trabelsi', email: 'parent@demo.tn' },
-      CURRENT_USER_DEMO,
-    ],
-    lastMessage: { id: 'msg-1', body: 'Bonjour, pouvez-vous me confirmer les horaires de la réunion parents-professeurs ?', senderId: 'demo-parent-1', createdAt: new Date(Date.now() - 2 * 3600_000).toISOString() },
-    unreadCount: 2,
-  },
-  {
-    id: 'demo-conv-2',
-    createdAt: new Date(Date.now() - 1 * 86400_000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 86400_000).toISOString(),
-    participants: [
-      { userId: 'demo-parent-2', firstName: 'Ahmed', lastName: 'Ben Ali', email: 'ahmed@demo.tn' },
-      CURRENT_USER_DEMO,
-    ],
-    lastMessage: { id: 'msg-2', body: 'Vous : Merci pour votre message, le bulletin sera disponible vendredi.', senderId: 'demo-current', createdAt: new Date(Date.now() - 1 * 86400_000).toISOString() },
-    unreadCount: 0,
-  },
-  {
-    id: 'demo-conv-3',
-    createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
-    updatedAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
-    participants: [
-      { userId: 'demo-teacher-1', firstName: 'Mme', lastName: 'Martin', email: 'prof@demo.tn' },
-      CURRENT_USER_DEMO,
-    ],
-    lastMessage: { id: 'msg-3', body: 'Rappel : sortie pédagogique mercredi, prévoir une tenue adaptée.', senderId: 'demo-teacher-1', createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
-    unreadCount: 1,
-  },
-];
-
 function otherParticipant(c: Conversation, currentUserId: string) {
   return c.participants.find((p) => p.userId !== currentUserId);
 }
@@ -59,7 +22,7 @@ export function MessagesList() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const currentUser = useAuthStore((s) => s.user);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['messaging', 'conversations'],
     queryFn: () => listConversations(accessToken!),
     enabled: !!accessToken,
@@ -71,9 +34,7 @@ export function MessagesList() {
   }
   if (isLoading) return <p className="text-sm text-muted-foreground">Chargement...</p>;
 
-  // Fall back to demo data on API error or empty response
-  const apiItems = data?.items ?? [];
-  const items = (error || apiItems.length === 0) ? DEMO_CONVERSATIONS : apiItems;
+  const items = data?.items ?? [];
   if (items.length === 0) {
     return (
       <div className="rounded-lg border bg-card p-8 text-center">

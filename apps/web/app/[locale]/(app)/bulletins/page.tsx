@@ -7,42 +7,6 @@ interface StudentOption { id: string; firstName: string; lastName: string; class
 interface PeriodOption { id: string; name: string; schoolYear: string; isClosed: boolean }
 interface BulletinInfo { id: string; pdfUrl: string | null; generatedAt: string }
 
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_STUDENTS_BULLETINS: StudentOption[] = [
-  { id: 'ds-3-1', firstName: 'Ibrahima', lastName: 'Ba', classroom: 'CM1-A' },
-  { id: 'ds-3-2', firstName: 'Yasmine', lastName: 'Gharbi', classroom: 'CM1-A' },
-  { id: 'ds-3-3', firstName: 'Khalil', lastName: 'Mejri', classroom: 'CM1-A' },
-  { id: 'ds-3-4', firstName: 'Fatou', lastName: 'Diallo', classroom: 'CM1-A' },
-  { id: 'ds-3-5', firstName: 'Lucas', lastName: 'Bernard', classroom: 'CM1-A' },
-  { id: 'ds-3-6', firstName: 'Amira', lastName: 'Mansouri', classroom: 'CM1-A' },
-  { id: 'ds-4-1', firstName: 'Nour', lastName: 'Karoui', classroom: 'CM2-B' },
-  { id: 'ds-4-2', firstName: 'Pierre', lastName: 'Simon', classroom: 'CM2-B' },
-  { id: 'ds-4-3', firstName: 'Dina', lastName: 'Belhaj', classroom: 'CM2-B' },
-  { id: 'ds-4-4', firstName: 'Hugo', lastName: 'Michel', classroom: 'CM2-B' },
-];
-
-const DEMO_PERIODS_BULLETINS: PeriodOption[] = [
-  { id: 'demo-period-1', name: '1er Trimestre', schoolYear: '2025-2026', isClosed: true },
-  { id: 'demo-period-2', name: '2ème Trimestre', schoolYear: '2025-2026', isClosed: false },
-];
-
-// Pre-built demo bulletins: some generated, some not yet
-const DEMO_BULLETINS_MAP = new Map<string, BulletinInfo | null>([
-  ['ds-3-1', { id: 'dbul-1', pdfUrl: null, generatedAt: '2026-02-15T10:00:00Z' }],
-  ['ds-3-2', { id: 'dbul-2', pdfUrl: null, generatedAt: '2026-02-15T10:05:00Z' }],
-  ['ds-3-3', { id: 'dbul-3', pdfUrl: null, generatedAt: '2026-02-15T10:10:00Z' }],
-  ['ds-3-4', null],
-  ['ds-3-5', null],
-  ['ds-3-6', { id: 'dbul-6', pdfUrl: null, generatedAt: '2026-02-16T09:00:00Z' }],
-  ['ds-4-1', { id: 'dbul-7', pdfUrl: null, generatedAt: '2026-02-17T11:00:00Z' }],
-  ['ds-4-2', null],
-  ['ds-4-3', null],
-  ['ds-4-4', { id: 'dbul-10', pdfUrl: null, generatedAt: '2026-02-17T11:30:00Z' }],
-]);
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...opts,
@@ -64,7 +28,6 @@ export default function BulletinsPage() {
   const [generating, setGenerating] = useState<Set<string>>(new Set());
   const [progressCount, setProgressCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  const [isDemo, setIsDemo] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const loadBase = useCallback(async () => {
@@ -77,21 +40,12 @@ export default function BulletinsPage() {
       ]);
       const sItems = sData.status === 'fulfilled' ? (sData.value?.items ?? []) : [];
       const pItems = pData.status === 'fulfilled' ? (pData.value?.items ?? []) : [];
-      const finalStudents = sItems.length > 0 ? sItems : DEMO_STUDENTS_BULLETINS;
-      const finalPeriods = pItems.length > 0 ? pItems : DEMO_PERIODS_BULLETINS;
-      const demoMode = sItems.length === 0;
-      setIsDemo(demoMode);
-      setStudents(finalStudents);
-      setPeriods(finalPeriods);
-      if (finalPeriods.length > 0) setSelectedPeriodId(finalPeriods[0].id);
-      // If using demo students, pre-populate the bulletins map
-      if (demoMode) setBulletinsMap(DEMO_BULLETINS_MAP);
+      setStudents(sItems);
+      setPeriods(pItems);
+      if (pItems.length > 0) setSelectedPeriodId(pItems[0].id);
     } catch (_) {
-      setIsDemo(true);
-      setStudents(DEMO_STUDENTS_BULLETINS);
-      setPeriods(DEMO_PERIODS_BULLETINS);
-      setSelectedPeriodId(DEMO_PERIODS_BULLETINS[0].id);
-      setBulletinsMap(DEMO_BULLETINS_MAP);
+      setStudents([]);
+      setPeriods([]);
     } finally { setLoadingStudents(false); }
   }, [token]);
 
@@ -99,9 +53,6 @@ export default function BulletinsPage() {
 
   const loadBulletins = useCallback(async () => {
     if (!token || !selectedPeriodId || students.length === 0) return;
-    // Demo mode: the per-student /latest endpoint 404s for demo IDs, which would
-    // clobber the pre-populated demo bulletins map with nulls. Keep demo data.
-    if (isDemo) return;
     setLoadingBulletins(true);
     const results = await Promise.allSettled(
       students.map((s) =>
@@ -116,7 +67,7 @@ export default function BulletinsPage() {
     }
     setBulletinsMap(map);
     setLoadingBulletins(false);
-  }, [token, selectedPeriodId, students, isDemo]);
+  }, [token, selectedPeriodId, students]);
 
   useEffect(() => { void loadBulletins(); }, [loadBulletins]);
 
@@ -132,22 +83,6 @@ export default function BulletinsPage() {
     if (!token || !selectedPeriodId) return;
     setErrorMsg(null);
     setGenerating((prev) => new Set(prev).add(studentId));
-
-    // Demo mode: the generate endpoint 404s for demo student IDs, so optimistically
-    // mark the bulletin as generated — keeps the demo flow functional end-to-end.
-    if (isDemo) {
-      setBulletinsMap((prev) => {
-        const next = new Map(prev);
-        next.set(studentId, {
-          id: `demo-${studentId}-${selectedPeriodId}`,
-          pdfUrl: null,
-          generatedAt: new Date().toISOString(),
-        });
-        return next;
-      });
-      clearGenerating(studentId);
-      return;
-    }
 
     try {
       const res = await fetch('/api/bulletins/generate', {

@@ -4,7 +4,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useAuthStore } from '@/lib/auth/use-auth-store';
-import { findDemoStudent } from '@/lib/demo/students';
 
 interface StudentDto {
   id: string;
@@ -39,8 +38,7 @@ export function BulletinClient({ studentId }: Props): JSX.Element {
     },
   });
 
-  // Demo fallback: keep the header populated even when the student fetch fails.
-  const student = studentQ.data ?? findDemoStudent(studentId);
+  const student = studentQ.data;
 
   const periodsQ = useQuery<{ items: GradePeriodDto[] }>({
     queryKey: ['v6-bulletin-periods'],

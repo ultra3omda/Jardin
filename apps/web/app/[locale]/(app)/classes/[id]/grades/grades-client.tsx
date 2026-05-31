@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 
 import { Link } from '@/i18n/routing';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
-import { findDemoClass } from '@/lib/demo/classes';
 
 interface SubjectDto {
   id: string;
@@ -87,9 +86,7 @@ export function GradesClient({ classId }: Props): JSX.Element {
     queryFn: () => fetch(`/api/classes/${classId}`, { headers: authHeaders(accessToken!) }).then(jsonOk<ClassDto>),
   });
 
-  // Demo fallback: keep the header populated (name/level/year) when the class
-  // fetch fails, so a demo list → grades click never shows a blank title.
-  const cls = classQ.data ?? findDemoClass(classId);
+  const cls = classQ.data;
 
   const subjectsQ = useQuery<{ items: SubjectDto[] }>({
     queryKey: ['v6-subjects'],

@@ -37,45 +37,6 @@ async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Pro
   return t ? (JSON.parse(t) as T) : (null as T);
 }
 
-const DEMO_ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: 'demo-ann-1',
-    title: 'Réunion parents-professeurs — vendredi 15 mars',
-    body: "Nous vous invitons à la réunion annuelle parents-professeurs qui se tiendra le vendredi 15 mars de 17h à 19h dans les locaux de l'établissement. Merci de confirmer votre présence via le formulaire joint.",
-    audience: 'PARENTS',
-    authorName: 'Direction',
-    publishAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
-    createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
-  },
-  {
-    id: 'demo-ann-2',
-    title: 'Sortie pédagogique CE2-A — Musée des sciences',
-    body: 'La classe de CE2-A participera à une sortie au Musée national des sciences le mercredi 20 mars. Les autorisations parentales sont à remettre avant le vendredi 14 mars. Participation : 12 TND.',
-    audience: 'PARENTS',
-    authorName: 'Mme Martin',
-    publishAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
-    createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
-  },
-  {
-    id: 'demo-ann-3',
-    title: 'Fermeture exceptionnelle — vendredi 22 mars',
-    body: "L'établissement sera fermé le vendredi 22 mars en raison d'une journée pédagogique pour l'ensemble du corps enseignant. La reprise des cours s'effectuera normalement le lundi 25 mars.",
-    audience: 'ALL',
-    authorName: 'Direction',
-    publishAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
-    createdAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
-  },
-  {
-    id: 'demo-ann-4',
-    title: 'Concours de lecture — inscription avant le 10 avril',
-    body: "Notre établissement participe au concours régional de lecture cette année. Les élèves souhaitant concourir doivent s'inscrire auprès de leur enseignant(e) avant le 10 avril.",
-    audience: 'TEACHERS',
-    authorName: 'Direction',
-    publishAt: new Date(Date.now() - 10 * 86400_000).toISOString(),
-    createdAt: new Date(Date.now() - 10 * 86400_000).toISOString(),
-  },
-];
-
 export default function AnnouncementsPage() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
@@ -98,7 +59,6 @@ export default function AnnouncementsPage() {
       const data = await apiFetch<{ items: Announcement[] }>('/api/announcements', token);
       setAnnouncements(data.items ?? []);
     } catch {
-      // API unavailable → fall back to demo announcements (handled by `displayed`).
       setAnnouncements([]);
     } finally { setLoading(false); }
   }, [token]);
@@ -141,7 +101,7 @@ export default function AnnouncementsPage() {
     } catch (e) { setDeleteError(e instanceof Error ? e.message : 'Erreur'); }
   }
 
-  const displayed = announcements.length > 0 ? announcements : DEMO_ANNOUNCEMENTS;
+  const displayed = announcements;
 
   return (
     <div className="space-y-6">

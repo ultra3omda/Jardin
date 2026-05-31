@@ -40,6 +40,7 @@ import { HrModule } from './hr/hr.module';
 import { SecurityModule } from './security/security.module';
 import { StudentsModule } from './students/students.module';
 import { PaymentsModule } from './payments/payments.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { TenantBrandModule } from './tenant-brand/tenant-brand.module';
 import { TransportModule } from './transport/transport.module';
@@ -87,6 +88,7 @@ import { UsersModule } from './users/users.module';
     SecurityModule, // T2b PR-4
     HrModule, // T2c V1
     PaymentsModule, // GTM payments
+    DashboardModule, // Real dashboard overview aggregation
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6

@@ -14,7 +14,6 @@ import {
   updateStudent,
   type StudentSummary,
 } from '@/lib/api/students';
-import { findDemoStudent } from '@/lib/demo/students';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import {
   updateStudentSchema,
@@ -59,10 +58,7 @@ export function StudentDetail({ id }: Props) {
     enabled: !!accessToken,
   });
 
-  // Fall back to shared demo fixtures when the API errors or returns nothing,
-  // so a demo list → detail click never lands on a red error banner.
-  const student = apiStudent ?? findDemoStudent(id);
-  const isDemo = !apiStudent && !!student;
+  const student = apiStudent;
 
   const form = useForm<UpdateStudentFormValues>({
     resolver: zodResolver(updateStudentSchema),
@@ -112,7 +108,7 @@ export function StudentDetail({ id }: Props) {
           </h1>
           <p className="text-sm text-muted-foreground">Classe {student.classroom}</p>
         </div>
-        {canWrite && !editing && !isDemo && (
+        {canWrite && !editing && (
           <div className="flex gap-2">
             <button
               type="button"

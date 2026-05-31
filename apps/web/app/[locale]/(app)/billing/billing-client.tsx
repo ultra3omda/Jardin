@@ -11,7 +11,6 @@ import {
   type BillingStats,
   type Invoice,
   type InvoiceStatus,
-  type ListInvoicesResponse,
   INVOICE_STATUS_LABELS,
 } from '@/lib/api/billing';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
@@ -21,38 +20,14 @@ import { RecordPaymentModal } from './_components/record-payment-modal';
 
 const PAGE_SIZE = 10;
 
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_BILLING_STATS: BillingStats = {
-  totalBilled: 45800,
-  totalPaid: 32600,
-  totalPending: 8200,
-  totalOverdue: 5000,
-  overdueCount: 3,
-  pendingCount: 5,
+const EMPTY_BILLING_STATS: BillingStats = {
+  totalBilled: 0,
+  totalPaid: 0,
+  totalPending: 0,
+  totalOverdue: 0,
+  overdueCount: 0,
+  pendingCount: 0,
 };
-
-const DEMO_INVOICES: Invoice[] = [
-  { id: 'dinv-1', tenantId: 'demo', studentId: 'ds-3-1', title: 'Frais de scolarité T1 2025-2026', amount: 1200, currency: 'TND', status: 'PAID', dueDate: '2025-10-15', paidAt: '2025-10-10', notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-10-10T12:00:00Z', studentName: 'Ibrahima Ba' },
-  { id: 'dinv-2', tenantId: 'demo', studentId: 'ds-3-2', title: 'Frais de scolarité T1 2025-2026', amount: 1200, currency: 'TND', status: 'PAID', dueDate: '2025-10-15', paidAt: '2025-10-08', notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-10-08T11:00:00Z', studentName: 'Yasmine Gharbi' },
-  { id: 'dinv-3', tenantId: 'demo', studentId: 'ds-3-3', title: 'Frais de scolarité T1 2025-2026', amount: 1200, currency: 'TND', status: 'PENDING', dueDate: '2025-10-15', paidAt: null, notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-09-01T08:00:00Z', studentName: 'Khalil Mejri' },
-  { id: 'dinv-4', tenantId: 'demo', studentId: 'ds-4-1', title: 'Frais de scolarité T1 2025-2026', amount: 1400, currency: 'TND', status: 'OVERDUE', dueDate: '2025-10-01', paidAt: null, notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-09-01T08:00:00Z', studentName: 'Nour Karoui' },
-  { id: 'dinv-5', tenantId: 'demo', studentId: 'ds-4-2', title: 'Cantine scolaire Oct 2025', amount: 180, currency: 'TND', status: 'PAID', dueDate: '2025-10-05', paidAt: '2025-10-03', notes: null, createdAt: '2025-09-30T08:00:00Z', updatedAt: '2025-10-03T09:00:00Z', studentName: 'Pierre Simon' },
-  { id: 'dinv-6', tenantId: 'demo', studentId: 'ds-1-1', title: 'Transport scolaire T1 2025-2026', amount: 320, currency: 'TND', status: 'PARTIAL', dueDate: '2025-10-30', paidAt: null, notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-10-15T10:00:00Z', studentName: 'Léa Fontaine' },
-  { id: 'dinv-7', tenantId: 'demo', studentId: 'ds-1-2', title: 'Activités périscolaires T1', amount: 250, currency: 'TND', status: 'PENDING', dueDate: '2025-11-15', paidAt: null, notes: null, createdAt: '2025-10-01T08:00:00Z', updatedAt: '2025-10-01T08:00:00Z', studentName: 'Adam Saidi' },
-  { id: 'dinv-8', tenantId: 'demo', studentId: 'ds-2-1', title: 'Frais de scolarité T1 2025-2026', amount: 1200, currency: 'TND', status: 'OVERDUE', dueDate: '2025-09-30', paidAt: null, notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-09-01T08:00:00Z', studentName: 'Ines Gharbi' },
-  { id: 'dinv-9', tenantId: 'demo', studentId: 'ds-2-2', title: 'Assurance scolaire 2025-2026', amount: 85, currency: 'TND', status: 'PAID', dueDate: '2025-10-01', paidAt: '2025-09-28', notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-09-28T08:00:00Z', studentName: 'Mehdi Ben Ali' },
-  { id: 'dinv-10', tenantId: 'demo', studentId: 'ds-4-3', title: 'Frais de scolarité T1 2025-2026', amount: 1400, currency: 'TND', status: 'OVERDUE', dueDate: '2025-10-01', paidAt: null, notes: null, createdAt: '2025-09-01T08:00:00Z', updatedAt: '2025-09-01T08:00:00Z', studentName: 'Dina Belhaj' },
-];
-
-const DEMO_INVOICES_RESPONSE: ListInvoicesResponse = {
-  items: DEMO_INVOICES,
-  total: DEMO_INVOICES.length,
-  page: 1,
-  limit: PAGE_SIZE,
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS: Array<{ value: '' | InvoiceStatus; label: string }> = [
   { value: '', label: 'Tous les statuts' },
@@ -121,12 +96,12 @@ export function BillingClient({ initialCreateOpen = false }: Props) {
 
   const { data: stats } = useQuery({
     queryKey: ['billing-stats'],
-    // Fall back to demo stats silently so KPI cards are never blank
-    queryFn: () => getBillingStats(accessToken!).catch(() => DEMO_BILLING_STATS),
+    // Fall back to zeroed stats so KPI cards are never blank on error
+    queryFn: () => getBillingStats(accessToken!).catch(() => EMPTY_BILLING_STATS),
     enabled: !!accessToken,
   });
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['billing-invoices', page, statusFilter, debounced],
     queryFn: () =>
       listInvoices(accessToken!, {
@@ -138,12 +113,7 @@ export function BillingClient({ initialCreateOpen = false }: Props) {
     enabled: !!accessToken,
   });
 
-  // Use demo invoices when the API errors or returns empty (and no active filter)
-  const effectiveData = (() => {
-    if (isLoading) return undefined;
-    if ((error || !data || data.total === 0) && !statusFilter && !debounced) return DEMO_INVOICES_RESPONSE;
-    return data;
-  })();
+  const effectiveData = isLoading ? undefined : data;
 
   const totalPages = effectiveData ? Math.max(1, Math.ceil(effectiveData.total / PAGE_SIZE)) : 1;
 

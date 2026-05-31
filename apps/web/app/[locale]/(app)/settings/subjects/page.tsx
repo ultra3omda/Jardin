@@ -17,21 +17,6 @@ interface Subject {
   coefficient: number;
 }
 
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_SUBJECTS: Subject[] = [
-  { id: 'demo-subj-1', name: 'Français', code: 'FR', emoji: '📖', coefficient: 4 },
-  { id: 'demo-subj-2', name: 'Mathématiques', code: 'MATH', emoji: '🔢', coefficient: 4 },
-  { id: 'demo-subj-3', name: 'Sciences', code: 'SCI', emoji: '🔬', coefficient: 3 },
-  { id: 'demo-subj-4', name: 'Histoire-Géographie', code: 'HG', emoji: '🌍', coefficient: 2 },
-  { id: 'demo-subj-5', name: 'Arabe', code: 'AR', emoji: '📝', coefficient: 3 },
-  { id: 'demo-subj-6', name: 'Anglais', code: 'EN', emoji: '🇬🇧', coefficient: 2 },
-  { id: 'demo-subj-7', name: 'Éducation physique', code: 'EPS', emoji: '⚽', coefficient: 1 },
-  { id: 'demo-subj-8', name: 'Arts plastiques', code: 'ART', emoji: '🎨', coefficient: 1 },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function apiFetch<T>(
   path: string,
   token: string,
@@ -87,10 +72,9 @@ export default function SubjectsSettingsPage() {
         '/api/subjects',
         accessToken,
       );
-      const items = data.items ?? [];
-      setSubjects(items.length > 0 ? items : DEMO_SUBJECTS);
+      setSubjects(data.items ?? []);
     } catch {
-      setSubjects(DEMO_SUBJECTS);
+      setSubjects([]);
     } finally {
       setLoading(false);
     }

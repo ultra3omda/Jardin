@@ -18,64 +18,6 @@ const STATUS_COLORS: Record<AttendanceStatus, string> = {
   EXCUSED: 'bg-slate-100 text-slate-700 border-slate-300',
 };
 
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_CLASSES: ClassOption[] = [
-  { id: 'demo-class-1', name: 'CP-A' },
-  { id: 'demo-class-2', name: 'CE1-B' },
-  { id: 'demo-class-3', name: 'CM1-A' },
-  { id: 'demo-class-4', name: 'CM2-B' },
-];
-
-const DEMO_STUDENTS_BY_CLASS: Record<string, Student[]> = {
-  'demo-class-1': [
-    { id: 'ds-1-1', firstName: 'Léa', lastName: 'Fontaine', classroom: 'CP-A' },
-    { id: 'ds-1-2', firstName: 'Adam', lastName: 'Saidi', classroom: 'CP-A' },
-    { id: 'ds-1-3', firstName: 'Sofia', lastName: 'Benali', classroom: 'CP-A' },
-    { id: 'ds-1-4', firstName: 'Hamza', lastName: 'Khlifi', classroom: 'CP-A' },
-    { id: 'ds-1-5', firstName: 'Chloé', lastName: 'Moreau', classroom: 'CP-A' },
-    { id: 'ds-1-6', firstName: 'Youssef', lastName: 'Trabelsi', classroom: 'CP-A' },
-  ],
-  'demo-class-2': [
-    { id: 'ds-2-1', firstName: 'Ines', lastName: 'Gharbi', classroom: 'CE1-B' },
-    { id: 'ds-2-2', firstName: 'Mehdi', lastName: 'Ben Ali', classroom: 'CE1-B' },
-    { id: 'ds-2-3', firstName: 'Julie', lastName: 'Dupont', classroom: 'CE1-B' },
-    { id: 'ds-2-4', firstName: 'Rayan', lastName: 'Boukhari', classroom: 'CE1-B' },
-    { id: 'ds-2-5', firstName: 'Emilie', lastName: 'Leroy', classroom: 'CE1-B' },
-    { id: 'ds-2-6', firstName: 'Sami', lastName: 'Haddad', classroom: 'CE1-B' },
-    { id: 'ds-2-7', firstName: 'Camille', lastName: 'Martin', classroom: 'CE1-B' },
-  ],
-  'demo-class-3': [
-    { id: 'ds-3-1', firstName: 'Ibrahima', lastName: 'Ba', classroom: 'CM1-A' },
-    { id: 'ds-3-2', firstName: 'Yasmine', lastName: 'Gharbi', classroom: 'CM1-A' },
-    { id: 'ds-3-3', firstName: 'Khalil', lastName: 'Mejri', classroom: 'CM1-A' },
-    { id: 'ds-3-4', firstName: 'Fatou', lastName: 'Diallo', classroom: 'CM1-A' },
-    { id: 'ds-3-5', firstName: 'Lucas', lastName: 'Bernard', classroom: 'CM1-A' },
-    { id: 'ds-3-6', firstName: 'Amira', lastName: 'Mansouri', classroom: 'CM1-A' },
-    { id: 'ds-3-7', firstName: 'Tom', lastName: 'Petit', classroom: 'CM1-A' },
-    { id: 'ds-3-8', firstName: 'Lina', lastName: 'Zouari', classroom: 'CM1-A' },
-  ],
-  'demo-class-4': [
-    { id: 'ds-4-1', firstName: 'Nour', lastName: 'Karoui', classroom: 'CM2-B' },
-    { id: 'ds-4-2', firstName: 'Pierre', lastName: 'Simon', classroom: 'CM2-B' },
-    { id: 'ds-4-3', firstName: 'Dina', lastName: 'Belhaj', classroom: 'CM2-B' },
-    { id: 'ds-4-4', firstName: 'Hugo', lastName: 'Michel', classroom: 'CM2-B' },
-    { id: 'ds-4-5', firstName: 'Sarah', lastName: 'Brami', classroom: 'CM2-B' },
-    { id: 'ds-4-6', firstName: 'Amine', lastName: 'Oueslati', classroom: 'CM2-B' },
-  ],
-};
-
-// Some students are pre-marked absent/late for a realistic demo
-const DEMO_OVERRIDES: Record<string, AttendanceStatus> = {
-  'ds-3-2': 'ABSENT',
-  'ds-3-5': 'LATE',
-  'ds-1-3': 'EXCUSED',
-  'ds-2-4': 'ABSENT',
-  'ds-4-2': 'LATE',
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...opts,
@@ -105,13 +47,12 @@ export default function AbsencesPage() {
     apiFetch<{ items: ClassOption[] }>('/api/classes', token)
       .then((d) => {
         const items = d?.items ?? [];
-        const finalItems = items.length > 0 ? items : DEMO_CLASSES;
-        setClasses(finalItems);
-        if (finalItems.length > 0) setSelectedClass(finalItems[0].id);
+        setClasses(items);
+        if (items.length > 0) setSelectedClass(items[0].id);
       })
       .catch(() => {
-        setClasses(DEMO_CLASSES);
-        setSelectedClass(DEMO_CLASSES[0].id);
+        setClasses([]);
+        setFetchError('Impossible de charger les classes.');
       })
       .finally(() => setLoadingClasses(false));
   }, [token]);
@@ -130,15 +71,11 @@ export default function AbsencesPage() {
           `/api/attendance?classId=${selectedClass}&date=${selectedDate}`, token
         ).catch(() => ({ items: [] as (AttendanceRecord & { id: string; studentId: string })[] })),
       ]);
-      const apiStudents = sData.items ?? [];
-      const finalStudents =
-        apiStudents.length > 0
-          ? apiStudents
-          : (DEMO_STUDENTS_BY_CLASS[selectedClass] ?? DEMO_STUDENTS_BY_CLASS[DEMO_CLASSES[0].id] ?? []);
+      const finalStudents = sData.items ?? [];
       setStudents(finalStudents);
       const map: Record<string, AttendanceRecord> = {};
       for (const s of finalStudents) {
-        map[s.id] = { studentId: s.id, status: DEMO_OVERRIDES[s.id] ?? 'PRESENT' };
+        map[s.id] = { studentId: s.id, status: 'PRESENT' };
       }
       for (const a of aData.items ?? []) {
         map[a.studentId] = { studentId: a.studentId, status: a.status, notes: a.notes };

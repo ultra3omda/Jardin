@@ -64,16 +64,6 @@ async function apiFetch<T>(
   return text ? (JSON.parse(text) as T) : (null as T);
 }
 
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_GRADE_PERIODS: GradePeriod[] = [
-  { id: 'demo-gp-1', name: 'Trimestre 1', startDate: '2024-09-02', endDate: '2024-12-20', status: 'CLOSED' },
-  { id: 'demo-gp-2', name: 'Trimestre 2', startDate: '2025-01-06', endDate: '2025-03-28', status: 'CLOSED' },
-  { id: 'demo-gp-3', name: 'Trimestre 3', startDate: '2025-04-07', endDate: '2025-06-30', status: 'OPEN' },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 function formatDate(iso: string) {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString('fr-FR');
@@ -135,10 +125,9 @@ export default function GradePeriodsSettingsPage() {
         '/api/grade-periods',
         accessToken,
       );
-      const items = (data.items ?? []).map(fromApi);
-      setPeriods(items.length > 0 ? items : DEMO_GRADE_PERIODS);
+      setPeriods((data.items ?? []).map(fromApi));
     } catch {
-      setPeriods(DEMO_GRADE_PERIODS);
+      setPeriods([]);
     } finally {
       setLoading(false);
     }
