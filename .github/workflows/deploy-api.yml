@@ -1,0 +1,43 @@
+name: Deploy API (Railway)
+
+# Deploys the API on push to main, but ONLY when a RAILWAY_TOKEN secret is
+# configured. Without the secret the job is skipped (no red CI), so the repo
+# stays green until the platform is wired by an operator.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Railway deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Railway token presence
+        id: gate
+        run: |
+          if [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::RAILWAY_TOKEN not set — skipping API deploy (configure it to enable)."
+          fi
+
+      - name: Install Railway CLI
+        if: steps.gate.outputs.enabled == 'true'
+        run: npm i -g @railway/cli
+
+      - name: Deploy
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        # Railway builds from apps/api/Dockerfile (see apps/api/railway.json) and
+        # runs `start:prod` (prisma migrate deploy && node dist/main).
+        run: railway up --service "${{ vars.RAILWAY_API_SERVICE || 'api' }}" --ci

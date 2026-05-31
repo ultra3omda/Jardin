@@ -1,0 +1,16 @@
+# Exclude installed/build artifacts (rebuilt inside the image), not source.
+# NOTE: workspace package manifests (incl. apps/mobile) MUST remain so that
+# `pnpm install --frozen-lockfile` can resolve the full workspace graph.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/playwright-report
+**/test-results
+**/.expo
+.git
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
