@@ -18,6 +18,7 @@ const ADMIN_TABS: MobileTab[] = [
 const TEACHER_TABS: MobileTab[] = [
   { name: 'dashboard', label: 'Accueil' },
   { name: 'classes', label: 'Mes classes' },
+  { name: 'life', label: 'Vie scolaire' }, // T2b mobile reads (journal + activités)
   { name: 'messages', label: 'Messages' },
   { name: 'notifications', label: 'Notifs' },
   { name: 'profile', label: 'Profil' },
@@ -26,6 +27,7 @@ const TEACHER_TABS: MobileTab[] = [
 const PARENT_TABS: MobileTab[] = [
   { name: 'dashboard', label: 'Accueil' },
   { name: 'students', label: 'Mon enfant' },
+  { name: 'life', label: 'Vie scolaire' }, // T2b mobile reads (journal + activités + cantine)
   { name: 'messages', label: 'Messages' },
   { name: 'notifications', label: 'Notifs' },
   { name: 'profile', label: 'Profil' },
