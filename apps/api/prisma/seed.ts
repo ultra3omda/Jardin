@@ -4,6 +4,8 @@ import { createId } from '@paralleldrive/cuid2';
 import {
   ActivityCategory,
   ChildMood,
+  DisciplineSeverity,
+  InfirmaryOutcome,
   Locale,
   PrismaClient,
   RelationType,
@@ -361,6 +363,98 @@ async function seedJournalAndActivities(tenantId: string): Promise<void> {
   }
 }
 
+// -- T2b PR-2 -- Discipline + Santé fixtures ---------------------------------
+// Fixed seed dates (deterministic — never Date.now()/argless new Date()).
+const T2B_INCIDENT_DATE = new Date('2026-05-20');
+const T2B_VISIT_DATE = new Date('2026-05-22T09:30:00.000Z');
+const T2B_VACCINE_DATE = new Date('2025-09-15');
+const T2B_INCIDENT_DESC = 'Bavardage répété en cours malgré plusieurs avertissements.';
+
+/**
+ * Seed idempotent Discipline + Santé fixtures for one tenant.
+ * No-op for tenants without students. Re-runs create no duplicates: the health
+ * record is guarded by its (tenantId, studentId) unique constraint via upsert;
+ * the others by a deterministic findFirst guard (no natural unique key).
+ */
+async function seedDisciplineAndHealth(tenantId: string): Promise<void> {
+  const author = await prisma.user.findFirst({
+    where: { tenantId, role: UserRole.SCHOOL_ADMIN },
+  });
+  const someStudents = await prisma.student.findMany({
+    where: { tenantId, deletedAt: null },
+    take: 3,
+  });
+  if (!author || someStudents.length === 0) return;
+  const student = someStudents[0];
+
+  const existingIncident = await prisma.disciplineIncident.findFirst({
+    where: { tenantId, studentId: student.id, description: T2B_INCIDENT_DESC },
+  });
+  if (!existingIncident) {
+    await prisma.disciplineIncident.create({
+      data: {
+        id: createId(),
+        tenantId,
+        studentId: student.id,
+        type: DisciplineSeverity.MINOR,
+        occurredAt: T2B_INCIDENT_DATE,
+        description: T2B_INCIDENT_DESC,
+        sanction: 'Avertissement oral',
+        reportedById: author.id,
+      },
+    });
+  }
+
+  await prisma.healthRecord.upsert({
+    where: { unique_health_record_per_student: { tenantId, studentId: student.id } },
+    update: {},
+    create: {
+      id: createId(),
+      tenantId,
+      studentId: student.id,
+      bloodType: 'O+',
+      allergies: 'Arachides',
+      emergencyContactName: 'Contact familial',
+      emergencyContactPhone: '+216 00 000 000',
+      updatedById: author.id,
+    },
+  });
+
+  const existingVisit = await prisma.infirmaryVisit.findFirst({
+    where: { tenantId, studentId: student.id, visitedAt: T2B_VISIT_DATE },
+  });
+  if (!existingVisit) {
+    await prisma.infirmaryVisit.create({
+      data: {
+        id: createId(),
+        tenantId,
+        studentId: student.id,
+        visitedAt: T2B_VISIT_DATE,
+        reason: 'Maux de tête',
+        treatment: 'Repos 30 min',
+        outcome: InfirmaryOutcome.RETURNED_TO_CLASS,
+        recordedById: author.id,
+      },
+    });
+  }
+
+  const existingVaccination = await prisma.vaccination.findFirst({
+    where: { tenantId, studentId: student.id, vaccineName: 'DTP' },
+  });
+  if (!existingVaccination) {
+    await prisma.vaccination.create({
+      data: {
+        id: createId(),
+        tenantId,
+        studentId: student.id,
+        vaccineName: 'DTP',
+        administeredAt: T2B_VACCINE_DATE,
+        recordedById: author.id,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -451,6 +545,10 @@ async function main(): Promise<void> {
   // Called for both demo tenants; no-op where there are no students yet.
   await seedJournalAndActivities(ecole.id);
   await seedJournalAndActivities(maternelle.id);
+
+  // -- T2b PR-2 -- Discipline + Santé fixtures (idempotent, students-only) ---
+  await seedDisciplineAndHealth(ecole.id);
+  await seedDisciplineAndHealth(maternelle.id);
 
   // -- Demo requests (platform-level, event-sourced in AuditLog) -------------
   await seedDemoRequests(prisma, superAdmin.id);
