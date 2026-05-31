@@ -5,6 +5,12 @@ export class OverviewDto {
   @ApiProperty() users!: number;
   @ApiProperty() students!: number;
   @ApiProperty() pendingDemoRequests!: number;
+  @ApiProperty() activeSubscriptions!: number;
+  @ApiProperty({ description: 'Monthly Recurring Revenue (TND), normalised from active subs' })
+  mrr!: string;
+  @ApiProperty({ description: 'Annual Recurring Revenue (TND) = MRR × 12' })
+  arr!: string;
+  @ApiProperty({ description: 'Devise du revenu' }) currency!: string;
 }
 
 export class GrowthPointDto {

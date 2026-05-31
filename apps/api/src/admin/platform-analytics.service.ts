@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { deriveDemoRequests, isPendingDemo, MAX_DEMO_AUDIT_ROWS } from '../demo-requests/demo-status.util';
 import { AnalyticsDto, CategoryCountDto, GrowthPointDto, OverviewDto } from './dto/platform.dto';
@@ -38,7 +39,7 @@ export class PlatformAnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async overview(): Promise<OverviewDto> {
-    const [tenants, users, students, requested, statuses] = await Promise.all([
+    const [tenants, users, students, requested, statuses, activeSubs] = await Promise.all([
       this.prisma.tenant.count({ where: { deletedAt: null } }),
       this.prisma.user.count({ where: { deletedAt: null } }),
       this.prisma.student.count({ where: { deletedAt: null } }),
@@ -52,9 +53,33 @@ export class PlatformAnalyticsService {
         orderBy: { createdAt: 'desc' },
         take: MAX_DEMO_AUDIT_ROWS,
       }),
+      this.prisma.tenantSubscription.findMany({
+        where: { status: 'ACTIVE' },
+        select: { plan: { select: { price: true, interval: true } } },
+      }),
     ]);
-    const pendingDemoRequests = deriveDemoRequests(requested, statuses).filter((r) => isPendingDemo(r.status)).length;
-    return { tenants, users, students, pendingDemoRequests };
+    const pendingDemoRequests = deriveDemoRequests(requested, statuses).filter((r) =>
+      isPendingDemo(r.status),
+    ).length;
+
+    // MRR: monthly plans count at face value; yearly plans normalised to /12.
+    let mrr = new Prisma.Decimal(0);
+    for (const sub of activeSubs) {
+      const price = sub.plan.price;
+      mrr = mrr.add(sub.plan.interval === 'YEARLY' ? price.div(12) : price);
+    }
+    const mrrRounded = mrr.toDecimalPlaces(3);
+
+    return {
+      tenants,
+      users,
+      students,
+      pendingDemoRequests,
+      activeSubscriptions: activeSubs.length,
+      mrr: mrrRounded.toString(),
+      arr: mrrRounded.mul(12).toDecimalPlaces(3).toString(),
+      currency: 'TND',
+    };
   }
 
   async analytics(): Promise<AnalyticsDto> {

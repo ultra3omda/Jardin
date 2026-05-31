@@ -5,6 +5,10 @@ export interface Overview {
   users: number;
   students: number;
   pendingDemoRequests: number;
+  activeSubscriptions: number;
+  mrr: string;
+  arr: string;
+  currency: string;
 }
 
 export interface GrowthPoint {
