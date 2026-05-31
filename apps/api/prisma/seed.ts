@@ -27,6 +27,10 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 function generateSeedPassword(): string {
+  // Stable, documented demo password when DEMO_PASSWORD is provided (>= 12 chars);
+  // otherwise a fresh random one per run. See SETUP.md / docs/DEMO_CREDENTIALS.md.
+  const fromEnv = process.env.DEMO_PASSWORD?.trim();
+  if (fromEnv && fromEnv.length >= 12) return fromEnv;
   return randomBytes(18).toString('base64url');
 }
 
@@ -46,7 +50,14 @@ async function upsertUser(args: {
   if (args.tenantId) {
     return prisma.user.upsert({
       where: { email_per_tenant: { tenantId: args.tenantId, email } },
-      update: { firstName: args.firstName, lastName: args.lastName, role: args.role },
+      // Update the password too, so a re-seed keeps every demo account on the
+      // current DEMO_PASSWORD (otherwise existing rows silently diverge).
+      update: {
+        firstName: args.firstName,
+        lastName: args.lastName,
+        role: args.role,
+        passwordHash: args.passwordHash,
+      },
       create: {
         id: createId(),
         tenantId: args.tenantId,
@@ -61,7 +72,12 @@ async function upsertUser(args: {
     });
   }
   const existing = await prisma.user.findFirst({ where: { tenantId: null, email } });
-  if (existing) return existing;
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data: { firstName: args.firstName, lastName: args.lastName, passwordHash: args.passwordHash },
+    });
+  }
   return prisma.user.create({
     data: {
       id: createId(),
@@ -223,11 +239,12 @@ async function seedStudents(
   tenantId: string,
   classroom: string,
   names: Array<[string, string]>,
+  parentEmailDomain = 'demo-ecole.klasso.tn',
 ): Promise<SeededStudent[]> {
   const seeded: SeededStudent[] = [];
   for (let i = 0; i < names.length; i += 1) {
     const [firstName, lastName] = names[i];
-    const parentEmail = `parent.${lastName.toLowerCase()}.${firstName.toLowerCase()}@demo-ecole.klasso.tn`;
+    const parentEmail = `parent.${lastName.toLowerCase()}.${firstName.toLowerCase()}@${parentEmailDomain}`;
     // Seed-only idempotency: (firstName, lastName, classroom) is treated as the
     // natural key for a student, and parentEmail derives from it. The curated
     // name arrays below are kept collision-free so no two distinct children
@@ -887,6 +904,34 @@ async function main(): Promise<void> {
   // -- Parents -- one PARENT user per student, linked idempotently -----------
   const parentLinks = await seedParentLinks(ecole.id, [...cpA, ...ce1B, ...ce2A], passwordHash);
 
+  // -- Maternelle (KINDERGARTEN) — classes + children + families -------------
+  // So journal, activités, cantine, transport, santé are demoable on the KG too.
+  await seedClass(maternelle.id, 'Petite Section', 'PS', '2025-2026');
+  await seedClass(maternelle.id, 'Grande Section', 'GS', '2025-2026');
+  const matPS = await seedStudents(
+    maternelle.id,
+    'Petite Section',
+    [
+      ['Aziz', 'Gharbi'], ['Maryam', 'Trabelsi'], ['Youssef', 'Khelifi'], ['Nour', 'Bouazizi'],
+      ['Rayan', 'Hamdi'], ['Lina', 'Marzouki'], ['Adam', 'Zouari'],
+    ],
+    'demo-maternelle.klasso.tn',
+  );
+  const matGS = await seedStudents(
+    maternelle.id,
+    'Grande Section',
+    [
+      ['Sami', 'Ben Romdhane'], ['Eya', 'Cherni'], ['Hedi', 'Mansour'], ['Selim', 'Khaldi'],
+      ['Mariem', 'Brahmi'], ['Aymen', 'Saadaoui'], ['Farah', 'Nasri'],
+    ],
+    'demo-maternelle.klasso.tn',
+  );
+  const maternelleParentLinks = await seedParentLinks(
+    maternelle.id,
+    [...matPS, ...matGS],
+    passwordHash,
+  );
+
   // -- T2b -- Journal + Activités fixtures (idempotent, students-only) -------
   // Called for both demo tenants; no-op where there are no students yet.
   await seedJournalAndActivities(ecole.id);
@@ -912,7 +957,10 @@ async function main(): Promise<void> {
   await seedDemoRequests(prisma, superAdmin.id);
 
   console.log('');
-  console.log(`Demo data seeded successfully (T2a): ${parentLinks} new parent link(s).`);
+  console.log(
+    `Demo data seeded successfully (T2a): ${parentLinks + maternelleParentLinks} new parent link(s) ` +
+      `(école ${parentLinks}, maternelle ${maternelleParentLinks}).`,
+  );
   console.log('------------------------------------------------------------');
   console.log(`  Tenant: ${ecole.slug}      (${ecole.type})`);
   console.log(`    admin   : admin@demo-ecole.klasso.tn`);
