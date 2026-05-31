@@ -38,6 +38,7 @@ import { ParentRelationsModule } from './parent-relations/parent-relations.modul
 import { HrModule } from './hr/hr.module';
 import { SecurityModule } from './security/security.module';
 import { StudentsModule } from './students/students.module';
+import { PaymentsModule } from './payments/payments.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { TenantBrandModule } from './tenant-brand/tenant-brand.module';
 import { TransportModule } from './transport/transport.module';
