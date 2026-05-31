@@ -1,0 +1,70 @@
+name: Seed production database
+
+# Applies migrations + runs the (idempotent) demo seed against the production DB.
+# Manual trigger so re-seeding is always deliberate. Gated on the DATABASE_URL
+# secret: if absent, the job no-ops (stays green).
+#
+# Required GitHub secret:  DATABASE_URL   (production Postgres connection string)
+# Optional GitHub variable: DEMO_PASSWORD  (shared demo password; default below)
+on:
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: 'DANGER: drop ALL data before seeding (prisma migrate reset)'
+        type: boolean
+        default: false
+
+jobs:
+  seed:
+    name: Migrate + seed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate on DATABASE_URL secret
+        id: gate
+        run: |
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABASE_URL secret not set — skipping prod seed."
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm --filter=@ecole-saas/api exec prisma generate
+
+      - name: Reset database (optional, destructive)
+        if: steps.gate.outputs.enabled == 'true' && inputs.reset == true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter=@ecole-saas/api exec prisma migrate reset --force --skip-seed
+
+      - name: Apply migrations
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter=@ecole-saas/api exec prisma migrate deploy
+
+      - name: Seed demo data (idempotent)
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DEMO_PASSWORD: ${{ vars.DEMO_PASSWORD || 'KlassoDemo2026!' }}
+        run: pnpm --filter=@ecole-saas/api exec prisma db seed
