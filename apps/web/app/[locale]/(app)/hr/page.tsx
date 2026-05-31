@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { StaffSection } from '@/components/hr/staff-section';
 import { ContractsSection } from '@/components/hr/contracts-section';
+import { LeavesSection } from '@/components/hr/leaves-section';
 
-type HrTab = 'staff' | 'contracts';
+type HrTab = 'staff' | 'contracts' | 'leaves';
 
 const TABS: { key: HrTab; label: string }[] = [
   { key: 'staff', label: 'Personnel' },
   { key: 'contracts', label: 'Contrats' },
+  { key: 'leaves', label: 'Congés' },
 ];
 
 export default function HrPage() {
@@ -37,7 +39,7 @@ export default function HrPage() {
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-navy-900">RH / Paie</h1>
         <p className="text-sm text-muted-foreground">
-          Personnel et contrats de travail. Congés et paie arrivent prochainement.
+          Personnel, contrats de travail et congés. La paie arrive prochainement.
         </p>
       </header>
 
@@ -66,6 +68,7 @@ export default function HrPage() {
 
       {tab === 'staff' && <StaffSection />}
       {tab === 'contracts' && <ContractsSection />}
+      {tab === 'leaves' && <LeavesSection />}
     </div>
   );
 }
