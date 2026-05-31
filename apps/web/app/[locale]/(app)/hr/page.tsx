@@ -1,121 +1,71 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { StaffSection } from '@/components/hr/staff-section';
+import { ContractsSection } from '@/components/hr/contracts-section';
 
-interface Teacher { id: string; firstName: string; lastName: string; email: string; isActive: boolean; createdAt: string }
+type HrTab = 'staff' | 'contracts';
 
-// ─── Demo fallback data ───────────────────────────────────────────────────────
-
-const DEMO_TEACHERS_HR: Teacher[] = [
-  { id: 'dt-1', firstName: 'Sonia', lastName: 'Martin', email: 'smartin@ecole.demo', isActive: true, createdAt: '2024-09-01T08:00:00Z' },
-  { id: 'dt-2', firstName: 'Karim', lastName: 'Dupont', email: 'kdupont@ecole.demo', isActive: true, createdAt: '2024-09-01T08:00:00Z' },
-  { id: 'dt-3', firstName: 'Amira', lastName: 'Leroy', email: 'aleroy@ecole.demo', isActive: true, createdAt: '2023-09-01T08:00:00Z' },
-  { id: 'dt-4', firstName: 'Youssef', lastName: 'Bernard', email: 'ybernard@ecole.demo', isActive: true, createdAt: '2023-09-01T08:00:00Z' },
-  { id: 'dt-5', firstName: 'Nadia', lastName: 'Moreau', email: 'nmoreau@ecole.demo', isActive: true, createdAt: '2022-09-01T08:00:00Z' },
-  { id: 'dt-6', firstName: 'Hichem', lastName: 'Trabelsi', email: 'htrabelsi@ecole.demo', isActive: false, createdAt: '2022-09-01T08:00:00Z' },
+const TABS: { key: HrTab; label: string }[] = [
+  { key: 'staff', label: 'Personnel' },
+  { key: 'contracts', label: 'Contrats' },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-const CONTRACT_TYPES = ['CDI', 'CDD', 'Vacataire', 'Temps partiel'];
-const SALARIES = [1800, 2200, 2600, 3000, 3400];
-const LEAVE_BALANCE = [5, 10, 12, 15, 18, 20];
-
-function enrich(t: Teacher, idx: number) {
-  const seed = t.id.charCodeAt(0) + idx;
-  return {
-    ...t,
-    contractType: CONTRACT_TYPES[seed % CONTRACT_TYPES.length],
-    salary: SALARIES[seed % SALARIES.length],
-    leaveBalance: LEAVE_BALANCE[seed % LEAVE_BALANCE.length],
-  };
-}
-
 export default function HrPage() {
-  const token = useAuthStore((s) => s.accessToken);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const user = useAuthStore((s) => s.user);
+  const [tab, setTab] = useState<HrTab>('staff');
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const res = await fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json() as { items: Teacher[] };
-        const items = data.items ?? [];
-        setTeachers(items.length > 0 ? items : DEMO_TEACHERS_HR);
-      } else {
-        setTeachers(DEMO_TEACHERS_HR);
-      }
-    } catch {
-      setTeachers(DEMO_TEACHERS_HR);
-    }
-    finally { setLoading(false); }
-  }, [token]);
+  // RBAC (spec T2c §4.3) : la gestion RH est réservée à la direction.
+  const canManage = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
 
-  useEffect(() => { void load(); }, [load]);
-
-  const enriched = teachers.map(enrich);
-  const filtered = enriched.filter((t) =>
-    `${t.firstName} ${t.lastName}${t.email}`.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const activeCount = teachers.filter((t) => t.isActive).length;
-  const totalPayroll = enriched.reduce((s, t) => s + t.salary, 0);
+  if (!canManage) {
+    return (
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-2xl font-bold tracking-tight text-navy-900">RH / Paie</h1>
+        </header>
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Accès non autorisé : la gestion RH est réservée à la direction.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-navy-900">RH / Paie</h1>
-        <p className="text-sm text-muted-foreground">{activeCount} employés actifs — masse salariale estimée : {totalPayroll.toLocaleString('fr-FR')} TND</p>
+        <p className="text-sm text-muted-foreground">
+          Personnel et contrats de travail. Congés et paie arrivent prochainement.
+        </p>
       </header>
 
-      <input className="w-full max-w-sm rounded-md border px-3 py-2 text-sm" placeholder="Rechercher un employé…"
-        value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div
+        role="tablist"
+        aria-label="Sections RH"
+        className="flex flex-wrap gap-2 border-b border-slate-200"
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? 'border-navy-700 text-navy-900'
+                : 'border-transparent text-muted-foreground hover:text-navy-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">Aucun employé trouvé.</div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-navy-700">
-                <th className="px-4 py-3">Nom</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Contrat</th>
-                <th className="px-4 py-3">Salaire (TND)</th>
-                <th className="px-4 py-3">Congés restants</th>
-                <th className="px-4 py-3">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t) => (
-                <tr key={t.id} className="border-b last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium">{t.lastName} {t.firstName}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{t.email}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{t.contractType}</td>
-                  <td className="px-4 py-3 font-mono">{t.salary.toLocaleString('fr-FR')}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${t.leaveBalance <= 5 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                      {t.leaveBalance} j
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${t.isActive ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                      {t.isActive ? 'Actif' : 'Inactif'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {tab === 'staff' && <StaffSection />}
+      {tab === 'contracts' && <ContractsSection />}
     </div>
   );
 }

@@ -3,13 +3,6 @@ import { z } from 'zod';
 export const CONTRACT_TYPES = ['CDI', 'CDD', 'VACATAIRE', 'TEMPS_PARTIEL'] as const;
 export const CONTRACT_STATUSES = ['ACTIVE', 'ENDED'] as const;
 
-export const staffSchema = z.object({
-  email: z.string().email('Email invalide'),
-  firstName: z.string().min(1, 'Prénom requis').max(100),
-  lastName: z.string().min(1, 'Nom requis').max(100),
-});
-export type StaffValues = z.infer<typeof staffSchema>;
-
 export const employmentContractSchema = z.object({
   userId: z.string().min(1, 'Employé requis'),
   type: z.enum(CONTRACT_TYPES),
