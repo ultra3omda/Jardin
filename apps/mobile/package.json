@@ -9,6 +9,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web --output-dir dist",
+    "eas:build:preview": "eas build --profile preview",
+    "eas:build:prod": "eas build --profile production --platform all",
+    "eas:submit:prod": "eas submit --profile production --platform all",
     "type-check": "tsc --noEmit",
     "lint": "echo \"Mobile lint deferred to V12 (EAS Build setup)\"",
     "test": "jest"
