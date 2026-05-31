@@ -4,6 +4,7 @@ import type { Route } from 'next';
 
 import { Link } from '@/i18n/routing';
 import { DeckleEdge } from './atoms/deckle-edge';
+import { Eyebrow } from './atoms/eyebrow';
 import { Section } from './atoms/section';
 
 type TierKey = 'starter' | 'standard' | 'pro';
@@ -18,6 +19,7 @@ export function Pricing() {
   return (
     <Section id="pricing" alt>
       <div className="mx-auto max-w-2xl text-center">
+        <Eyebrow className="mb-4 justify-center">Tarifs</Eyebrow>
         <h2 className="font-display text-3xl font-medium tracking-tight text-ink sm:text-4xl">
           {t('title')}
         </h2>
