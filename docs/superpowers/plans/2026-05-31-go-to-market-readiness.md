@@ -7,19 +7,22 @@
 
 ---
 
-## 0. Pré-requis bloquant côté client — doc de la monétique
+## 0. Passerelle confirmée — ClicToPay (Monétique Tunisie)
 
-L'intégration paiement ne peut **pas** être codée sans la spec exacte de la passerelle. La doc n'est ni dans le repo ni dans la session. **À fournir** (commit dans `docs/payments/` ou pièce jointe) avant la PR-5 :
+✅ Doc reçue et persistée : `docs/payments/clictopay-integration.md`. Modèle = **register → redirect formUrl → returnUrl + callback → getOrderStatus (vérité)**.
 
-- Nom exact de la passerelle (ClicToPay / SMT / SPS / e-DINAR / autre) + environnements (test + prod).
-- **Auth** : identifiants marchand (merchant id / terminal / API key / secret) et mode (header, body, HMAC).
-- **Initiation** : endpoint de création de commande/paiement (params : montant, devise **TND** en millimes ?, référence, `returnUrl`, `callbackUrl`, langue) + format de réponse (URL de redirection + id de transaction).
-- **Redirection** : page hébergée 3-D Secure (oui/non), méthode (GET/POST).
-- **Retour** : `returnUrl` (navigateur) **et** `callbackUrl`/webhook serveur-à-serveur (params, signature à vérifier).
-- **Vérification de statut** : endpoint `getOrderStatus`-équivalent (source de vérité, jamais se fier au seul retour navigateur).
-- **Remboursement** (optionnel), **devise/format montant**, **cartes de test**.
+Faits structurants extraits :
+- **Auth** : `userName`/`password` marchand en paramètres de chaque requête (env `CLICTOPAY_USER`, `CLICTOPAY_PWD`, `CLICTOPAY_BASE_URL`). Pas de token.
+- **Initiation** `POST /rest/register.do` : `orderNumber` (unique, ≤32), `amount` en **millimes** (TND ×1000), `currency=788`, `returnUrl`, `failUrl`, `language`, `description` → réponse `{ orderId, formUrl }`. Rediriger vers `formUrl`.
+- **Retour navigateur** `returnUrl`/`failUrl` (jamais une preuve).
+- **Callback S2S** (GET) : `mdOrder`, `orderNumber`, `operation`, `status` ; **répondre 200** ; pas de signature HMAC.
+- **Vérité** : `GET /rest/getOrderStatus.do` → `OrderStatus==2` = payé (codes : 0 non payé, 2 payé, 3 reverse, 4 refund, 6 refusé).
+- **Sécurité** (pas de HMAC) : re-vérif `getOrderStatus` + **IP allowlist ClicToPay** + `orderNumber` non devinable.
+- **Annulation** `reverse.do` (avant compensation) / **remboursement** `refund.do` (après, partiel possible).
+- **Récurrence** : bindings (tokenisation, `clientId` au 1er paiement → `bindingId`) — nécessite activation banque → **auto-renouvellement = phase 2**.
+- **Hors code** : pages de paiement hébergées (ZIP XHTML par locale) = tâche **design/ops avec la banque**, à planifier séparément (recette ClicToPay).
 
-> Sans ce document, la PR-5 livre l'**architecture + un adaptateur `mock`** testable ; le branchement réel se fait dès réception.
+> PR-5 livre l'**architecture + `ClicToPayGateway` + `MockGateway`** (e2e via mock) ; PR-6 = branchement test réel ClicToPay + recette.
 
 ---
 
@@ -43,7 +46,7 @@ L'intégration paiement ne peut **pas** être codée sans la spec exacte de la p
 
 ### PR-2 — 🛑 Déploiement API (Railway/Render)
 - `apps/api/Dockerfile` (multi-stage : build NestJS + `prisma generate` ; `start:prod` = `migrate deploy && node dist/main`).
-- `railway.json` (ou `render.yaml`) + variables d'env documentées (`.env.example` complété : `EXPO_PUSH_ACCESS_TOKEN`, `TURNSTILE_SECRET_KEY`, vars passerelle).
+- `railway.json` (ou `render.yaml`) + variables d'env documentées (`.env.example` complété : `EXPO_PUSH_ACCESS_TOKEN`, `TURNSTILE_SECRET_KEY`, `CLICTOPAY_USER`, `CLICTOPAY_PWD`, `CLICTOPAY_BASE_URL`).
 - Étape CI/CD de déploiement API sur push `main` (🛑 workflows). Health-check `/health` après déploiement.
 - Aligner l'URL API dans `apps/web/next.config.mjs` (CSP) avec l'hôte réel.
 
@@ -74,21 +77,23 @@ Compléter le flux SUPER_ADMIN (spec white-label) pour matcher la vision :
 - `TenantSubscription` (tenantId, planId, status `TRIALING|ACTIVE|PAST_DUE|CANCELED`, currentPeriodStart/End, trialEnd?).
 - `PaymentTransaction` (tenantId, subscriptionId?, amount, currency, status `PENDING|PAID|FAILED|REFUNDED`, gatewayRef, gatewayOrderId, rawPayload JSON, idempotencyKey).
 
-**Architecture (gateway-agnostique)** :
-- Port `PaymentGateway` (interface) : `createPayment(order) → { redirectUrl, gatewayOrderId }`, `verify(gatewayOrderId) → status`, `parseCallback(payload, signature) → event`.
-- Adaptateurs : `MonetiqueAdapter` (selon doc client) + `MockGateway` (tests/dev).
-- `payments` module NestJS : 
-  - `POST /payments/checkout` (school admin / super-admin) → crée `PaymentTransaction PENDING` + URL passerelle.
-  - `GET /payments/return` (retour navigateur) → re-vérifie le statut côté serveur (jamais confiance au retour seul).
-  - `POST /payments/callback` (webhook S2S) : **vérif signature**, idempotent, source de vérité → met `PAID` + active/renouvelle `TenantSubscription`.
-  - `GET /subscriptions/me` (état abonnement du tenant).
-- Sécurité : montants serveur uniquement (jamais depuis le client), vérif signature webhook, idempotence (`idempotencyKey`/`gatewayOrderId` unique), aucun secret/PAN en log.
-- Tests : unit (mapping statut, idempotence, refus montant client) ; e2e via `MockGateway` (checkout → callback signé → abonnement ACTIVE) ; isolation étendue aux 3 modèles.
+**Architecture (port + adaptateurs)** :
+- Port `PaymentGateway` : `createPayment({ orderNumber, amountMillimes, currency, returnUrl, failUrl, language, description }) → { gatewayOrderId, redirectUrl }`, `getStatus(gatewayOrderId) → { orderStatus, raw }`, `refund(gatewayOrderId, amountMillimes)`, `reverse(gatewayOrderId)`.
+- Adaptateurs : `ClicToPayGateway` (REST `register.do`/`getOrderStatus.do`/`reverse.do`/`refund.do`, auth user/pwd, `currency=788`, montant millimes = `Decimal × 1000`) + `MockGateway` (tests/dev).
+- `payments` module NestJS :
+  - `POST /payments/checkout` (school-admin/super-admin) → crée `PaymentTransaction PENDING` avec `orderNumber` unique → `register.do` → renvoie `redirectUrl` (formUrl).
+  - `GET /payments/return` (retour navigateur) → **re-vérifie via `getOrderStatus.do`** (jamais confiance au retour) → redirige UI succès/échec.
+  - `GET /payments/callback` (S2S ClicToPay) : **répond 200 immédiatement**, idempotent sur `(mdOrder, operation)`, puis `getOrderStatus.do` comme vérité → `PAID`/`FAILED` + active/renouvelle `TenantSubscription`. IP allowlist ClicToPay.
+  - `GET /subscriptions/me` (état abonnement).
+- Sécurité : montants calculés **serveur** (jamais depuis le client) ; `orderNumber`/`gatewayOrderId` unique = idempotence ; aucun secret/PAN/`jsonParams` en log ; HTTPS only.
+- Tests : unit (TND→millimes, mapping `OrderStatus`, idempotence callback, refus montant client) ; e2e via `MockGateway` (checkout → callback → `getStatus`=2 → abonnement ACTIVE) ; isolation étendue aux 3 modèles.
 
-### PR-6 — Branchement réel monétique + page facturation
-- Implémenter `MonetiqueAdapter` selon la doc (PR-0). Cartes de test → un cycle complet en env de test.
-- UI : page **Abonnement/Facturation** (choix plan, état, historique transactions, bouton payer → redirection) côté school-admin ; **MRR/analytics réels** côté SUPER_ADMIN (remplace les « À venir »).
-- Webhook prod + monitoring (échecs de paiement → `PAST_DUE`).
+### PR-6 — Recette ClicToPay (test réel) + page facturation
+- `ClicToPayGateway` branché sur `https://test.clictopay.com/rest` avec credentials test → **cycle complet en recette** (paiement OK/KO/annulation/remboursement), cartes de test ClicToPay.
+- Callback URL configurée au portail marchand → `/payments/callback` ; vérifier réception + idempotence.
+- UI : page **Abonnement/Facturation** (choix plan, état, historique transactions, bouton payer → redirection `formUrl`) côté school-admin ; **MRR/analytics réels** côté SUPER_ADMIN (remplace les « À venir »).
+- Monitoring : échec/timeout → `PAST_DUE` ; réconciliation `orderId↔orderNumber↔statut`.
+- **Dépendance ops (hors code)** : pages de paiement hébergées (ZIP XHTML brandé) + activation marchand + recette banque — à mener en parallèle avec Monétique Tunisie (contacts en doc).
 
 ### PR-7 — Nettoyage anti-démo + modules front manquants
 - Remplacer les **12 fallbacks `DEMO_*`** (absences, notes, évaluations, bulletins, emploi du temps, paiements, inscriptions, réglages) par états **loading/empty/error+retry** (jamais de faux silencieux).
@@ -129,7 +134,8 @@ Compléter le flux SUPER_ADMIN (spec white-label) pour matcher la vision :
 - [ ] SMS opérationnel ; couverture e2e des parcours critiques.
 
 ## Séquencement & dépendances
-PR-1 → PR-2 (déploiement dépend de la prod saine) → PR-3/PR-4 (parallélisables) → **PR-5 puis PR-6 (PR-6 bloquée par la doc monétique)** → PR-7/PR-8 (parallélisables) → PR-9 → PR-10.
+PR-1 → PR-2 (déploiement dépend de la prod saine) → PR-3/PR-4 (parallélisables) → **PR-5 (code + mock, livrable seul)** → **PR-6 (recette ClicToPay : dépend des credentials test + activation marchand côté banque, pas du code)** → PR-7/PR-8 (parallélisables) → PR-9 → PR-10.
+> Doc passerelle : ✅ disponible. Reste à obtenir de la banque : **credentials test ClicToPay** + activation marchand + (pour récurrence) activation **bindings**.
 
 ## Hors-périmètre (assumé)
 GPS transport temps réel, moteur fiscal paie (CNSS/IRPP), offline mobile avancé, WhatsApp (option), multi-devise hors TND.
