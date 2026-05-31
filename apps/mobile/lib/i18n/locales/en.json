@@ -1,0 +1,32 @@
+{
+  "onboarding": {
+    "title": "Welcome to Klasso",
+    "subtitle": "Enter your school code",
+    "placeholder": "School code (e.g. victor-hugo)",
+    "continue": "Continue",
+    "loading": "Checking...",
+    "errorNotFound": "School not found. Check the code.",
+    "errorNetwork": "Network error. Try again."
+  },
+  "auth": {
+    "title": "Sign in",
+    "email": "Email address",
+    "password": "Password",
+    "submit": "Sign in",
+    "loading": "Signing in...",
+    "errorInvalid": "Incorrect email or password.",
+    "changeSchool": "Change school",
+    "errorNetwork": "Network error. Try again."
+  },
+  "dashboard": {
+    "greeting": "Hello, {{name}}",
+    "role": "Role: {{role}}",
+    "persona": "Persona: {{persona}}",
+    "logout": "Sign out"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred.",
+    "retry": "Retry"
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "common": {
+    "appName": "Klasso",
+    "tagline": "School in the digital age",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "error": "Error",
+    "success": "Success"
+  },
+  "landing": {
+    "hero": {
+      "title": "School in the digital age",
+      "subtitle": "— without the complexity",
+      "description": "The SaaS platform that manages your school's students, parents, teachers and finances, all in one place.",
+      "descriptionUpgraded": "The SaaS platform built for Tunisian schools — students, parents, teachers, finances. In a single dashboard.",
+      "ctaPrimary": "Request a free demo",
+      "ctaSecondary": "Sign in",
+      "subtitleAr": "المدرسة في عصر رقمي",
+      "trustStrip": "EU + TN hosting · GDPR-ready · FR/AR support · No commitment",
+      "photoAlt": "Classroom of a Tunisian primary school, golden light"
+    },
+    "stats": {
+      "items": {
+        "rgpd": { "value": "100", "suffix": "%", "label": "GDPR compliance", "sublabel": "and multi-tenant isolation" },
+        "modules": { "value": "4", "suffix": "", "label": "Modules on the roadmap", "sublabel": "delivered in 2026" },
+        "languages": { "value": "2", "suffix": "×2", "label": "Bilingual FR · العربية", "sublabel": "Web · Mobile" }
+      }
+    },
+    "schoolSegments": {
+      "title": "For every type of school",
+      "subtitle": "Klasso adapts to your educational structure.",
+      "items": {
+        "kindergarten": { "name": "Kindergartens", "ageRange": "Preschool · ages 3 to 5", "description": "Flexible enrolment, suited to short schedules. Photos, parents, attendance." },
+        "primary": { "name": "Primary schools", "ageRange": "Grade 1 → 5 · ages 6 to 11", "description": "Academic tracking, term report cards, communication books." },
+        "mixed": { "name": "Mixed schools", "ageRange": "Preschool + Primary", "description": "Consolidated overview for multi-level school groups." }
+      }
+    },
+    "benefits": {
+      "title": "Why Klasso",
+      "intro": "No more scraps of paper, no more Excel files forgotten on a USB stick. Klasso makes visible what was scattered, automatic what was repetitive, and collaborative what was silent.",
+      "items": {
+        "time": { "title": "Time savings", "description": "Repetitive tasks (roll calls, attendance, report cards) in a few clicks." },
+        "paperless": { "title": "Zero paper", "description": "All student records and report cards online. Real savings, a real green gesture." },
+        "mobileParents": { "title": "Mobile-first for parents", "description": "Parents see information on their phone — available from summer 2026." },
+        "rgpd": { "title": "European GDPR", "description": "Tested multi-tenant isolation, audit logs, export and right to be forgotten." },
+        "support": { "title": "Support in French and Arabic", "description": "Our team replies within 24 business hours, in your language." },
+        "migration": { "title": "Migration from Excel", "description": "Bulk CSV import. Your existing data, intact, in 1 click." }
+      }
+    },
+    "dashboardMockup": {
+      "title": "Your whole school, at a glance",
+      "subtitle": "Sample preview — Sidi Bou Saïd Primary School",
+      "greeting": "Hello Ms. Hadia 👋",
+      "kpis": {
+        "students": "Enrolled students",
+        "classes": "Active classes",
+        "attendance": "Average attendance",
+        "alerts": "Alerts"
+      },
+      "activity": {
+        "title": "Recent activity",
+        "items": [
+          "5 new students enrolled this week",
+          "Second-term report card available on March 15",
+          "2 unexcused absences to resolve"
+        ]
+      },
+      "cta": "View all students →"
+    },
+    "modules": {
+      "title": "Available modules and roadmap",
+      "subtitle": "Klasso grows every quarter. Here is what you get today and what is coming soon.",
+      "items": {
+        "students": { "name": "Students", "status": "Available" },
+        "parents": { "name": "Parents", "status": "Summer 2026" },
+        "teachers": { "name": "Teachers", "status": "Summer 2026" },
+        "billing": { "name": "Billing", "status": "Autumn 2026" },
+        "cantine": { "name": "Canteen & Transport", "status": "2027" },
+        "health": { "name": "Health & Wellbeing", "status": "2027" }
+      }
+    },
+    "trust": {
+      "title": "A platform you can trust",
+      "items": {
+        "rgpd": { "title": "GDPR-ready", "description": "Tested multi-tenant isolation, audit logs, export and deletion of user data.", "proof": "GDPR compliant · 2026" },
+        "hosting": { "title": "Secure hosting", "description": "European servers (Neon, Vercel) + local CDN. Daily backups.", "proof": "EU + TN edge · Daily backups" },
+        "support": { "title": "Bilingual support", "description": "FR/AR team, response within 24 business hours.", "proof": "Mon-Fri · 9am–5pm GMT+1" },
+        "updates": { "title": "Continuous updates", "description": "New features every month, with no action required from you.", "proof": "Last update: 3 days ago" }
+      }
+    },
+    "pricing": {
+      "title": "Simple, per-student pricing",
+      "subtitle": "Prices excl. tax in TND. Annual commitment. 30-day trial, no credit card.",
+      "popular": "Most popular",
+      "tiers": {
+        "starter": { "name": "Starter", "price": "5", "unit": "TND / student / month", "limit": "Up to 50 students", "features": ["Full student CRUD", "Basic communication", "Email support"] },
+        "standard": { "name": "Standard", "price": "4", "unit": "TND / student / month", "limit": "Up to 200 students", "features": ["Everything in Starter", "Bulk CSV import", "Student photos", "Multi-role (teachers, staff, parents)", "Priority support"] },
+        "pro": { "name": "Pro", "price": "3", "unit": "TND / student / month", "limit": "Unlimited students", "features": ["Everything in Standard", "Personalised onboarding", "99.9% SLA", "API access"] }
+      },
+      "cta": "Request a demo"
+    },
+    "demoForm": {
+      "title": "Request a demo",
+      "subtitle": "A member of our team will contact you within 24 business hours.",
+      "fields": {
+        "firstName": "First name",
+        "lastName": "Last name",
+        "email": "Work email",
+        "phone": "Phone (optional)",
+        "schoolName": "School name",
+        "studentsCount": "Approximate number of students",
+        "message": "Message (optional)"
+      },
+      "studentsCountOptions": {
+        "lt50": "Fewer than 50",
+        "50to200": "Between 50 and 200",
+        "200to500": "Between 200 and 500",
+        "gt500": "More than 500"
+      },
+      "submit": "Send request",
+      "submitting": "Sending…",
+      "success": {
+        "title": "Request received ✓",
+        "description": "You will receive a confirmation email. A member of our team will contact you within 24 business hours."
+      },
+      "errors": {
+        "validation": "Please check the fields in red.",
+        "turnstile": "Anti-spam verification failed. Please try again.",
+        "rateLimit": "Too many requests. Try again in an hour.",
+        "network": "Network error. Check your connection.",
+        "generic": "An error occurred. Please try again."
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "subtitle": "Everything principals ask us during demos.",
+      "items": [
+        { "q": "How much does Klasso cost for my school?", "a": "Pricing is per student per month (5/4/3 TND excl. tax by tier). Annual commitment, 30-day free trial with no card." },
+        { "q": "How do I migrate from my current Excel files?", "a": "Klasso includes bulk CSV import (V2 — already delivered). You download a template, fill it in, and upload it: all your students are created in seconds." },
+        { "q": "Can parents access Klasso?", "a": "A dedicated parent app is coming in summer 2026 (roadmap V3). In the meantime, you can export per-student PDF records." },
+        { "q": "Does my data stay in Tunisia?", "a": "Primary hosting in the EU (Neon Postgres + Vercel) + edge CDN with a local TN point of presence. Encrypted daily backups." },
+        { "q": "How does Klasso protect minors' data?", "a": "Strict GDPR, multi-tenant isolation verified by automated tests, audit logs, and right to be forgotten implemented on the API side." },
+        { "q": "Is there an annual commitment?", "a": "The displayed prices assume an annual commitment (quarterly payment available on the Pro plan). 30-day free trial before any billing." },
+        { "q": "Does Klasso work in Arabic?", "a": "Yes — full FR + AR interface with native RTL support. You switch languages at any time via the footer selector." },
+        { "q": "How do you train my teaching team?", "a": "Personalised onboarding included in the Pro plan (video call + documentation). Starter/Standard plans: email support + tutorial videos." }
+      ]
+    },
+    "ctaFinal": {
+      "title": "Ready to try Klasso in your school?",
+      "subtitle": "Free 30-minute demo. No commitment.",
+      "ctaPrimary": "Request a demo →",
+      "ctaSecondary": "Sign in"
+    },
+    "footer": {
+      "tagline": "School in the digital age",
+      "chapters": {
+        "title": "Chapters",
+        "items": [
+          { "label": "Chapter I — Students", "status": "Available" },
+          { "label": "Chapter II — Parents", "status": "Summer 2026" },
+          { "label": "Chapter III — Teachers", "status": "Summer 2026" },
+          { "label": "Chapter IV — Finance", "status": "Autumn 2026" }
+        ]
+      },
+      "links": {
+        "product": "Product",
+        "pricing": "Pricing",
+        "modules": "Modules",
+        "faq": "FAQ",
+        "contact": "Contact",
+        "legal": "Legal",
+        "terms": "Legal notice",
+        "privacy": "GDPR policy"
+      },
+      "language": "Language",
+      "address": "ESS Klasso, Tunis · contact@klasso.tn",
+      "edition": "Edition v0.5.0",
+      "copyright": "© {year} Klasso — All rights reserved"
+    }
+  }
+}

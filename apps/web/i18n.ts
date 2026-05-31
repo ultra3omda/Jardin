@@ -2,11 +2,10 @@ import { getRequestConfig } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
 /**
- * V0 Landing — i18n configuration.
- * Sub-paths /fr (default) and /ar (RTL).
- * Migrated from V1.5 i18n/request.ts which was single-locale FR.
+ * i18n configuration. Sub-paths /fr (default), /en, /es, /ar (RTL).
+ * RTL is derived from the locale in app/[locale]/layout.tsx (dir="rtl" for ar).
  */
-export const locales = ['fr', 'ar'] as const;
+export const locales = ['fr', 'en', 'es', 'ar'] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'fr';
 

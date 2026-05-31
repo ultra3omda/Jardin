@@ -1,0 +1,185 @@
+{
+  "common": {
+    "appName": "Klasso",
+    "tagline": "La escuela en la era digital",
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "retry": "Reintentar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "error": "Error",
+    "success": "Éxito"
+  },
+  "landing": {
+    "hero": {
+      "title": "La escuela en la era digital",
+      "subtitle": "— sin complejidad",
+      "description": "La plataforma SaaS que gestiona alumnos, padres, profesores y finanzas de tu centro, todo en un solo lugar.",
+      "descriptionUpgraded": "La plataforma SaaS pensada para las escuelas tunecinas — alumnos, padres, profesores, finanzas. En un único panel.",
+      "ctaPrimary": "Solicitar una demo gratuita",
+      "ctaSecondary": "Iniciar sesión",
+      "subtitleAr": "المدرسة في عصر رقمي",
+      "trustStrip": "Alojamiento UE + TN · Conforme RGPD · Soporte FR/AR · Sin compromiso",
+      "photoAlt": "Aula de una escuela primaria tunecina, luz dorada"
+    },
+    "stats": {
+      "items": {
+        "rgpd": { "value": "100", "suffix": "%", "label": "Cumplimiento del RGPD", "sublabel": "y aislamiento multiinquilino" },
+        "modules": { "value": "4", "suffix": "", "label": "Módulos en la hoja de ruta", "sublabel": "entregados en 2026" },
+        "languages": { "value": "2", "suffix": "×2", "label": "Bilingüe FR · العربية", "sublabel": "Web · Móvil" }
+      }
+    },
+    "schoolSegments": {
+      "title": "Para cada tipo de centro",
+      "subtitle": "Klasso se adapta a tu estructura pedagógica.",
+      "items": {
+        "kindergarten": { "name": "Guarderías", "ageRange": "Infantil · 3 a 5 años", "description": "Matrícula flexible, adaptada a horarios cortos. Fotos, padres, asistencia." },
+        "primary": { "name": "Escuelas primarias", "ageRange": "1.º → 5.º · 6 a 11 años", "description": "Seguimiento pedagógico, boletines trimestrales, cuadernos de comunicación." },
+        "mixed": { "name": "Centros mixtos", "ageRange": "Infantil + Primaria", "description": "Vista consolidada para grupos escolares multinivel." }
+      }
+    },
+    "benefits": {
+      "title": "Por qué Klasso",
+      "intro": "Se acabaron los trozos de papel y las hojas de Excel olvidadas en un USB. Klasso hace visible lo que estaba disperso, automático lo que era repetitivo y colaborativo lo que era silencioso.",
+      "items": {
+        "time": { "title": "Ahorro de tiempo", "description": "Las tareas repetitivas (pasar lista, asistencia, boletines) en pocos clics." },
+        "paperless": { "title": "Cero papel", "description": "Todas las fichas de alumnos y boletines en línea. Ahorro real, gesto ecológico real." },
+        "mobileParents": { "title": "Móvil primero para padres", "description": "Los padres ven la información en su teléfono — disponible desde el verano de 2026." },
+        "rgpd": { "title": "RGPD europeo", "description": "Aislamiento multiinquilino probado, registros de auditoría, exportación y derecho al olvido." },
+        "support": { "title": "Soporte en francés y árabe", "description": "Nuestro equipo responde en menos de 24 horas hábiles, en tu idioma." },
+        "migration": { "title": "Migración desde Excel", "description": "Importación masiva por CSV. Tus datos existentes, intactos, en 1 clic." }
+      }
+    },
+    "dashboardMockup": {
+      "title": "Todo tu centro, de un vistazo",
+      "subtitle": "Vista de ejemplo — Escuela Primaria Sidi Bou Saïd",
+      "greeting": "Hola, Sra. Hadia 👋",
+      "kpis": {
+        "students": "Alumnos matriculados",
+        "classes": "Clases activas",
+        "attendance": "Asistencia media",
+        "alerts": "Alertas"
+      },
+      "activity": {
+        "title": "Actividad reciente",
+        "items": [
+          "5 nuevos alumnos matriculados esta semana",
+          "Boletín del segundo trimestre disponible el 15 de marzo",
+          "2 ausencias sin justificar por regularizar"
+        ]
+      },
+      "cta": "Ver todos los alumnos →"
+    },
+    "modules": {
+      "title": "Módulos disponibles y hoja de ruta",
+      "subtitle": "Klasso crece cada trimestre. Esto es lo que obtienes hoy y lo que llega pronto.",
+      "items": {
+        "students": { "name": "Alumnos", "status": "Disponible" },
+        "parents": { "name": "Padres", "status": "Verano 2026" },
+        "teachers": { "name": "Profesores", "status": "Verano 2026" },
+        "billing": { "name": "Facturación", "status": "Otoño 2026" },
+        "cantine": { "name": "Comedor y Transporte", "status": "2027" },
+        "health": { "name": "Salud y Bienestar", "status": "2027" }
+      }
+    },
+    "trust": {
+      "title": "Una plataforma de confianza",
+      "items": {
+        "rgpd": { "title": "Conforme al RGPD", "description": "Aislamiento multiinquilino probado, registros de auditoría, exportación y eliminación de datos de usuarios.", "proof": "Conforme RGPD · 2026" },
+        "hosting": { "title": "Alojamiento seguro", "description": "Servidores europeos (Neon, Vercel) + CDN local. Copias de seguridad diarias.", "proof": "Edge UE + TN · Copias diarias" },
+        "support": { "title": "Soporte bilingüe", "description": "Equipo FR/AR, respuesta en 24 horas hábiles.", "proof": "Lun-Vie · 9h–17h GMT+1" },
+        "updates": { "title": "Actualizaciones continuas", "description": "Nuevas funciones cada mes, sin que tengas que hacer nada.", "proof": "Última actualización: hace 3 días" }
+      }
+    },
+    "pricing": {
+      "title": "Precios simples, por alumno",
+      "subtitle": "Precios sin impuestos en TND. Compromiso anual. Prueba de 30 días sin tarjeta.",
+      "popular": "El más popular",
+      "tiers": {
+        "starter": { "name": "Starter", "price": "5", "unit": "TND / alumno / mes", "limit": "Hasta 50 alumnos", "features": ["CRUD completo de alumnos", "Comunicación básica", "Soporte por email"] },
+        "standard": { "name": "Standard", "price": "4", "unit": "TND / alumno / mes", "limit": "Hasta 200 alumnos", "features": ["Todo lo de Starter", "Importación masiva por CSV", "Fotos de alumnos", "Multirrol (profesores, personal, padres)", "Soporte prioritario"] },
+        "pro": { "name": "Pro", "price": "3", "unit": "TND / alumno / mes", "limit": "Alumnos ilimitados", "features": ["Todo lo de Standard", "Onboarding personalizado", "SLA 99,9%", "Acceso a la API"] }
+      },
+      "cta": "Solicitar una demo"
+    },
+    "demoForm": {
+      "title": "Solicitar una demo",
+      "subtitle": "Un miembro de nuestro equipo te contactará en menos de 24 horas hábiles.",
+      "fields": {
+        "firstName": "Nombre",
+        "lastName": "Apellido",
+        "email": "Email profesional",
+        "phone": "Teléfono (opcional)",
+        "schoolName": "Nombre del centro",
+        "studentsCount": "Número aproximado de alumnos",
+        "message": "Mensaje (opcional)"
+      },
+      "studentsCountOptions": {
+        "lt50": "Menos de 50",
+        "50to200": "Entre 50 y 200",
+        "200to500": "Entre 200 y 500",
+        "gt500": "Más de 500"
+      },
+      "submit": "Enviar solicitud",
+      "submitting": "Enviando…",
+      "success": {
+        "title": "Solicitud recibida ✓",
+        "description": "Recibirás una confirmación por email. Un miembro de nuestro equipo te contactará en 24 horas hábiles."
+      },
+      "errors": {
+        "validation": "Comprueba los campos en rojo.",
+        "turnstile": "Falló la verificación antispam. Inténtalo de nuevo.",
+        "rateLimit": "Demasiadas solicitudes. Inténtalo de nuevo en una hora.",
+        "network": "Error de red. Comprueba tu conexión.",
+        "generic": "Se produjo un error. Inténtalo de nuevo."
+      }
+    },
+    "faq": {
+      "title": "Preguntas frecuentes",
+      "subtitle": "Todo lo que los directores nos preguntan en las demos.",
+      "items": [
+        { "q": "¿Cuánto cuesta Klasso para mi escuela?", "a": "El precio es por alumno y mes (5/4/3 TND sin impuestos según el nivel). Compromiso anual, 30 días de prueba gratis sin tarjeta." },
+        { "q": "¿Cómo migro desde mis archivos de Excel actuales?", "a": "Klasso incluye importación masiva por CSV (V2 — ya entregada). Descargas una plantilla, la rellenas y la subes: todos tus alumnos se crean en segundos." },
+        { "q": "¿Pueden los padres acceder a Klasso?", "a": "Una app dedicada para padres llega en el verano de 2026 (V3 de la hoja de ruta). Mientras tanto, puedes exportar fichas PDF por alumno." },
+        { "q": "¿Mis datos permanecen en Túnez?", "a": "Alojamiento primario en la UE (Neon Postgres + Vercel) + CDN edge con punto de presencia local en TN. Copias de seguridad diarias cifradas." },
+        { "q": "¿Cómo protege Klasso los datos de los menores?", "a": "RGPD estricto, aislamiento multiinquilino verificado por pruebas automatizadas, registros de auditoría y derecho al olvido implementado en la API." },
+        { "q": "¿Hay un compromiso anual?", "a": "Los precios mostrados suponen un compromiso anual (pago trimestral posible en el plan Pro). 30 días de prueba gratis antes de cualquier facturación." },
+        { "q": "¿Funciona Klasso en árabe?", "a": "Sí — interfaz completa FR + AR con soporte RTL nativo. Cambias de idioma en cualquier momento desde el selector del pie de página." },
+        { "q": "¿Cómo formáis a mi equipo docente?", "a": "Onboarding personalizado incluido en el plan Pro (videollamada + documentación). Planes Starter/Standard: soporte por email + vídeos tutoriales." }
+      ]
+    },
+    "ctaFinal": {
+      "title": "¿Lista para probar Klasso en tu escuela?",
+      "subtitle": "Demo gratuita de 30 minutos. Sin compromiso.",
+      "ctaPrimary": "Solicitar una demo →",
+      "ctaSecondary": "Iniciar sesión"
+    },
+    "footer": {
+      "tagline": "La escuela en la era digital",
+      "chapters": {
+        "title": "Capítulos",
+        "items": [
+          { "label": "Capítulo I — Alumnos", "status": "Disponible" },
+          { "label": "Capítulo II — Padres", "status": "Verano 2026" },
+          { "label": "Capítulo III — Profesores", "status": "Verano 2026" },
+          { "label": "Capítulo IV — Finanzas", "status": "Otoño 2026" }
+        ]
+      },
+      "links": {
+        "product": "Producto",
+        "pricing": "Precios",
+        "modules": "Módulos",
+        "faq": "FAQ",
+        "contact": "Contacto",
+        "legal": "Legal",
+        "terms": "Aviso legal",
+        "privacy": "Política RGPD"
+      },
+      "language": "Idioma",
+      "address": "ESS Klasso, Túnez · contact@klasso.tn",
+      "edition": "Edición v0.5.0",
+      "copyright": "© {year} Klasso — Todos los derechos reservados"
+    }
+  }
+}
