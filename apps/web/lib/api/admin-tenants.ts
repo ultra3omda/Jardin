@@ -91,3 +91,37 @@ export async function resendInvite(token: string, id: string): Promise<InviteSum
     auth: token,
   });
 }
+
+export type PersonaRole = 'TEACHER' | 'PARENT' | 'STAFF';
+
+export interface PersonaInput {
+  role: PersonaRole;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface SeededPersona {
+  email: string;
+  role: PersonaRole;
+  inviteUrl: string;
+  inviteExpiresAt: string;
+}
+
+export interface SeedPersonasResponse {
+  created: SeededPersona[];
+  skipped: string[];
+}
+
+/** Seed initial teacher/parent/staff accounts (+ invites) for a freshly created tenant. */
+export async function seedTenantPersonas(
+  token: string,
+  tenantId: string,
+  personas: PersonaInput[],
+): Promise<SeedPersonasResponse> {
+  return jsonRequest(`${ADMIN_BASE}/tenants/${tenantId}/personas`, {
+    method: 'POST',
+    auth: token,
+    body: JSON.stringify({ personas }),
+  });
+}
