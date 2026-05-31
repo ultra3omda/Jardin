@@ -1,0 +1,32 @@
+{
+  "onboarding": {
+    "title": "Bienvenido a Klasso",
+    "subtitle": "Introduce el código de tu centro",
+    "placeholder": "Código de escuela (ej.: victor-hugo)",
+    "continue": "Continuar",
+    "loading": "Verificando...",
+    "errorNotFound": "Centro no encontrado. Comprueba el código.",
+    "errorNetwork": "Error de red. Inténtalo de nuevo."
+  },
+  "auth": {
+    "title": "Iniciar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "submit": "Iniciar sesión",
+    "loading": "Conectando...",
+    "errorInvalid": "Correo o contraseña incorrectos.",
+    "changeSchool": "Cambiar de escuela",
+    "errorNetwork": "Error de red. Inténtalo de nuevo."
+  },
+  "dashboard": {
+    "greeting": "Hola, {{name}}",
+    "role": "Rol: {{role}}",
+    "persona": "Persona: {{persona}}",
+    "logout": "Cerrar sesión"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Se produjo un error.",
+    "retry": "Reintentar"
+  }
+}
