@@ -7,10 +7,13 @@ import {
   DisciplineSeverity,
   InfirmaryOutcome,
   Locale,
+  MealRegime,
   PrismaClient,
   RelationType,
+  RouteStatus,
   Sex,
   TenantType,
+  TransportDirection,
   UserRole,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -455,6 +458,97 @@ async function seedDisciplineAndHealth(tenantId: string): Promise<void> {
   }
 }
 
+// -- T2b PR-3 -- Cantine + Transport fixtures --------------------------------
+const T2B_MENU_DATES = [new Date('2026-05-25'), new Date('2026-05-26')];
+const T2B_ROUTE_NAME = 'Ligne A — Nord';
+
+/**
+ * Seed idempotent Cantine + Transport fixtures for one tenant.
+ * No-op for tenants without students. Re-runs create no duplicates: menus,
+ * meal plans and assignments are guarded by their unique constraints via
+ * upsert; the bus route by a (tenantId, name) findFirst guard.
+ */
+async function seedCanteenAndTransport(tenantId: string): Promise<void> {
+  const someStudents = await prisma.student.findMany({
+    where: { tenantId, deletedAt: null },
+    take: 3,
+  });
+  if (someStudents.length === 0) return;
+  const student = someStudents[0];
+
+  for (const date of T2B_MENU_DATES) {
+    await prisma.canteenMenu.upsert({
+      where: { unique_canteen_menu_per_day: { tenantId, date } },
+      update: {},
+      create: {
+        id: createId(),
+        tenantId,
+        date,
+        starter: 'Salade de carottes',
+        main: 'Poulet rôti, riz',
+        dessert: 'Yaourt nature',
+        vegetarian: 'Gratin de légumes',
+      },
+    });
+  }
+
+  await prisma.mealPlan.upsert({
+    where: { unique_meal_plan_per_student: { tenantId, studentId: student.id } },
+    update: {},
+    create: {
+      id: createId(),
+      tenantId,
+      studentId: student.id,
+      regime: MealRegime.STANDARD,
+      allergies: 'Arachides',
+    },
+  });
+
+  const existingRoute = await prisma.busRoute.findFirst({
+    where: { tenantId, name: T2B_ROUTE_NAME },
+  });
+  const route =
+    existingRoute ??
+    (await prisma.busRoute.create({
+      data: {
+        id: createId(),
+        tenantId,
+        name: T2B_ROUTE_NAME,
+        driverName: 'Rachid Hammouda',
+        vehiclePlate: 'TN-247-B',
+        departureTime: '07:15',
+        returnTime: '16:45',
+        status: RouteStatus.ACTIVE,
+        capacity: 30,
+        stops: {
+          create: [
+            { id: createId(), tenantId, name: 'Ariana Centre', order: 0, pickupTime: '07:15' },
+            { id: createId(), tenantId, name: 'La Soukra', order: 1, pickupTime: '07:25' },
+          ],
+        },
+      },
+    }));
+
+  await prisma.transportAssignment.upsert({
+    where: {
+      unique_transport_assignment: {
+        tenantId,
+        studentId: student.id,
+        routeId: route.id,
+        direction: TransportDirection.BOTH,
+      },
+    },
+    update: {},
+    create: {
+      id: createId(),
+      tenantId,
+      studentId: student.id,
+      routeId: route.id,
+      direction: TransportDirection.BOTH,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -549,6 +643,10 @@ async function main(): Promise<void> {
   // -- T2b PR-2 -- Discipline + Santé fixtures (idempotent, students-only) ---
   await seedDisciplineAndHealth(ecole.id);
   await seedDisciplineAndHealth(maternelle.id);
+
+  // -- T2b PR-3 -- Cantine + Transport fixtures (idempotent, students-only) --
+  await seedCanteenAndTransport(ecole.id);
+  await seedCanteenAndTransport(maternelle.id);
 
   // -- Demo requests (platform-level, event-sourced in AuditLog) -------------
   await seedDemoRequests(prisma, superAdmin.id);
