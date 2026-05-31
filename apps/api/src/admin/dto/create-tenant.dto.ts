@@ -7,6 +7,7 @@ import {
   IsHexColor,
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   MaxLength,
   MinLength,
@@ -65,6 +66,30 @@ export class CreateTenantDto {
   @IsOptional()
   @IsHexColor()
   primaryColor?: string;
+
+  @ApiPropertyOptional({ example: '#4f46e5', description: 'Couleur primaire (hover) HEX.' })
+  @IsOptional()
+  @IsHexColor()
+  primaryHover?: string;
+
+  @ApiPropertyOptional({ example: '#1e1b4b', description: 'Couleur secondaire HEX.' })
+  @IsOptional()
+  @IsHexColor()
+  secondaryColor?: string;
+
+  @ApiPropertyOptional({ example: '#4f46e5', description: 'Couleur d’en-tête des emails HEX.' })
+  @IsOptional()
+  @IsHexColor()
+  emailHeaderColor?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL du logo (bucket R2 public). Stockée telle quelle dans le brand.',
+    maxLength: 512,
+  })
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  @MaxLength(512)
+  logoUrl?: string;
 
   @ApiPropertyOptional({
     default: true,

@@ -182,6 +182,80 @@ describe('Admin Tenants (e2e)', () => {
     expect(slugs).toContain('v18-alpha');
     expect(slugs).toContain('v18-beta');
   });
+
+  it('persists full branding (colors + logo) provided at creation', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/admin/tenants')
+      .set('Authorization', `Bearer ${superAdminAccessToken}`)
+      .send({
+        name: 'École Brand',
+        slug: 'v18-brand',
+        type: 'PRIMARY_SCHOOL',
+        adminEmail: `brand@${TEST_EMAIL_DOMAIN}`,
+        adminFirstName: 'B',
+        adminLastName: 'R',
+        primaryColor: '#112233',
+        secondaryColor: '#445566',
+        logoUrl: 'https://pub-demo.r2.dev/logo.png',
+        sendInviteEmail: false,
+      })
+      .expect(201);
+    expect(res.body.tenant.brand?.primaryColor).toBe('#112233');
+    expect(res.body.tenant.brand?.secondaryColor).toBe('#445566');
+    expect(res.body.tenant.brand?.logoUrl).toBe('https://pub-demo.r2.dev/logo.png');
+  });
+
+  it('SUPER_ADMIN seeds initial personas (teacher/parent/staff) + invites', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/admin/tenants')
+      .set('Authorization', `Bearer ${superAdminAccessToken}`)
+      .send({
+        name: 'École Personas',
+        slug: 'v18-personas',
+        type: 'PRIMARY_SCHOOL',
+        adminEmail: `padmin@${TEST_EMAIL_DOMAIN}`,
+        adminFirstName: 'P',
+        adminLastName: 'A',
+        sendInviteEmail: false,
+      })
+      .expect(201);
+    const tenantId = created.body.tenant.id as string;
+
+    const res = await request(app.getHttpServer())
+      .post(`/api/admin/tenants/${tenantId}/personas`)
+      .set('Authorization', `Bearer ${superAdminAccessToken}`)
+      .send({
+        personas: [
+          { role: 'TEACHER', email: `t1@${TEST_EMAIL_DOMAIN}`, firstName: 'Sami', lastName: 'Hadj' },
+          { role: 'PARENT', email: `p1@${TEST_EMAIL_DOMAIN}`, firstName: 'Salma', lastName: 'Ben Ali' },
+          { role: 'STAFF', email: `s1@${TEST_EMAIL_DOMAIN}`, firstName: 'Omar', lastName: 'Mansour' },
+          { role: 'TEACHER', email: `padmin@${TEST_EMAIL_DOMAIN}`, firstName: 'Dup', lastName: 'Licate' },
+        ],
+      })
+      .expect(201);
+
+    expect(res.body.created).toHaveLength(3);
+    expect(res.body.skipped).toContain(`padmin@${TEST_EMAIL_DOMAIN}`); // already the admin
+    const roles = (res.body.created as Array<{ role: string }>).map((c) => c.role).sort();
+    expect(roles).toEqual(['PARENT', 'STAFF', 'TEACHER']);
+    expect(res.body.created[0].inviteUrl).toMatch(/\/register\?token=/);
+
+    const users = await prisma.user.findMany({ where: { tenantId } });
+    expect(users.map((u) => u.role).sort()).toEqual([
+      'PARENT',
+      'SCHOOL_ADMIN',
+      'STAFF',
+      'TEACHER',
+    ]);
+  });
+
+  it('returns 404 seeding personas for an unknown tenant', async () => {
+    await request(app.getHttpServer())
+      .post('/api/admin/tenants/does-not-exist/personas')
+      .set('Authorization', `Bearer ${superAdminAccessToken}`)
+      .send({ personas: [{ role: 'TEACHER', email: `x@${TEST_EMAIL_DOMAIN}`, firstName: 'X', lastName: 'Y' }] })
+      .expect(404);
+  });
 });
 
 /**

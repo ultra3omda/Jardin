@@ -23,10 +23,22 @@ import {
   InviteSummaryDto,
   TenantSummaryDto,
 } from './dto/tenant-response.dto';
+import { SeedPersonasDto, SeedPersonasResponseDto } from './dto/seed-personas.dto';
 import { RESERVED_SLUGS } from './constants/reserved-slugs';
 
 const INVITE_EXPIRES_IN_DAYS = 14;
 const PLACEHOLDER_PASSWORD_BYTES = 32;
+
+/** Builds a TenantBrand from the optional brand fields of CreateTenantDto. */
+function buildBrandFromDto(dto: CreateTenantDto): TenantBrand | null {
+  const overrides: Partial<TenantBrand> = {};
+  if (dto.primaryColor) overrides.primaryColor = dto.primaryColor;
+  if (dto.primaryHover) overrides.primaryHover = dto.primaryHover;
+  if (dto.secondaryColor) overrides.secondaryColor = dto.secondaryColor;
+  if (dto.emailHeaderColor) overrides.emailHeaderColor = dto.emailHeaderColor;
+  if (dto.logoUrl) overrides.logoUrl = dto.logoUrl;
+  return Object.keys(overrides).length > 0 ? { ...DEFAULT_BRAND, ...overrides } : null;
+}
 
 @Injectable()
 export class TenantsService {
@@ -62,9 +74,7 @@ export class TenantsService {
       });
     }
 
-    const brand: TenantBrand | null = dto.primaryColor
-      ? { ...DEFAULT_BRAND, primaryColor: dto.primaryColor }
-      : null;
+    const brand = buildBrandFromDto(dto);
 
     const randomBytes = webcrypto.getRandomValues(new Uint8Array(PLACEHOLDER_PASSWORD_BYTES));
     const placeholderPassword = await bcrypt.hash(
@@ -157,6 +167,80 @@ export class TenantsService {
       } satisfies InviteSummaryDto,
       inviteEmailSent,
     };
+  }
+
+  /**
+   * Seeds initial persona accounts (TEACHER/PARENT/STAFF) for an existing tenant.
+   * Each persona is pre-created as a User (placeholder password) + an invite token,
+   * mirroring the SCHOOL_ADMIN onboarding. Emails already present are skipped.
+   */
+  async seedPersonas(
+    superAdminId: string,
+    tenantId: string,
+    dto: SeedPersonasDto,
+    meta: RequestMeta = {},
+  ): Promise<SeedPersonasResponseDto> {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { id: tenantId, deletedAt: null },
+    });
+    if (!tenant) throw new NotFoundException({ code: 'TENANT_NOT_FOUND' });
+
+    const created: SeedPersonasResponseDto['created'] = [];
+    const skipped: string[] = [];
+    const rounds = this.config.get<number>('bcryptRounds', 12);
+
+    for (const p of dto.personas) {
+      const email = p.email.trim().toLowerCase();
+      const exists = await this.prisma.user.findFirst({ where: { tenantId, email } });
+      if (exists) {
+        skipped.push(email);
+        continue;
+      }
+      const randomBytes = webcrypto.getRandomValues(new Uint8Array(PLACEHOLDER_PASSWORD_BYTES));
+      const passwordHash = await bcrypt.hash(Buffer.from(randomBytes).toString('hex'), rounds);
+      await this.prisma.user.create({
+        data: {
+          id: createId(),
+          tenantId,
+          email,
+          passwordHash,
+          firstName: p.firstName.trim(),
+          lastName: p.lastName.trim(),
+          role: p.role,
+          locale: tenant.locale,
+        },
+      });
+      const invite = await this.inviteTokens.create(
+        superAdminId,
+        { invitedEmail: email, intendedRole: p.role, expiresInDays: INVITE_EXPIRES_IN_DAYS },
+        meta,
+      );
+      created.push({
+        email,
+        role: p.role,
+        inviteUrl: invite.url,
+        inviteExpiresAt: invite.expiresAt,
+      });
+    }
+
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          id: createId(),
+          action: 'admin.tenant.personas_seeded',
+          resource: 'tenant',
+          tenantId: null,
+          userId: superAdminId,
+          metadata: { tenantId, created: created.length, skipped: skipped.length },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        },
+      });
+    } catch (err) {
+      this.logger.error(`audit admin.tenant.personas_seeded failed: ${String(err)}`);
+    }
+
+    return { created, skipped };
   }
 
   async list(): Promise<TenantSummaryDto[]> {

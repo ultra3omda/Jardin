@@ -27,6 +27,7 @@ import {
   InviteSummaryDto,
   TenantSummaryDto,
 } from './dto/tenant-response.dto';
+import { SeedPersonasDto, SeedPersonasResponseDto } from './dto/seed-personas.dto';
 import { TenantsService } from './tenants.service';
 
 @ApiTags('admin')
@@ -60,6 +61,19 @@ export class TenantsController {
   @ApiResponse({ status: 200, type: TenantSummaryDto })
   async getById(@Param('id') id: string): Promise<TenantSummaryDto> {
     return this.tenants.getById(id);
+  }
+
+  @Post(':id/personas')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Seed initial teacher/parent/staff accounts + invites (SUPER_ADMIN only)' })
+  @ApiResponse({ status: 201, type: SeedPersonasResponseDto })
+  async seedPersonas(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: SeedPersonasDto,
+    @Req() req: Request,
+  ): Promise<SeedPersonasResponseDto> {
+    return this.tenants.seedPersonas(user.id, id, dto, getRequestMeta(req));
   }
 
   @Post(':id/resend-invite')
