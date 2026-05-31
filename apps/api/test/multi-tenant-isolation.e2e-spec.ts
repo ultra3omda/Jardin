@@ -99,6 +99,8 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     await prisma.safetyDrill.deleteMany({});
     // T2c V1 — HR contracts (userId FK → before user delete).
     await prisma.employmentContract.deleteMany({});
+    // T2c V2 — leave requests (userId/reviewedById FK → before user delete).
+    await prisma.leaveRequest.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -383,6 +385,9 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     // T2c V1 — RH contrats
     let contractAId: string;
     let contractBId: string;
+    // T2c V2 — RH congés
+    let leaveAId: string;
+    let leaveBId: string;
 
     beforeEach(async () => {
       // Parent tenants/users/students already exist (global beforeEach ran).
@@ -632,6 +637,30 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
             type: 'CDD',
             startDate: new Date('2025-09-01T00:00:00.000Z'),
             baseSalary: new Prisma.Decimal('1800.000'),
+          },
+        ],
+      });
+
+      // T2c V2 — one LeaveRequest per tenant (userId → per-tenant admin).
+      leaveAId = createId();
+      leaveBId = createId();
+      await prisma.leaveRequest.createMany({
+        data: [
+          {
+            id: leaveAId,
+            tenantId: tenantAId,
+            userId: userAId,
+            type: 'PAID',
+            startDate: new Date('2026-07-01T00:00:00.000Z'),
+            endDate: new Date('2026-07-05T00:00:00.000Z'),
+          },
+          {
+            id: leaveBId,
+            tenantId: tenantBId,
+            userId: userBId,
+            type: 'SICK',
+            startDate: new Date('2026-07-01T00:00:00.000Z'),
+            endDate: new Date('2026-07-03T00:00:00.000Z'),
           },
         ],
       });
@@ -953,6 +982,31 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
         async () => {
           const stolen = await tenantPrisma.client.employmentContract.findFirst({
             where: { id: contractBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    // ── T2c V2 — RH congés isolation ─────────────────────────────────────────
+
+    it('LeaveRequest.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.leaveRequest.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(leaveAId);
+        },
+      );
+    });
+
+    it('LeaveRequest.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.leaveRequest.findFirst({
+            where: { id: leaveBId },
           });
           expect(stolen).toBeNull();
         },
