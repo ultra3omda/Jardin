@@ -50,9 +50,10 @@ export default function EnrollmentsPage() {
     try {
       const data = await apiFetch<{ items: Student[] }>('/api/students?pageSize=100', token);
       const items = data.items ?? [];
-      setStudents(items.length > 0 ? items : DEMO_STUDENTS_ENROLL);
+      setStudents(items);
     } catch {
-      setStudents(DEMO_STUDENTS_ENROLL);
+      setStudents([]);
+      setError(true);
     }
     finally { setLoading(false); }
   }, [token]);

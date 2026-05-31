@@ -25,9 +25,10 @@ export default function NotesPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { items: ClassOption[] };
       const items = data.items ?? [];
-      setClasses(items.length > 0 ? items : DEMO_CLASSES_NOTES);
+      setClasses(items);
     } catch {
-      setClasses(DEMO_CLASSES_NOTES);
+      setClasses([]);
+      setError(true);
     } finally {
       setLoading(false);
     }

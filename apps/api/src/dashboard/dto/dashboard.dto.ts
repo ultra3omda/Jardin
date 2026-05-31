@@ -1,0 +1,30 @@
+export interface RecentGradeDto {
+  studentName: string;
+  subject: string;
+  score: number;
+  maxScore: number;
+  date: string;
+}
+
+export interface AnnouncementBriefDto {
+  title: string;
+  date: string;
+}
+
+export interface AbsentStudentDto {
+  name: string;
+  className: string;
+  status: 'ABSENT' | 'LATE' | 'EXCUSED';
+}
+
+export interface DashboardOverviewDto {
+  totalStudents: number;
+  classesCount: number;
+  attendanceRate: number | null;
+  averageGrade: number | null;
+  pendingPayments: number;
+  recentGrades: RecentGradeDto[];
+  announcements: AnnouncementBriefDto[];
+  todayAttendance: { present: number; absent: number; late: number; excused: number };
+  absentStudents: AbsentStudentDto[];
+}
