@@ -116,6 +116,13 @@ model Tenant {
   infirmaryVisits     InfirmaryVisit[]
   vaccinations        Vaccination[]
 
+  // T2b PR-3 — Cantine & Transport
+  canteenMenus         CanteenMenu[]
+  mealPlans            MealPlan[]
+  busRoutes            BusRoute[]
+  busStops             BusStop[]
+  transportAssignments TransportAssignment[]
+
   @@index([slug])
   @@map("tenants")
 }
@@ -327,6 +334,10 @@ model Student {
   healthRecords       HealthRecord[] // 1/student enforced by @@unique
   infirmaryVisits     InfirmaryVisit[]
   vaccinations        Vaccination[]
+
+  // T2b PR-3 — Cantine & Transport
+  mealPlans            MealPlan[] // 1/student via @@unique
+  transportAssignments TransportAssignment[]
 
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
@@ -963,4 +974,131 @@ model Vaccination {
 
   @@index([tenantId, studentId])
   @@map("vaccinations")
+}
+
+// ============================================================================
+// T2b — Cantine + Transport
+// ============================================================================
+
+enum MealRegime {
+  STANDARD
+  VEGETARIAN
+  HALAL
+  NO_PORK
+  OTHER
+}
+
+enum RouteStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TransportDirection {
+  MORNING
+  EVENING
+  BOTH
+}
+
+// T2b — Menu de cantine du jour (niveau école, pas de lien élève).
+model CanteenMenu {
+  id         String    @id
+  tenantId   String
+  date       DateTime  @db.Date
+  starter    String?   @db.VarChar(200)
+  main       String?   @db.VarChar(200)
+  dessert    String?   @db.VarChar(200)
+  vegetarian String?   @db.VarChar(200)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date], name: "unique_canteen_menu_per_day")
+  @@map("canteen_menus")
+}
+
+// T2b — Régime alimentaire d'un élève (1 seul par élève).
+model MealPlan {
+  id        String     @id
+  tenantId  String
+  studentId String
+  regime    MealRegime @default(STANDARD)
+  allergies String?    @db.Text
+  active    Boolean    @default(true)
+  notes     String?    @db.VarChar(500)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, studentId], name: "unique_meal_plan_per_student")
+  @@index([tenantId])
+  @@map("meal_plans")
+}
+
+// T2b — Ligne de bus scolaire (niveau école) + arrêts + affectations.
+model BusRoute {
+  id            String      @id
+  tenantId      String
+  name          String      @db.VarChar(120)
+  driverName    String?     @db.VarChar(160)
+  driverPhone   String?     @db.VarChar(40)
+  vehiclePlate  String?     @db.VarChar(20)
+  departureTime String      @db.VarChar(5)
+  returnTime    String?     @db.VarChar(5)
+  status        RouteStatus @default(ACTIVE)
+  capacity      Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stops       BusStop[]
+  assignments TransportAssignment[]
+
+  @@index([tenantId])
+  @@map("bus_routes")
+}
+
+// T2b — Arrêt d'une ligne de bus.
+model BusStop {
+  id         String   @id
+  tenantId   String
+  routeId    String
+  name       String   @db.VarChar(120)
+  order      Int
+  pickupTime String?  @db.VarChar(5)
+  createdAt  DateTime @default(now())
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  route       BusRoute              @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  assignments TransportAssignment[]
+
+  @@index([tenantId, routeId])
+  @@map("bus_stops")
+}
+
+// T2b — Affectation d'un élève à une ligne (et arrêt) pour une direction.
+model TransportAssignment {
+  id        String             @id
+  tenantId  String
+  studentId String
+  routeId   String
+  stopId    String?
+  direction TransportDirection @default(BOTH)
+  createdAt DateTime           @default(now())
+  deletedAt DateTime?
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  route   BusRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop    BusStop? @relation(fields: [stopId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, studentId, routeId, direction], name: "unique_transport_assignment")
+  @@index([tenantId, routeId])
+  @@index([tenantId, studentId])
+  @@map("transport_assignments")
 }

@@ -1,74 +1,65 @@
-﻿type RouteStatus = 'ON_TIME' | 'DELAYED' | 'INACTIVE';
+'use client';
 
-interface BusRoute {
-  id: string; name: string; driver: string; plate: string;
-  studentsCount: number; stops: string[]; departureTime: string; returnTime: string;
-  status: RouteStatus;
-}
+import { useState } from 'react';
+import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { RoutesSection } from '@/components/transport/routes-section';
+import { AssignmentsSection } from '@/components/transport/assignments-section';
 
-const BUS_ROUTES: BusRoute[] = [
-  {
-    id: '1', name: 'Ligne A — Nord', driver: 'Rachid Hammouda', plate: 'TN-247-B',
-    studentsCount: 22, stops: ['Ariana Centre', 'La Soukra', 'El Menzah VI', 'École'],
-    departureTime: '07:15', returnTime: '16:45', status: 'ON_TIME',
-  },
-  {
-    id: '2', name: 'Ligne B — Sud', driver: 'Nabil Ferchichi', plate: 'TN-183-C',
-    studentsCount: 18, stops: ['Bardo', 'Cité Sportive', 'El Manar II', 'École'],
-    departureTime: '07:30', returnTime: '17:00', status: 'DELAYED',
-  },
-  {
-    id: '3', name: 'Ligne C — Ouest', driver: 'Sami Lassoued', plate: 'TN-521-A',
-    studentsCount: 15, stops: ['Manouba', 'Douar Hicher', 'Essijoumi', 'École'],
-    departureTime: '07:00', returnTime: '16:30', status: 'INACTIVE',
-  },
+type TransportTab = 'routes' | 'assignments';
+
+const TABS: { key: TransportTab; label: string }[] = [
+  { key: 'routes', label: 'Lignes' },
+  { key: 'assignments', label: 'Affectations' },
 ];
 
-const STATUS_CONFIG: Record<RouteStatus, { label: string; color: string }> = {
-  ON_TIME: { label: 'À l\'heure', color: 'bg-green-100 text-green-800' },
-  DELAYED: { label: 'Retardé', color: 'bg-yellow-100 text-yellow-800' },
-  INACTIVE: { label: 'Inactif', color: 'bg-slate-100 text-slate-600' },
-};
-
 export default function TransportPage() {
+  const user = useAuthStore((s) => s.user);
+  const [tab, setTab] = useState<TransportTab>('routes');
+
+  // RBAC (spec §4.8) : SCHOOL_ADMIN + STAFF manage, PARENT reads, TEACHER no access.
+  const canManage = user?.role === 'SCHOOL_ADMIN' || user?.role === 'STAFF';
+  const canView = canManage || user?.role === 'PARENT';
+
+  if (!canView) {
+    return (
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-2xl font-bold tracking-tight text-navy-900">Transport scolaire</h1>
+        </header>
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Accès non autorisé : la gestion du transport est réservée à la direction et au personnel.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Transport scolaire</h1>
-        <p className="text-sm text-muted-foreground">{BUS_ROUTES.filter((r) => r.status !== 'INACTIVE').length} lignes actives — {BUS_ROUTES.reduce((s, r) => s + r.studentsCount, 0)} élèves transportés.</p>
-      </header>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {BUS_ROUTES.map((route) => {
-          const sc = STATUS_CONFIG[route.status];
-          return (
-            <div key={route.id} className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-navy-900">{route.name}</h3>
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${sc.color}`}>
-                  {sc.label}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><p className="text-xs text-muted-foreground">Chauffeur</p><p className="font-medium">{route.driver}</p></div>
-                <div><p className="text-xs text-muted-foreground">Immatriculation</p><p className="font-mono">{route.plate}</p></div>
-                <div><p className="text-xs text-muted-foreground">Départ</p><p>{route.departureTime}</p></div>
-                <div><p className="text-xs text-muted-foreground">Retour</p><p>{route.returnTime}</p></div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Arrêts ({route.studentsCount} élèves)</p>
-                <div className="flex flex-wrap gap-1">
-                  {route.stops.map((stop, i) => (
-                    <span key={stop} className={`rounded-full px-2 py-0.5 text-xs ${i === route.stops.length - 1 ? 'bg-amber-100 text-amber-800 font-medium' : 'bg-slate-100 text-slate-700'}`}>
-                      {stop}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div
+        role="tablist"
+        aria-label="Sections transport"
+        className="flex flex-wrap gap-2 border-b border-slate-200"
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? 'border-navy-700 text-navy-900'
+                : 'border-transparent text-muted-foreground hover:text-navy-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
+
+      {tab === 'routes' && <RoutesSection canManage={canManage} />}
+      {tab === 'assignments' && <AssignmentsSection canManage={canManage} />}
     </div>
   );
 }

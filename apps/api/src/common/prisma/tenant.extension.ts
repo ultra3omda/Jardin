@@ -18,6 +18,11 @@ export const TENANT_SCOPED_MODELS = [
   'HealthRecord', // T2b PR-2
   'InfirmaryVisit', // T2b PR-2
   'Vaccination', // T2b PR-2
+  'CanteenMenu', // T2b PR-3
+  'MealPlan', // T2b PR-3
+  'BusRoute', // T2b PR-3
+  'BusStop', // T2b PR-3
+  'TransportAssignment', // T2b PR-3
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 
