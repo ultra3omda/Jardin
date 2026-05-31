@@ -86,6 +86,12 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     await prisma.infirmaryVisit.deleteMany({});
     await prisma.vaccination.deleteMany({});
     await prisma.healthRecord.deleteMany({});
+    // T2b PR-3 — transport/canteen (FK-safe: assignments → stops → routes).
+    await prisma.transportAssignment.deleteMany({});
+    await prisma.busStop.deleteMany({});
+    await prisma.busRoute.deleteMany({});
+    await prisma.mealPlan.deleteMany({});
+    await prisma.canteenMenu.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -351,6 +357,15 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     let visitBId: string;
     let vaccinationAId: string;
     let vaccinationBId: string;
+    // T2b PR-3 — cantine + transport
+    let menuAId: string;
+    let menuBId: string;
+    let mealPlanAId: string;
+    let mealPlanBId: string;
+    let routeAId: string;
+    let routeBId: string;
+    let assignmentAId: string;
+    let assignmentBId: string;
 
     beforeEach(async () => {
       // Parent tenants/users/students already exist (global beforeEach ran).
@@ -471,6 +486,44 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
             administeredAt: new Date('2025-09-15'),
             recordedById: userBId,
           },
+        ],
+      });
+
+      // T2b PR-3 — one CanteenMenu / MealPlan / BusRoute / TransportAssignment per tenant.
+      menuAId = createId();
+      menuBId = createId();
+      mealPlanAId = createId();
+      mealPlanBId = createId();
+      routeAId = createId();
+      routeBId = createId();
+      assignmentAId = createId();
+      assignmentBId = createId();
+
+      await prisma.canteenMenu.createMany({
+        data: [
+          { id: menuAId, tenantId: tenantAId, date: new Date('2026-05-25'), main: 'A' },
+          { id: menuBId, tenantId: tenantBId, date: new Date('2026-05-25'), main: 'B' },
+        ],
+      });
+
+      await prisma.mealPlan.createMany({
+        data: [
+          { id: mealPlanAId, tenantId: tenantAId, studentId: studentAId },
+          { id: mealPlanBId, tenantId: tenantBId, studentId: studentBId },
+        ],
+      });
+
+      await prisma.busRoute.createMany({
+        data: [
+          { id: routeAId, tenantId: tenantAId, name: 'Ligne A', departureTime: '07:15' },
+          { id: routeBId, tenantId: tenantBId, name: 'Ligne B', departureTime: '07:15' },
+        ],
+      });
+
+      await prisma.transportAssignment.createMany({
+        data: [
+          { id: assignmentAId, tenantId: tenantAId, studentId: studentAId, routeId: routeAId },
+          { id: assignmentBId, tenantId: tenantBId, studentId: studentBId, routeId: routeBId },
         ],
       });
     });
@@ -611,6 +664,94 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
         async () => {
           const stolen = await tenantPrisma.client.vaccination.findFirst({
             where: { id: vaccinationBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    // ── T2b PR-3 — Cantine + Transport isolation ─────────────────────────────
+
+    it('CanteenMenu.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.canteenMenu.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(menuAId);
+        },
+      );
+    });
+
+    it('CanteenMenu.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.canteenMenu.findFirst({ where: { id: menuBId } });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('MealPlan.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.mealPlan.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(mealPlanAId);
+        },
+      );
+    });
+
+    it('MealPlan.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.mealPlan.findFirst({ where: { id: mealPlanBId } });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('BusRoute.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.busRoute.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(routeAId);
+        },
+      );
+    });
+
+    it('BusRoute.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.busRoute.findFirst({ where: { id: routeBId } });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    it('TransportAssignment.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.transportAssignment.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(assignmentAId);
+        },
+      );
+    });
+
+    it('TransportAssignment.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.transportAssignment.findFirst({
+            where: { id: assignmentBId },
           });
           expect(stolen).toBeNull();
         },
