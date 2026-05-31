@@ -19,38 +19,40 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
 
-    /* Indigo-600 - primary brand color for Vague 1+ */
-    --primary: 238 76% 56%;
+    /* Médina moderne (B) — teal primary brand, used app-wide (buttons, rings) */
+    --primary: 181 83% 28%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 192 30% 96%;
+    --secondary-foreground: 192 45% 16%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 38 92% 95%;
+    --accent-foreground: 28 60% 28%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --ring: 238 76% 56%;
+    --ring: 181 83% 28%;
 
-    --radius: 0.5rem;
+    --radius: 0.85rem;
 
-    /* Tunisian Editorial palette (V0.5) — OKLCH for perceptual color uniformity */
-    --paper:        0.97 0.012 75;     /* warm cream paper */
-    --paper-2:      0.94 0.018 75;     /* darker cream for alt sections */
-    --paper-edge:   0.88 0.025 70;     /* borders, dividers */
+    /* ── Médina moderne palette (B, 2026) — landing + app theme ───────────── */
+    /* Cream paper, cool teal brand, deep navy ink, warm amber accent. */
+    --paper:        0.975 0.008 190;   /* cool cream paper */
+    --paper-2:      0.945 0.012 190;   /* alt section */
+    --paper-edge:   0.90 0.015 195;    /* borders, dividers */
 
-    --ink:          0.20 0.018 60;     /* deep warm black */
-    --ink-2:        0.45 0.025 65;     /* muted earth brown */
-    --ink-mute:     0.60 0.018 70;     /* faded ink */
+    --ink:          0.26 0.035 215;    /* deep navy ink (headings) */
+    --ink-2:        0.45 0.030 210;    /* muted */
+    --ink-mute:     0.58 0.022 205;    /* faded */
 
-    --terracotta:   0.58 0.16 38;      /* Tunisian clay (PRIMARY brand on landing) */
-    --terracotta-2: 0.50 0.18 35;      /* darker hover state */
-    --ochre:        0.75 0.12 75;      /* saharan ochre (badges) */
-    --teal-deep:    0.40 0.06 195;     /* Mediterranean deep teal (Pricing featured) */
-    --olive:        0.52 0.08 115;     /* olive (trust/success) */
-    --rose-dust:    0.72 0.08 30;      /* dusty rose (AR accents) */
+    /* "terracotta" token kept as the landing PRIMARY name, now médina teal */
+    --terracotta:   0.60 0.105 192;    /* médina teal (landing primary) */
+    --terracotta-2: 0.52 0.110 193;    /* darker hover */
+    --ochre:        0.80 0.135 80;     /* warm amber accent (badges) */
+    --teal-deep:    0.42 0.075 200;    /* deep teal (featured) */
+    --olive:        0.55 0.085 160;    /* success/trust (teal-green) */
+    --rose-dust:    0.72 0.09 30;      /* dusty coral (AR accents) */
 
     /* ─── V7 sidebar navy (Klasio-inspired) ──────────────── */
     --navy-900: #0f1419;
@@ -101,9 +103,9 @@
     --border: 216 34% 17%;
     --input: 216 34% 17%;
 
-    /* Indigo-400 - lighter primary in dark mode for contrast */
-    --primary: 234 89% 74%;
-    --primary-foreground: 224 71% 4%;
+    /* Médina teal — lighter in dark mode for contrast */
+    --primary: 180 65% 55%;
+    --primary-foreground: 192 60% 8%;
 
     --secondary: 222.2 47.4% 11.2%;
     --secondary-foreground: 210 40% 98%;
@@ -114,7 +116,7 @@
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --ring: 234 89% 74%;
+    --ring: 180 65% 55%;
   }
 }
 
