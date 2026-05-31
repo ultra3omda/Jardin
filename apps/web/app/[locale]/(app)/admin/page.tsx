@@ -41,13 +41,18 @@ export default function AdminOverviewPage() {
             <p className="mt-1 text-3xl font-semibold text-navy-900">{card.value}</p>
           </div>
         ))}
-        <div className="rounded-xl border border-dashed bg-white p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Revenu mensuel récurrent (MRR)</p>
-          <p className="mt-1 text-lg font-medium text-muted-foreground">À venir</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            La facturation par abonnement n&apos;est pas encore activée.
-          </p>
-        </div>
+        {overview.data && (
+          <div className="rounded-xl border bg-white p-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">Revenu mensuel récurrent (MRR)</p>
+            <p className="mt-1 text-3xl font-semibold text-navy-900">
+              {Number(overview.data.mrr).toLocaleString('fr-FR')} {overview.data.currency}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {overview.data.activeSubscriptions} abonnement(s) actif(s) · ARR{' '}
+              {Number(overview.data.arr).toLocaleString('fr-FR')} {overview.data.currency}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 flex flex-wrap gap-3">

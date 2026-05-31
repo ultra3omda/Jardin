@@ -9,6 +9,7 @@ function buildPrisma() {
     user: { count: vi.fn(), findMany: vi.fn() },
     student: { count: vi.fn() },
     auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+    tenantSubscription: { findMany: vi.fn().mockResolvedValue([]) },
   };
 }
 
@@ -34,7 +35,33 @@ describe('PlatformAnalyticsService', () => {
       ])
       .mockResolvedValueOnce([]);
     const result = await service.overview();
-    expect(result).toEqual({ tenants: 3, users: 12, students: 40, pendingDemoRequests: 1 });
+    expect(result).toEqual({
+      tenants: 3,
+      users: 12,
+      students: 40,
+      pendingDemoRequests: 1,
+      activeSubscriptions: 0,
+      mrr: '0',
+      arr: '0',
+      currency: 'TND',
+    });
+  });
+
+  it('overview computes MRR from active subscriptions (yearly normalised /12)', async () => {
+    prisma.tenant.count.mockResolvedValue(2);
+    prisma.user.count.mockResolvedValue(5);
+    prisma.student.count.mockResolvedValue(10);
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    const { Prisma } = await import('@prisma/client');
+    prisma.tenantSubscription.findMany.mockResolvedValueOnce([
+      { plan: { price: new Prisma.Decimal('49.000'), interval: 'MONTHLY' } },
+      { plan: { price: new Prisma.Decimal('490.000'), interval: 'YEARLY' } }, // → 40.833/mo
+    ]);
+    const result = await service.overview();
+    expect(result.activeSubscriptions).toBe(2);
+    // 49 + 490/12 = 89.833...
+    expect(Number(result.mrr)).toBeCloseTo(89.833, 2);
+    expect(result.currency).toBe('TND');
   });
 
   it('analytics builds cumulative monthly growth and distributions', async () => {
