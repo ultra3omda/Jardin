@@ -128,6 +128,9 @@ model Tenant {
   visitorLogs       VisitorLog[]
   safetyDrills      SafetyDrill[]
 
+  // T2c V1 — RH / Paie
+  employmentContracts EmploymentContract[]
+
   @@index([slug])
   @@map("tenants")
 }
@@ -178,6 +181,7 @@ model User {
   securityResolved           SecurityIncident[]        @relation("SecurityResolved") // T2b PR-4
   visitorLogsRecorded        VisitorLog[]              @relation("VisitorLogsRecorded") // T2b PR-4
   safetyDrillsRecorded       SafetyDrill[]             @relation("SafetyDrillsRecorded") // T2b PR-4
+  employmentContracts        EmploymentContract[]      @relation("EmploymentContracts") // T2c V1
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -1203,4 +1207,46 @@ model SafetyDrill {
 
   @@index([tenantId, conductedAt])
   @@map("safety_drills")
+}
+
+// ============================================================================
+// T2c V1 — RH / Paie : Contrats de travail
+// ============================================================================
+
+enum ContractType {
+  CDI
+  CDD
+  VACATAIRE
+  TEMPS_PARTIEL
+}
+
+enum ContractStatus {
+  ACTIVE
+  ENDED
+}
+
+// T2c V1 — Contrat de travail d'un employé (User TEACHER/STAFF).
+// Montants en Decimal(10,3)/TND, aligné sur la finance V8. PII : jamais loggé.
+model EmploymentContract {
+  id          String         @id
+  tenantId    String
+  userId      String
+  type        ContractType
+  status      ContractStatus @default(ACTIVE)
+  startDate   DateTime
+  endDate     DateTime?
+  baseSalary  Decimal        @db.Decimal(10, 3)
+  currency    String         @default("TND")
+  weeklyHours Int?
+  notes       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee User   @relation("EmploymentContracts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, userId])
+  @@map("employment_contracts")
 }

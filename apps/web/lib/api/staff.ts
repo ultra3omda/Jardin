@@ -57,3 +57,22 @@ export function listParents(token: string): Promise<ListStaffResponse> {
 export function createParent(token: string, input: StaffCreateInput): Promise<StaffMutationResult> {
   return apiPost<StaffMutationResult>(PARENTS, token, input);
 }
+
+// ── Staff (T2c V1) ────────────────────────────────────────────────────────────
+const STAFF = '/api/users/staff';
+
+export function listStaff(token: string): Promise<ListStaffResponse> {
+  return apiGet<ListStaffResponse>(STAFF, token);
+}
+
+export function createStaff(token: string, input: StaffCreateInput): Promise<StaffMutationResult> {
+  return apiPost<StaffMutationResult>(STAFF, token, input);
+}
+
+export function updateStaff(token: string, id: string, input: StaffEditInput): Promise<StaffUser> {
+  return apiPatch<StaffUser>(`${STAFF}/${id}`, token, input);
+}
+
+export function deleteStaff(token: string, id: string): Promise<void> {
+  return apiDelete(`${STAFF}/${id}`, token);
+}

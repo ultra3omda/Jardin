@@ -20,6 +20,7 @@ import {
   DisciplineSeverity,
   InfirmaryOutcome,
   Locale,
+  Prisma,
   Sex,
   TenantType,
   UserRole,
@@ -96,6 +97,8 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     await prisma.securityIncident.deleteMany({});
     await prisma.visitorLog.deleteMany({});
     await prisma.safetyDrill.deleteMany({});
+    // T2c V1 — HR contracts (userId FK → before user delete).
+    await prisma.employmentContract.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -377,6 +380,9 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     let visitorBId: string;
     let drillAId: string;
     let drillBId: string;
+    // T2c V1 — RH contrats
+    let contractAId: string;
+    let contractBId: string;
 
     beforeEach(async () => {
       // Parent tenants/users/students already exist (global beforeEach ran).
@@ -602,6 +608,30 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
             type: 'LOCKDOWN',
             conductedAt: new Date('2026-05-22T11:00:00.000Z'),
             recordedById: userBId,
+          },
+        ],
+      });
+
+      // T2c V1 — one EmploymentContract per tenant (userId → per-tenant admin).
+      contractAId = createId();
+      contractBId = createId();
+      await prisma.employmentContract.createMany({
+        data: [
+          {
+            id: contractAId,
+            tenantId: tenantAId,
+            userId: userAId,
+            type: 'CDI',
+            startDate: new Date('2025-09-01T00:00:00.000Z'),
+            baseSalary: new Prisma.Decimal('2200.000'),
+          },
+          {
+            id: contractBId,
+            tenantId: tenantBId,
+            userId: userBId,
+            type: 'CDD',
+            startDate: new Date('2025-09-01T00:00:00.000Z'),
+            baseSalary: new Prisma.Decimal('1800.000'),
           },
         ],
       });
@@ -899,6 +929,31 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
         { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
         async () => {
           const stolen = await tenantPrisma.client.safetyDrill.findFirst({ where: { id: drillBId } });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+
+    // ── T2c V1 — RH contrats isolation ───────────────────────────────────────
+
+    it('EmploymentContract.findMany returns only tenant A from tenant A context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const rows = await tenantPrisma.client.employmentContract.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(contractAId);
+        },
+      );
+    });
+
+    it('EmploymentContract.findFirst by tenant B id from tenant A context returns null', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.employmentContract.findFirst({
+            where: { id: contractBId },
+          });
           expect(stolen).toBeNull();
         },
       );

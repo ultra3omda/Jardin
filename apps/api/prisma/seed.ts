@@ -4,11 +4,13 @@ import { createId } from '@paralleldrive/cuid2';
 import {
   ActivityCategory,
   ChildMood,
+  ContractType,
   DisciplineSeverity,
   DrillType,
   InfirmaryOutcome,
   Locale,
   MealRegime,
+  Prisma,
   PrismaClient,
   RelationType,
   RouteStatus,
@@ -623,6 +625,55 @@ async function seedSecurity(tenantId: string): Promise<void> {
   }
 }
 
+// -- T2c V1 -- RH / Contrats fixtures -----------------------------------------
+// Fixed seed dates (deterministic — never Date.now()).
+const T2C_CONTRACT_START = new Date('2025-09-01T00:00:00.000Z');
+
+/**
+ * Seed idempotent employment contracts for a tenant's employees
+ * (TEACHER + STAFF). One ACTIVE contract per employee; re-runs no-op via
+ * a deterministic findFirst guard on userId. Salaries are Decimal/TND.
+ */
+async function seedHr(tenantId: string): Promise<void> {
+  const employees = await prisma.user.findMany({
+    where: {
+      tenantId,
+      role: { in: [UserRole.TEACHER, UserRole.STAFF] },
+      deletedAt: null,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  // Plausible base salaries (TND) cycled per employee role.
+  const teacherSalaries = ['2200.000', '2450.500', '2600.000', '2300.000'];
+  const staffSalary = '1650.000';
+  let teacherIdx = 0;
+
+  for (const employee of employees) {
+    const existing = await prisma.employmentContract.findFirst({
+      where: { tenantId, userId: employee.id },
+    });
+    if (existing) continue;
+
+    const isTeacher = employee.role === UserRole.TEACHER;
+    const baseSalary = isTeacher
+      ? teacherSalaries[teacherIdx++ % teacherSalaries.length]!
+      : staffSalary;
+
+    await prisma.employmentContract.create({
+      data: {
+        id: createId(),
+        tenantId,
+        userId: employee.id,
+        type: isTeacher ? ContractType.CDI : ContractType.CDD,
+        startDate: T2C_CONTRACT_START,
+        baseSalary: new Prisma.Decimal(baseSalary),
+        weeklyHours: isTeacher ? 35 : 40,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
@@ -725,6 +776,10 @@ async function main(): Promise<void> {
   // -- T2b PR-4 -- Sécurité fixtures (idempotent, admin-required) ------------
   await seedSecurity(ecole.id);
   await seedSecurity(maternelle.id);
+
+  // -- T2c V1 -- RH / Contrats (idempotent) ---------------------------------
+  await seedHr(ecole.id);
+  await seedHr(maternelle.id);
 
   // -- Demo requests (platform-level, event-sourced in AuditLog) -------------
   await seedDemoRequests(prisma, superAdmin.id);

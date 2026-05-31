@@ -35,6 +35,7 @@ import { JournalModule } from './journal/journal.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ParentRelationsModule } from './parent-relations/parent-relations.module';
+import { HrModule } from './hr/hr.module';
 import { SecurityModule } from './security/security.module';
 import { StudentsModule } from './students/students.module';
 import { SubjectsModule } from './subjects/subjects.module';
@@ -81,6 +82,7 @@ import { UsersModule } from './users/users.module';
     CanteenModule, // T2b PR-3
     TransportModule, // T2b PR-3
     SecurityModule, // T2b PR-4
+    HrModule, // T2c V1
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6

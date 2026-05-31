@@ -26,6 +26,7 @@ export const TENANT_SCOPED_MODELS = [
   'SecurityIncident', // T2b PR-4
   'VisitorLog', // T2b PR-4
   'SafetyDrill', // T2b PR-4
+  'EmploymentContract', // T2c V1
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 
