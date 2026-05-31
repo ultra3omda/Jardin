@@ -38,6 +38,7 @@ import { ParentRelationsModule } from './parent-relations/parent-relations.modul
 import { StudentsModule } from './students/students.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { TenantBrandModule } from './tenant-brand/tenant-brand.module';
+import { TransportModule } from './transport/transport.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -77,6 +78,7 @@ import { UsersModule } from './users/users.module';
     DisciplineModule, // T2b PR-2
     StudentHealthModule, // T2b PR-2
     CanteenModule, // T2b PR-3
+    TransportModule, // T2b PR-3
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6
