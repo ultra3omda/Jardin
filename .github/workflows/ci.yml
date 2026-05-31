@@ -108,11 +108,12 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter=@ecole-saas/api exec prisma generate
 
-      - name: Apply schema to CI database
-        # V1.5: we have proper migrations now, but db push remains the path
-        # for ephemeral CI databases — it builds the schema directly from
-        # schema.prisma without needing the migration history table.
-        run: pnpm --filter=@ecole-saas/api exec prisma db push --skip-generate --accept-data-loss
+      - name: Apply schema to CI database (production path — migrate deploy)
+        # Use migrate deploy (the prod start:prod path) so CI exercises the
+        # exact migration history and catches schema drift between
+        # prisma/migrations and schema.prisma (e.g. a column present in the
+        # schema but missing a migration). db push would mask such drift.
+        run: pnpm --filter=@ecole-saas/api exec prisma migrate deploy
 
       - name: Run API tests with coverage
         run: pnpm --filter=@ecole-saas/api test:cov
@@ -193,8 +194,8 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter=@ecole-saas/api exec prisma generate
 
-      - name: Apply schema to CI database (no migration files yet — use db push)
-        run: pnpm --filter=@ecole-saas/api exec prisma db push --skip-generate --accept-data-loss
+      - name: Apply schema to CI database (production path — migrate deploy)
+        run: pnpm --filter=@ecole-saas/api exec prisma migrate deploy
 
       - name: Build API
         run: pnpm --filter=@ecole-saas/api build
