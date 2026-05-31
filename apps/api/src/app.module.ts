@@ -11,6 +11,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { BulletinsModule } from './bulletins/bulletins.module';
+import { CanteenModule } from './canteen/canteen.module';
 import { DemoLoginModule } from './demo-login/demo-login.module';
 import { DemoRequestsModule } from './demo-requests/demo-requests.module';
 import { DisciplineModule } from './discipline/discipline.module';
@@ -75,6 +76,7 @@ import { UsersModule } from './users/users.module';
     ActivitiesModule, // T2b
     DisciplineModule, // T2b PR-2
     StudentHealthModule, // T2b PR-2
+    CanteenModule, // T2b PR-3
     GradePeriodsModule, // V6
     EvaluationsModule, // V6
     BulletinsModule, // V6
