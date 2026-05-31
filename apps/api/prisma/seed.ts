@@ -675,6 +675,67 @@ async function seedHr(tenantId: string): Promise<void> {
   }
 
   await seedLeaves(tenantId, employees);
+  await seedPayroll(tenantId, employees);
+}
+
+// -- T2c V3 -- RH / Paie fixtures ---------------------------------------------
+const T2C_PAYSLIP_PERIOD = '2026-04';
+const T2C_PAYSLIP_ISSUED_AT = new Date('2026-04-28T10:00:00.000Z');
+
+/**
+ * Seed an idempotent ISSUED payslip for the first employee of a tenant, computed
+ * from their ACTIVE contract + one earning component. No-op on re-run via a
+ * findFirst guard on (userId, period). MVP calc: gross = base + earnings,
+ * net = gross − deductions. Amounts are Decimal/TND.
+ */
+async function seedPayroll(
+  tenantId: string,
+  employees: ReadonlyArray<{ id: string }>,
+): Promise<void> {
+  const employee = employees[0];
+  if (!employee) return;
+
+  const contract = await prisma.employmentContract.findFirst({
+    where: { tenantId, userId: employee.id, status: 'ACTIVE', deletedAt: null },
+    orderBy: { startDate: 'desc' },
+  });
+  if (!contract) return;
+
+  const existing = await prisma.payslip.findFirst({
+    where: { tenantId, userId: employee.id, period: T2C_PAYSLIP_PERIOD },
+  });
+  if (existing) return;
+
+  const bonus = new Prisma.Decimal('120.000');
+  const gross = contract.baseSalary.add(bonus);
+  const deductions = new Prisma.Decimal('0.000');
+
+  const payslip = await prisma.payslip.create({
+    data: {
+      id: createId(),
+      tenantId,
+      userId: employee.id,
+      period: T2C_PAYSLIP_PERIOD,
+      baseSalary: contract.baseSalary,
+      grossSalary: gross,
+      totalDeductions: deductions,
+      netSalary: gross.sub(deductions),
+      currency: contract.currency,
+      status: 'ISSUED',
+      issuedAt: T2C_PAYSLIP_ISSUED_AT,
+    },
+  });
+
+  await prisma.payslipComponent.create({
+    data: {
+      id: createId(),
+      tenantId,
+      payslipId: payslip.id,
+      label: 'Prime de rendement',
+      kind: 'EARNING',
+      amount: bonus,
+    },
+  });
 }
 
 // -- T2c V2 -- RH / Congés fixtures -------------------------------------------

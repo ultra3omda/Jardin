@@ -95,3 +95,58 @@ export const createLeave = (token: string, input: CreateLeaveInput) =>
 export const reviewLeave = (token: string, id: string, input: ReviewLeaveInput) =>
   apiPost<LeaveRequest>(`${LEAVES}/${id}/review`, token, input);
 export const deleteLeave = (token: string, id: string) => apiDelete(`${LEAVES}/${id}`, token);
+
+// ─── Payslips (T2c V3) ────────────────────────────────────────────────────────
+export type PayslipStatus = 'DRAFT' | 'ISSUED';
+export type PayslipComponentKind = 'EARNING' | 'DEDUCTION';
+
+export interface PayslipComponent {
+  id: string;
+  label: string;
+  kind: PayslipComponentKind;
+  amount: string; // Decimal string (TND)
+}
+export interface Payslip {
+  id: string;
+  userId: string;
+  period: string;
+  baseSalary: string;
+  grossSalary: string;
+  totalDeductions: string;
+  netSalary: string;
+  currency: string;
+  status: PayslipStatus;
+  issuedAt: string | null;
+  notes: string | null;
+  components: PayslipComponent[];
+  createdAt: string;
+  updatedAt: string;
+}
+export interface ListPayslipsResponse {
+  items: Payslip[];
+  total: number;
+}
+export interface GeneratePayslipInput {
+  userId: string;
+  period: string;
+  notes?: string;
+}
+export interface AddPayslipComponentInput {
+  label: string;
+  kind: PayslipComponentKind;
+  amount: number;
+}
+
+const PAYSLIPS = '/api/hr/payslips';
+export const listPayslips = (token: string) => apiGet<ListPayslipsResponse>(PAYSLIPS, token);
+export const getPayslip = (token: string, id: string) =>
+  apiGet<Payslip>(`${PAYSLIPS}/${id}`, token);
+export const generatePayslip = (token: string, input: GeneratePayslipInput) =>
+  apiPost<Payslip>(PAYSLIPS, token, input);
+export const addPayslipComponent = (token: string, id: string, input: AddPayslipComponentInput) =>
+  apiPost<Payslip>(`${PAYSLIPS}/${id}/components`, token, input);
+export const deletePayslipComponent = (token: string, id: string, componentId: string) =>
+  apiDelete<Payslip>(`${PAYSLIPS}/${id}/components/${componentId}`, token);
+export const issuePayslip = (token: string, id: string) =>
+  apiPost<Payslip>(`${PAYSLIPS}/${id}/issue`, token, {});
+export const deletePayslip = (token: string, id: string) => apiDelete(`${PAYSLIPS}/${id}`, token);

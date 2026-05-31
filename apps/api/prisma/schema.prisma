@@ -131,6 +131,8 @@ model Tenant {
   // T2c V1 — RH / Paie
   employmentContracts EmploymentContract[]
   leaveRequests       LeaveRequest[] // T2c V2
+  payslips            Payslip[] // T2c V3
+  payslipComponents   PayslipComponent[] // T2c V3
 
   @@index([slug])
   @@map("tenants")
@@ -185,6 +187,7 @@ model User {
   employmentContracts        EmploymentContract[]      @relation("EmploymentContracts") // T2c V1
   leaveRequests              LeaveRequest[]            @relation("LeaveRequests") // T2c V2
   leaveReviews               LeaveRequest[]            @relation("LeaveReviews") // T2c V2
+  payslips                   Payslip[]                 @relation("Payslips") // T2c V3
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -1297,4 +1300,65 @@ model LeaveRequest {
   @@index([tenantId, userId])
   @@index([tenantId, status])
   @@map("leave_requests")
+}
+
+// ============================================================================
+// T2c V3 — RH / Paie : Bulletins de paie
+// ============================================================================
+
+enum PayslipStatus {
+  DRAFT
+  ISSUED
+}
+
+enum PayslipComponentKind {
+  EARNING
+  DEDUCTION
+}
+
+// T2c V3 — Bulletin de paie d'un employé pour une période mensuelle ("YYYY-MM").
+// Montants Decimal(10,3)/TND, alignés finance V8. PII : jamais loggé.
+model Payslip {
+  id              String        @id
+  tenantId        String
+  userId          String
+  period          String        @db.VarChar(7)
+  baseSalary      Decimal       @db.Decimal(10, 3)
+  grossSalary     Decimal       @db.Decimal(10, 3)
+  totalDeductions Decimal       @db.Decimal(10, 3)
+  netSalary       Decimal       @db.Decimal(10, 3)
+  currency        String        @default("TND")
+  status          PayslipStatus @default(DRAFT)
+  issuedAt        DateTime?
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee   User               @relation("Payslips", fields: [userId], references: [id], onDelete: Cascade)
+  components PayslipComponent[]
+
+  @@unique([tenantId, userId, period], name: "payslip_per_period")
+  @@index([tenantId])
+  @@index([tenantId, userId])
+  @@map("payslips")
+}
+
+// T2c V3 — Ligne de gain/retenue d'un bulletin (composant de calcul).
+model PayslipComponent {
+  id        String               @id
+  tenantId  String
+  payslipId String
+  label     String               @db.VarChar(160)
+  kind      PayslipComponentKind
+  amount    Decimal              @db.Decimal(10, 3)
+  createdAt DateTime             @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payslip Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, payslipId])
+  @@map("payslip_components")
 }
