@@ -9,12 +9,12 @@
 const KPIS = [
   { value: '312', label: 'Élèves',   color: '#60a5fa', bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.20)'  },
   { value: '94%', label: 'Présence', color: '#34d399', bg: 'rgba(52,211,153,0.10)',  border: 'rgba(52,211,153,0.20)'  },
-  { value: '17',  label: 'Classes',  color: '#fbb13c', bg: 'rgba(251,177,60,0.10)',   border: 'rgba(251,177,60,0.20)'  },
+  { value: '17',  label: 'Classes',  color: '#f2683f', bg: 'rgba(242,104,63,0.10)',   border: 'rgba(242,104,63,0.20)'  },
   { value: '3',   label: 'Alertes',  color: '#f87171', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.20)' },
 ] as const;
 
 const ACTIVITY = [
-  { text: 'Inscription confirmée · Ali M.',   dot: '#fbb13c', time: '09:14' },
+  { text: 'Inscription confirmée · Ali M.',   dot: '#f2683f', time: '09:14' },
   { text: 'Bulletins 2e trim. générés × 54',  dot: '#34d399', time: '08:50' },
   { text: 'Absence signalée · Classe 3B',      dot: '#f87171', time: '08:32' },
   { text: 'Message · Parent Trabelsi',         dot: '#60a5fa', time: '08:15' },
@@ -25,7 +25,7 @@ const DAYS = ['L', 'M', 'M', 'J', 'V'] as const;
 
 export function HeroMockup() {
   return (
-    <div className="relative mx-auto max-w-[540px]" aria-hidden>
+    <div className="relative mx-auto w-full max-w-[540px] px-4 sm:px-0" aria-hidden>
       {/* Ambre ambient glow */}
       <div
         className="animate-glow-pulse pointer-events-none absolute -inset-8 rounded-3xl blur-3xl"
@@ -82,7 +82,7 @@ export function HeroMockup() {
           >
             <div
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-sm font-bold"
-              style={{ background: '#fbb13c', color: '#0f1419' }}
+              style={{ background: '#f2683f', color: '#0f1419' }}
             >
               K
             </div>

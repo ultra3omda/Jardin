@@ -93,7 +93,7 @@ export default function DashboardPage() {
 
       <section
         className="grid gap-4"
-        style={{ gridTemplateColumns: `repeat(${config.kpis.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}
       >
         {config.kpis.map((kpi, i) => (
           <KpiCard
@@ -133,7 +133,7 @@ export default function DashboardPage() {
                 <h2 className="text-sm font-bold text-ink-900">Absences du jour</h2>
                 <span className="text-xs text-ink-300">Dernier relevé</span>
               </div>
-              <div className="mb-3 grid grid-cols-4 gap-3">
+              <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
                   { label: 'Présents', value: att.present, color: 'text-green-600 bg-green-50' },
                   { label: 'Absents', value: att.absent, color: 'text-red-600 bg-red-50' },

@@ -237,7 +237,7 @@ export default function GradePeriodsSettingsPage() {
 
       {/* Periods table */}
       {!loading && periods.length > 0 && (
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
           <table
             className="w-full text-sm"
             aria-label="Liste des périodes de notation"

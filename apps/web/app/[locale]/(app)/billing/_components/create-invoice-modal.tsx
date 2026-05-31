@@ -151,7 +151,7 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
             </div>
 
             {/* Due date + currency */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="inv-due" className="mb-1 block text-sm font-medium">
                   Échéance <span aria-hidden="true">*</span>

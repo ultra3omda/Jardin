@@ -154,7 +154,7 @@ export function RoutesSection({ canManage }: { canManage: boolean }) {
                     {sc.label}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-muted-foreground">Chauffeur</p>
                     <p className="font-medium">{route.driverName ?? '—'}</p>
