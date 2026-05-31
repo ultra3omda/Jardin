@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Locale, TenantType, UserRole } from '@prisma/client';
+import { Locale, TenantStatus, TenantType, UserRole } from '@prisma/client';
 import type { TenantBrand } from '@ecole-saas/shared';
 
 export class UserDto {
@@ -24,6 +24,13 @@ export class TenantDto {
    *  (app)/layout.tsx can inject CSS vars without an extra round-trip. */
   @ApiProperty({ type: Object, nullable: true })
   brand!: TenantBrand | null;
+  /** GTM — organization lifecycle status. */
+  @ApiProperty({ enum: TenantStatus })
+  status!: TenantStatus;
+  /** GTM — false ⇒ the web must force-redirect a SCHOOL_ADMIN to the
+   *  blocking onboarding wizard (name + colors + logo) before any app route. */
+  @ApiProperty()
+  onboardingCompleted!: boolean;
 }
 
 export class AuthResponseDto {

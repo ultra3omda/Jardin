@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 
 /**
  * Models whose every row carries a `tenantId` and must be tenant-scoped
@@ -44,7 +44,23 @@ export interface TenantExtensionOptions {
   getTenantId: () => string | null;
   /** Returns true when the extension should NOT inject tenantId filters. */
   shouldSkip: () => boolean;
+  /**
+   * Returns the role of the current authenticated user, or null when running
+   * outside an authenticated context (e.g. login lookups, system tasks).
+   * Used to hard-block platform-only roles (COMMERCIAL) from ever touching
+   * tenant-scoped data, even if an endpoint forgot its @Roles guard.
+   */
+  getRole?: () => UserRole | null;
 }
+
+/**
+ * Platform-only roles that must NEVER read or write tenant-scoped data.
+ * SUPER_ADMIN is intentionally cross-tenant (it sets `skipTenantFilter`), so it
+ * is NOT listed here — it is allowed to bypass on purpose. COMMERCIAL, on the
+ * other hand, only manages organizations + contracts and must be denied any
+ * access to a school's actual data.
+ */
+const TENANT_DATA_FORBIDDEN_ROLES: readonly UserRole[] = [UserRole.COMMERCIAL];
 
 /**
  * Merges `tenantId` into an existing Prisma `where` clause without losing
@@ -74,100 +90,110 @@ function injectTenantWhere(
 }
 
 /**
- * Builds a Prisma client extension that auto-injects `where: { tenantId }`
- * on read and bulk-update/delete queries against tenant-scoped models.
+ * Builds a Prisma client extension that:
+ *  1. hard-blocks platform-only roles (COMMERCIAL) from any tenant-scoped op;
+ *  2. auto-injects `where: { tenantId }` on read and bulk-update/delete queries
+ *     against tenant-scoped models.
  *
- * Not overridden:
+ * Not tenant-injected (callers stay responsible):
  * - `findUnique` / `findUniqueOrThrow` — would break unique-by-id semantics.
  *   Callers must use `findFirst` for tenant-aware lookups.
  * - `create` / `createMany` / `upsert` — callers must pass `tenantId` explicitly.
  * - `update` / `delete` (single, by unique where) — same reason as findUnique;
  *   callers should use `updateMany` / `deleteMany` for tenant-aware writes,
  *   or pre-check ownership via `findFirst`.
+ *
+ * The COMMERCIAL hard-block applies to ALL of the above (reads + writes).
  */
 export function createTenantExtension(opts: TenantExtensionOptions) {
+  /** Throws if a platform-only role tries to touch tenant-scoped data. */
+  const assertRoleAllowed = (model: string | undefined): void => {
+    if (opts.shouldSkip() || !isTenantScoped(model)) return;
+    const role = opts.getRole?.() ?? null;
+    if (role !== null && TENANT_DATA_FORBIDDEN_ROLES.includes(role)) {
+      throw new Error(
+        `Tenant isolation breach: role ${role} is platform-only and cannot access ` +
+          `tenant-scoped model "${String(model)}".`,
+      );
+    }
+  };
+
+  /** Read/bulk-write ops: block forbidden roles, then inject tenantId. */
+  const scopeRead = (
+    args: { where?: Record<string, unknown> } | undefined,
+    model: string | undefined,
+  ): void => {
+    assertRoleAllowed(model);
+    if (!opts.shouldSkip() && isTenantScoped(model)) {
+      const tid = opts.getTenantId();
+      if (tid !== null && args) {
+        args.where = injectTenantWhere(args, tid).where;
+      }
+    }
+  };
+
   return Prisma.defineExtension({
     name: 'tenant-isolation',
     query: {
       $allModels: {
         async findMany({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
           return query(args);
         },
         async findFirst({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
           return query(args);
         },
         async findFirstOrThrow({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
+          return query(args);
+        },
+        async findUnique({ args, query, model }) {
+          assertRoleAllowed(model);
+          return query(args);
+        },
+        async findUniqueOrThrow({ args, query, model }) {
+          assertRoleAllowed(model);
           return query(args);
         },
         async count({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
           return query(args);
         },
         async aggregate({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
           return query(args);
         },
         async groupBy({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
           return query(args);
         },
         async updateMany({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
           return query(args);
         },
         async deleteMany({ args, query, model }) {
-          if (!opts.shouldSkip() && isTenantScoped(model)) {
-            const tid = opts.getTenantId();
-            if (tid !== null) {
-              const merged = injectTenantWhere(args, tid);
-              args.where = merged.where;
-            }
-          }
+          scopeRead(args, model);
+          return query(args);
+        },
+        async create({ args, query, model }) {
+          assertRoleAllowed(model);
+          return query(args);
+        },
+        async createMany({ args, query, model }) {
+          assertRoleAllowed(model);
+          return query(args);
+        },
+        async upsert({ args, query, model }) {
+          assertRoleAllowed(model);
+          return query(args);
+        },
+        async update({ args, query, model }) {
+          assertRoleAllowed(model);
+          return query(args);
+        },
+        async delete({ args, query, model }) {
+          assertRoleAllowed(model);
           return query(args);
         },
       },

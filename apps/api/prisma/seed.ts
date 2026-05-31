@@ -1035,7 +1035,14 @@ async function main(): Promise<void> {
   // -- DEMO TENANT 1 -- Ecole primaire ---------------------------------------
   const ecole = await prisma.tenant.upsert({
     where: { slug: 'demo-ecole' },
-    update: { name: 'Démo École Pilote', type: TenantType.PRIMARY_SCHOOL },
+    // Demo tenants are already operational → ACTIVE + onboarding done so the
+    // SCHOOL_ADMIN isn't bounced into the blocking onboarding wizard.
+    update: {
+      name: 'Démo École Pilote',
+      type: TenantType.PRIMARY_SCHOOL,
+      status: 'ACTIVE',
+      onboardingCompletedAt: new Date(),
+    },
     create: {
       id: createId(),
       name: 'Démo École Pilote',
@@ -1043,13 +1050,20 @@ async function main(): Promise<void> {
       type: TenantType.PRIMARY_SCHOOL,
       locale: Locale.fr,
       timezone: 'Africa/Tunis',
+      status: 'ACTIVE',
+      onboardingCompletedAt: new Date(),
     },
   });
 
   // -- DEMO TENANT 2 -- Jardin d'enfants -------------------------------------
   const maternelle = await prisma.tenant.upsert({
     where: { slug: 'demo-maternelle' },
-    update: { name: 'Démo Jardin Les Pétales', type: TenantType.KINDERGARTEN },
+    update: {
+      name: 'Démo Jardin Les Pétales',
+      type: TenantType.KINDERGARTEN,
+      status: 'ACTIVE',
+      onboardingCompletedAt: new Date(),
+    },
     create: {
       id: createId(),
       name: 'Démo Jardin Les Pétales',
@@ -1057,6 +1071,8 @@ async function main(): Promise<void> {
       type: TenantType.KINDERGARTEN,
       locale: Locale.fr,
       timezone: 'Africa/Tunis',
+      status: 'ACTIVE',
+      onboardingCompletedAt: new Date(),
     },
   });
 
@@ -1082,6 +1098,48 @@ async function main(): Promise<void> {
     role: UserRole.SUPER_ADMIN,
     passwordHash,
   });
+
+  // -- GTM — Commercial sub-admin (platform, tenantId null) ------------------
+  const commercial = await upsertUser({
+    tenantId: null,
+    email: 'commercial@klasso.tn',
+    firstName: 'Sami',
+    lastName: 'Commercial',
+    role: UserRole.COMMERCIAL,
+    passwordHash,
+  });
+
+  // -- GTM — A signed organization still awaiting its admin's onboarding -----
+  const pendingOrg = await prisma.tenant.upsert({
+    where: { slug: 'demo-lycee-avenir' },
+    update: { name: 'Démo Lycée Avenir', type: TenantType.PRIMARY_SCHOOL },
+    create: {
+      id: createId(),
+      name: 'Démo Lycée Avenir',
+      slug: 'demo-lycee-avenir',
+      type: TenantType.PRIMARY_SCHOOL,
+      locale: Locale.fr,
+      timezone: 'Africa/Tunis',
+      // Left PENDING_ONBOARDING on purpose to demo the commercial pipeline.
+    },
+  });
+  const existingContract = await prisma.contract.findFirst({ where: { tenantId: pendingOrg.id } });
+  if (!existingContract) {
+    await prisma.contract.create({
+      data: {
+        id: createId(),
+        tenantId: pendingOrg.id,
+        reference: 'KL-2026-DEMO',
+        fileKey: 'contracts/demo-lycee-avenir.pdf',
+        fileName: 'contrat-demo-lycee-avenir.pdf',
+        signedAt: new Date('2026-05-20'),
+        startDate: new Date('2026-06-01'),
+        endDate: new Date('2027-06-01'),
+        notes: 'Contrat de démonstration (pipeline commercial).',
+        createdById: commercial.id,
+      },
+    });
+  }
 
   // -- V6 academic seed (subjects + grade periods) ---------------------------
   await seedV6ForTenant(ecole.id, '2025-2026');
@@ -1208,6 +1266,8 @@ async function main(): Promise<void> {
   console.log(`    parent  : parent@demo-maternelle.klasso.tn`);
   console.log(`    staff   : staff@demo-maternelle.klasso.tn`);
   console.log(`  Super-admin: super@klasso.tn`);
+  console.log(`  Commercial : commercial@klasso.tn`);
+  console.log(`  Pending org (commercial pipeline): ${pendingOrg.slug}`);
   console.log('');
   if (process.env.NODE_ENV !== 'production') {
     console.log(`  Password (all accounts): ${password}`);

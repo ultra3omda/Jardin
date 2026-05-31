@@ -31,10 +31,21 @@ enum Locale {
 
 enum UserRole {
   SUPER_ADMIN
+  COMMERCIAL // GTM — sous-admin plateforme : signe les contrats & crée les organisations (tenantId = null)
   SCHOOL_ADMIN
   TEACHER
   PARENT
   STAFF
+}
+
+// GTM — Cycle de vie d'une organisation depuis la signature jusqu'à l'usage.
+// PENDING_ONBOARDING : org créée par le commercial, admin pas encore passé par
+// le wizard de personnalisation (nom + couleurs + logo). ACTIVE : onboarding
+// terminé, l'org peut utiliser l'application. SUSPENDED : accès coupé (impayé…).
+enum TenantStatus {
+  PENDING_ONBOARDING
+  ACTIVE
+  SUSPENDED
 }
 
 enum Sex {
@@ -75,16 +86,20 @@ enum ActivityCategory {
 // ============================================================================
 
 model Tenant {
-  id        String     @id
-  name      String
-  slug      String     @unique
-  type      TenantType
-  locale    Locale     @default(fr)
-  timezone  String     @default("Europe/Paris")
-  brand     Json?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  deletedAt DateTime?
+  id                    String       @id
+  name                  String
+  slug                  String       @unique
+  type                  TenantType
+  locale                Locale       @default(fr)
+  timezone              String       @default("Europe/Paris")
+  brand                 Json?
+  // GTM — Onboarding bloquant : tant que onboardingCompletedAt est null, l'admin
+  // de l'org est redirigé de force vers le wizard de personnalisation.
+  status                TenantStatus @default(PENDING_ONBOARDING)
+  onboardingCompletedAt DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  deletedAt             DateTime?
 
   users           User[]
   refreshTokens   RefreshToken[]
@@ -139,7 +154,12 @@ model Tenant {
   subscriptions       TenantSubscription[]
   paymentTransactions PaymentTransaction[]
 
+  // GTM — Contrats signés rattachés par le commercial
+  contracts    Contract[]
+  inviteTokens InviteToken[]
+
   @@index([slug])
+  @@index([status])
   @@map("tenants")
 }
 
@@ -285,16 +305,45 @@ model InviteToken {
   tokenHash        String    @unique // SHA-256 of the token shared with the invitee
   invitedEmail     String? // optional pre-fill for /register?token=...
   intendedRole     UserRole // SCHOOL_ADMIN for tenant creators (default)
-  createdById      String // super_admin user who emitted the token
+  // GTM — quand renseigné, l'invitation rattache l'admin à une organisation DÉJÀ
+  // créée par le commercial (au lieu d'en créer une nouvelle au register).
+  tenantId         String?
+  createdById      String // super_admin / commercial user who emitted the token
   consumedByUserId String? // user created by consuming this token
   expiresAt        DateTime
   consumedAt       DateTime?
   createdAt        DateTime  @default(now())
 
-  createdBy User @relation("InviteTokenCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy User    @relation("InviteTokenCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([expiresAt])
+  @@index([tenantId])
   @@map("invite_tokens")
+}
+
+// ============================================================================
+// GTM — Contrats signés (uploadés par le commercial à la création d'une org)
+// ============================================================================
+
+model Contract {
+  id          String    @id
+  tenantId    String
+  reference   String? // numéro de contrat / référence interne
+  fileKey     String // clé R2 du PDF signé
+  fileName    String // nom d'origine du fichier
+  signedAt    DateTime // date de signature
+  startDate   DateTime // début de l'engagement
+  endDate     DateTime? // fin de l'engagement (null = indéterminée)
+  notes       String?
+  createdById String // commercial / super_admin qui a rattaché le contrat
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("contracts")
 }
 
 // ============================================================================

@@ -73,6 +73,16 @@ export function AppShellClient({ children }: { children: ReactNode }) {
       });
   }, [isHydrated, tenant?.slug, clear]);
 
+  // GTM — Blocking onboarding gate. A SCHOOL_ADMIN whose organization hasn't
+  // completed the personalization wizard is force-redirected to /onboarding and
+  // cannot reach any (app) route until it's done. Other roles are unaffected.
+  const needsOnboarding =
+    user?.role === 'SCHOOL_ADMIN' && tenant != null && tenant.onboardingCompleted === false;
+  useEffect(() => {
+    if (!isHydrated || !accessToken || !needsOnboarding) return;
+    router.replace('/onboarding' as never);
+  }, [isHydrated, accessToken, needsOnboarding, router]);
+
   const brand: TenantBrand = useMemo(() => {
     const stored = (tenant?.brand ?? {}) as Partial<TenantBrand>;
     return { ...DEFAULT_BRAND, ...stored };
@@ -99,7 +109,7 @@ export function AppShellClient({ children }: { children: ReactNode }) {
     }
   }, [brand, user]);
 
-  if (!isHydrated || !accessToken || !user) {
+  if (!isHydrated || !accessToken || !user || needsOnboarding) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-paper-50">
         <Loader2 className="h-8 w-8 animate-spin text-ambre-500" aria-label="Chargement" />

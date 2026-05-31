@@ -64,6 +64,9 @@ export class UsersController {
             timezone: tenant.timezone,
             // V1.6 — pass-through raw JSONB brand; web layout merges over DEFAULT_BRAND.
             brand: (tenant.brand ?? null) as TenantDto['brand'],
+            // GTM — onboarding gate signal for the web.
+            status: tenant.status,
+            onboardingCompleted: tenant.onboardingCompletedAt !== null,
           }
         : null,
     };

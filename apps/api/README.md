@@ -55,6 +55,12 @@ L'API tourne sur `http://localhost:4000`.
 | `GET  /health`       | Liveness probe                     |
 | `GET  /api/docs`     | Swagger UI                         |
 | `POST /api/auth/*`   | Auth endpoints (Vague 1, en cours) |
+| `POST /api/commercial/agents`           | SUPER_ADMIN crée un sous-admin COMMERCIAL |
+| `POST /api/commercial/contracts/upload-url` | URL R2 présignée pour le PDF du contrat |
+| `POST /api/commercial/organizations`    | COMMERCIAL/SUPER_ADMIN crée une org signée + contrat + invitation |
+| `GET  /api/commercial/organizations`    | Liste des organisations (siennes / toutes) |
+| `GET  /api/onboarding/status`           | État de l'onboarding de l'org courante (SCHOOL_ADMIN) |
+| `POST /api/onboarding/complete`         | Termine le wizard bloquant (nom + couleurs + logo) → org ACTIVE |
 
 ## Scripts
 

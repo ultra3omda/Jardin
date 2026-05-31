@@ -4,9 +4,19 @@
  * to depend on Prisma. Keep these in sync with apps/api/src/auth/dto/.
  */
 
-export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STAFF';
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'COMMERCIAL'
+  | 'SCHOOL_ADMIN'
+  | 'TEACHER'
+  | 'PARENT'
+  | 'STAFF';
 export type Locale = 'fr' | 'en' | 'ar' | 'es';
 export type TenantType = 'KINDERGARTEN' | 'PRIMARY_SCHOOL' | 'MIXED';
+export type TenantStatus = 'PENDING_ONBOARDING' | 'ACTIVE' | 'SUSPENDED';
+
+/** Platform-level roles that never belong to an organization (tenantId null). */
+export const PLATFORM_ROLES: readonly UserRole[] = ['SUPER_ADMIN', 'COMMERCIAL'];
 
 export interface AuthUser {
   id: string;
@@ -36,6 +46,10 @@ export interface AuthTenant {
   /** V1.6 — TenantBrand JSON (raw partial from API or fully merged from server-client).
    *  Pre-auth flows merge it over DEFAULT_BRAND before consuming. */
   brand: AuthTenantBrand;
+  /** GTM — organization lifecycle status. */
+  status?: TenantStatus;
+  /** GTM — false ⇒ force the SCHOOL_ADMIN through the blocking onboarding wizard. */
+  onboardingCompleted?: boolean;
 }
 
 export interface AuthResponse {

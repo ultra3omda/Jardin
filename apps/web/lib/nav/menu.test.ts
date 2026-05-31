@@ -79,6 +79,23 @@ describe('getNavForUser', () => {
     expect(items.find((i) => i.id === 'discipline')).toBeUndefined();
   });
 
+  it('COMMERCIAL sees only the commercial back-office, no tenant data', () => {
+    const sections = getNavForUser(baseUser({ role: 'COMMERCIAL', tenantId: null }), null);
+    const ids = sections.flatMap((s) => s.items.map((i) => i.id));
+    expect(ids).toContain('organizations');
+    expect(ids).toContain('newOrg');
+    expect(ids).not.toContain('students');
+    expect(ids).not.toContain('tenants'); // no Klasso platform console
+    expect(ids).not.toContain('audit');
+  });
+
+  it('SUPER_ADMIN platform console exposes the commercial pipeline', () => {
+    const sections = getNavForUser(baseUser({ role: 'SUPER_ADMIN' }), null);
+    const ids = sections.flatMap((s) => s.items.map((i) => i.id));
+    expect(ids).toContain('organizations');
+    expect(ids).toContain('agents');
+  });
+
   it('STAFF sees Vie École + read-only Élèves', () => {
     const sections = getNavForUser(baseUser({ role: 'STAFF' }), tenant('PRIMARY_SCHOOL'));
     const items = sections.flatMap((s) => s.items);

@@ -1070,4 +1070,55 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
       );
     });
   });
+
+  // ── GTM — COMMERCIAL platform role is hard-blocked from tenant data ────────
+  describe('COMMERCIAL role isolation (CRITICAL)', () => {
+    const commercialCtx = {
+      tenantId: null,
+      userId: 'commercial-1',
+      role: UserRole.COMMERCIAL,
+      skipTenantFilter: false,
+    } as const;
+
+    it('cannot read tenant-scoped data (findMany throws)', async () => {
+      await tenantContext.run(commercialCtx, async () => {
+        await expect(tenantPrisma.client.student.findMany()).rejects.toThrow(
+          /platform-only|isolation/i,
+        );
+      });
+    });
+
+    it('cannot read any other tenant-scoped model (User.count throws)', async () => {
+      await tenantContext.run(commercialCtx, async () => {
+        await expect(tenantPrisma.client.user.count()).rejects.toThrow(/platform-only|isolation/i);
+      });
+    });
+
+    it('cannot create tenant-scoped data (create throws)', async () => {
+      await tenantContext.run(commercialCtx, async () => {
+        await expect(
+          tenantPrisma.client.student.create({
+            data: {
+              id: createId(),
+              tenantId: tenantAId,
+              firstName: 'Hack',
+              lastName: 'Attempt',
+              dateOfBirth: new Date('2018-01-01'),
+              sex: Sex.M,
+              classroom: 'X',
+              parentEmail: 'x@x.test',
+            },
+          }),
+        ).rejects.toThrow(/platform-only|isolation/i);
+      });
+    });
+
+    it('CAN still read non-tenant-scoped platform data (Tenant) ', async () => {
+      await tenantContext.run(commercialCtx, async () => {
+        // Tenant is NOT a tenant-scoped model → commercial may list organizations.
+        const tenants = await tenantPrisma.client.tenant.findMany();
+        expect(tenants.length).toBeGreaterThanOrEqual(2);
+      });
+    });
+  });
 });
