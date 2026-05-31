@@ -44,3 +44,54 @@ export const endContract = (token: string, id: string) =>
   apiPost<EmploymentContract>(`${CONTRACTS}/${id}/end`, token, {});
 export const deleteContract = (token: string, id: string) =>
   apiDelete(`${CONTRACTS}/${id}`, token);
+
+// ─── Leave requests (T2c V2) ─────────────────────────────────────────────────
+export type LeaveType = 'PAID' | 'SICK' | 'UNPAID' | 'OTHER';
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface LeaveRequest {
+  id: string;
+  userId: string;
+  type: LeaveType;
+  status: LeaveStatus;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string | null;
+  reviewNote: string | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface ListLeavesResponse {
+  items: LeaveRequest[];
+  total: number;
+}
+export interface LeaveBalance {
+  userId: string;
+  year: number;
+  allowanceDays: number;
+  takenDays: number;
+  remainingDays: number;
+}
+export interface CreateLeaveInput {
+  userId?: string;
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+export interface ReviewLeaveInput {
+  status: 'APPROVED' | 'REJECTED';
+  reviewNote?: string;
+}
+
+const LEAVES = '/api/hr/leaves';
+export const listLeaves = (token: string) => apiGet<ListLeavesResponse>(LEAVES, token);
+export const getLeaveBalance = (token: string) => apiGet<LeaveBalance>(`${LEAVES}/balance`, token);
+export const createLeave = (token: string, input: CreateLeaveInput) =>
+  apiPost<LeaveRequest>(LEAVES, token, input);
+export const reviewLeave = (token: string, id: string, input: ReviewLeaveInput) =>
+  apiPost<LeaveRequest>(`${LEAVES}/${id}/review`, token, input);
+export const deleteLeave = (token: string, id: string) => apiDelete(`${LEAVES}/${id}`, token);

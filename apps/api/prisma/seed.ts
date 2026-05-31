@@ -8,6 +8,7 @@ import {
   DisciplineSeverity,
   DrillType,
   InfirmaryOutcome,
+  LeaveType,
   Locale,
   MealRegime,
   Prisma,
@@ -669,6 +670,71 @@ async function seedHr(tenantId: string): Promise<void> {
         startDate: T2C_CONTRACT_START,
         baseSalary: new Prisma.Decimal(baseSalary),
         weeklyHours: isTeacher ? 35 : 40,
+      },
+    });
+  }
+
+  await seedLeaves(tenantId, employees);
+}
+
+// -- T2c V2 -- RH / Congés fixtures -------------------------------------------
+// Fixed seed dates (deterministic — never Date.now()).
+const T2C_LEAVE_APPROVED_START = new Date('2026-02-10T00:00:00.000Z');
+const T2C_LEAVE_APPROVED_END = new Date('2026-02-14T00:00:00.000Z');
+const T2C_LEAVE_PENDING_START = new Date('2026-07-01T00:00:00.000Z');
+const T2C_LEAVE_PENDING_END = new Date('2026-07-05T00:00:00.000Z');
+const T2C_LEAVE_REVIEWED_AT = new Date('2026-01-15T09:00:00.000Z');
+
+/**
+ * Seed idempotent leave requests for the first employee of a tenant:
+ * one APPROVED (reviewed by the school admin) + one PENDING. Re-runs no-op
+ * via a deterministic findFirst guard on (userId, startDate).
+ */
+async function seedLeaves(
+  tenantId: string,
+  employees: ReadonlyArray<{ id: string }>,
+): Promise<void> {
+  const employee = employees[0];
+  if (!employee) return;
+  const admin = await prisma.user.findFirst({
+    where: { tenantId, role: UserRole.SCHOOL_ADMIN },
+  });
+  if (!admin) return;
+
+  const approvedExists = await prisma.leaveRequest.findFirst({
+    where: { tenantId, userId: employee.id, startDate: T2C_LEAVE_APPROVED_START },
+  });
+  if (!approvedExists) {
+    await prisma.leaveRequest.create({
+      data: {
+        id: createId(),
+        tenantId,
+        userId: employee.id,
+        type: LeaveType.PAID,
+        status: 'APPROVED',
+        startDate: T2C_LEAVE_APPROVED_START,
+        endDate: T2C_LEAVE_APPROVED_END,
+        reason: 'Congé annuel',
+        reviewedById: admin.id,
+        reviewedAt: T2C_LEAVE_REVIEWED_AT,
+      },
+    });
+  }
+
+  const pendingExists = await prisma.leaveRequest.findFirst({
+    where: { tenantId, userId: employee.id, startDate: T2C_LEAVE_PENDING_START },
+  });
+  if (!pendingExists) {
+    await prisma.leaveRequest.create({
+      data: {
+        id: createId(),
+        tenantId,
+        userId: employee.id,
+        type: LeaveType.PAID,
+        status: 'PENDING',
+        startDate: T2C_LEAVE_PENDING_START,
+        endDate: T2C_LEAVE_PENDING_END,
+        reason: 'Vacances d’été',
       },
     });
   }

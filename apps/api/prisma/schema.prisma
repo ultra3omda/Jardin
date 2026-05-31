@@ -130,6 +130,7 @@ model Tenant {
 
   // T2c V1 — RH / Paie
   employmentContracts EmploymentContract[]
+  leaveRequests       LeaveRequest[] // T2c V2
 
   @@index([slug])
   @@map("tenants")
@@ -182,6 +183,8 @@ model User {
   visitorLogsRecorded        VisitorLog[]              @relation("VisitorLogsRecorded") // T2b PR-4
   safetyDrillsRecorded       SafetyDrill[]             @relation("SafetyDrillsRecorded") // T2b PR-4
   employmentContracts        EmploymentContract[]      @relation("EmploymentContracts") // T2c V1
+  leaveRequests              LeaveRequest[]            @relation("LeaveRequests") // T2c V2
+  leaveReviews               LeaveRequest[]            @relation("LeaveReviews") // T2c V2
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -1249,4 +1252,49 @@ model EmploymentContract {
   @@index([tenantId])
   @@index([tenantId, userId])
   @@map("employment_contracts")
+}
+
+// ============================================================================
+// T2c V2 — RH / Paie : Demandes de congés
+// ============================================================================
+
+enum LeaveType {
+  PAID
+  SICK
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// T2c V2 — Demande de congé d'un employé (User TEACHER/STAFF).
+// Workflow PENDING → APPROVED/REJECTED par un SCHOOL_ADMIN (jamais ses propres congés).
+model LeaveRequest {
+  id           String      @id
+  tenantId     String
+  userId       String
+  type         LeaveType
+  status       LeaveStatus @default(PENDING)
+  startDate    DateTime
+  endDate      DateTime
+  reason       String?     @db.Text
+  reviewNote   String?     @db.Text
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee   User   @relation("LeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?  @relation("LeaveReviews", fields: [reviewedById], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, userId])
+  @@index([tenantId, status])
+  @@map("leave_requests")
 }

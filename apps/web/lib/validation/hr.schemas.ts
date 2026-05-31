@@ -13,3 +13,19 @@ export const employmentContractSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 export type EmploymentContractValues = z.infer<typeof employmentContractSchema>;
+
+// ─── Leaves (T2c V2) ──────────────────────────────────────────────────────────
+export const LEAVE_TYPES = ['PAID', 'SICK', 'UNPAID', 'OTHER'] as const;
+
+export const leaveRequestSchema = z
+  .object({
+    type: z.enum(LEAVE_TYPES),
+    startDate: z.string().min(1, 'Date de début requise'),
+    endDate: z.string().min(1, 'Date de fin requise'),
+    reason: z.string().max(2000).optional(),
+  })
+  .refine((v) => v.endDate >= v.startDate, {
+    message: 'La date de fin doit être postérieure ou égale au début',
+    path: ['endDate'],
+  });
+export type LeaveRequestValues = z.infer<typeof leaveRequestSchema>;
