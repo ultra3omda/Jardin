@@ -165,7 +165,7 @@ describe('Students (e2e)', () => {
     await request(app.getHttpServer()).get('/api/students').expect(401);
   });
 
-  it('SCHOOL_ADMIN creates a student under their tenant (201)', async () => {
+  it('SCHOOL_ADMIN creates a student under their tenant (201) + links the parent', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/students')
       .set('Authorization', `Bearer ${schoolAdminA.accessToken}`)
@@ -175,12 +175,38 @@ describe('Students (e2e)', () => {
         dateOfBirth: '2019-01-01',
         sex: Sex.M,
         classroom: 'CP-A',
-        parentEmail: `another-parent@${EMAIL_DOMAIN}`,
+        parentEmail: parentA.email,
+        parentRelationType: 'FATHER',
       })
       .expect(201);
     expect(res.body.tenantId).toBe(tenantAId);
     expect(res.body.firstName).toBe('New');
     expect(res.body.dateOfBirth).toBe('2019-01-01');
+    // The parent↔student link must have been created in the same flow.
+    const link = await prisma.parentStudent.findFirst({
+      where: { tenantId: tenantAId, studentId: res.body.id },
+      include: { parent: true },
+    });
+    expect(link).not.toBeNull();
+    expect(link?.parent.email.toLowerCase()).toBe(parentA.email.toLowerCase());
+    expect(link?.relationType).toBe('FATHER');
+    expect(link?.isPrimaryContact).toBe(true);
+  });
+
+  it('rejects creation when the parent account does not exist (400)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/students')
+      .set('Authorization', `Bearer ${schoolAdminA.accessToken}`)
+      .send({
+        firstName: 'Orphan',
+        lastName: 'Kid',
+        dateOfBirth: '2019-01-01',
+        sex: Sex.M,
+        classroom: 'CP-A',
+        parentEmail: `no-such-parent@${EMAIL_DOMAIN}`,
+      })
+      .expect(400);
+    expect(res.body.code).toBe('PARENT_ACCOUNT_NOT_FOUND');
   });
 
   it('TEACHER cannot create (403)', async () => {

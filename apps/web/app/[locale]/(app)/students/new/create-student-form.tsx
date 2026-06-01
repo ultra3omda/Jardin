@@ -14,6 +14,7 @@ import {
   type StudentSummary,
 } from '@/lib/api/students';
 import { listClasses } from '@/lib/api/classes';
+import { listParents } from '@/lib/api/staff';
 import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import {
@@ -52,6 +53,13 @@ export function CreateStudentForm() {
     enabled: !!accessToken,
   });
   const classOptions = classesData?.items ?? [];
+
+  const { data: parentsData } = useQuery({
+    queryKey: ['parents', 'options'],
+    queryFn: () => listParents(accessToken!),
+    enabled: !!accessToken,
+  });
+  const parentOptions = parentsData?.items ?? [];
 
   const mutation = useMutation({
     mutationFn: (values: CreateStudentFormValues) => {
@@ -278,20 +286,55 @@ export function CreateStudentForm() {
       {/* ============================== Famille & Contact ============================== */}
       <section className="space-y-4 rounded-lg border bg-card p-6">
         <h2 className="text-lg font-semibold">Famille &amp; Contact</h2>
+        <p className="text-xs text-muted-foreground">
+          L&apos;élève doit être rattaché à un compte parent existant. Si le parent n&apos;a pas
+          encore de compte,{' '}
+          <Link href={'/parents' as Route} className="font-medium text-primary hover:underline">
+            créez-le d&apos;abord ici
+          </Link>
+          .
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="text-sm font-medium" htmlFor="parentEmail">
-              Email parent *
+              Parent / tuteur *
             </label>
-            <input
+            <select
               id="parentEmail"
-              type="email"
               {...form.register('parentEmail')}
-              className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
-            />
+              className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm"
+            >
+              <option value="">— Sélectionner un parent —</option>
+              {parentOptions.map((p) => (
+                <option key={p.id} value={p.email}>
+                  {p.firstName} {p.lastName} ({p.email})
+                </option>
+              ))}
+            </select>
+            {parentOptions.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">
+                Aucun compte parent. Créez-en un dans la page Parents avant d&apos;ajouter l&apos;élève.
+              </p>
+            )}
             {fieldError('parentEmail') && (
               <p className="mt-1 text-xs text-rose-600">{fieldError('parentEmail')}</p>
             )}
+          </div>
+          <div>
+            <label className="text-sm font-medium" htmlFor="parentRelationType">
+              Lien de parenté
+            </label>
+            <select
+              id="parentRelationType"
+              {...form.register('parentRelationType')}
+              defaultValue="MOTHER"
+              className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm"
+            >
+              <option value="MOTHER">Mère</option>
+              <option value="FATHER">Père</option>
+              <option value="LEGAL_GUARDIAN">Tuteur légal</option>
+              <option value="OTHER">Autre</option>
+            </select>
           </div>
           <div>
             <label className="text-sm font-medium" htmlFor="siblingsCount">

@@ -28,6 +28,8 @@ import {
   UpdateStaffDto,
   StaffUserResponseDto,
   ListStaffResponseDto,
+  SetTeacherSubjectsDto,
+  TeacherSubjectDto,
 } from './dto/staff.dto';
 
 @ApiTags('staff')
@@ -238,5 +240,80 @@ export class StaffController {
       select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, deletedAt: true },
     });
     return { ...created, tempPassword };
+  }
+
+  // ── Teacher ↔ Subjects (affectations) ───────────────────────────────────────
+
+  @Get('teachers/:id/subjects')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List subjects a teacher is assigned to teach' })
+  async listTeacherSubjects(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') teacherId: string,
+  ): Promise<{ items: TeacherSubjectDto[] }> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    await this.assertTeacher(teacherId, user.tenantId);
+    const rows = await this.prisma.teacherSubject.findMany({
+      where: { tenantId: user.tenantId, teacherUserId: teacherId },
+      include: { subject: { select: { id: true, name: true, emoji: true } } },
+      orderBy: { subject: { name: 'asc' } },
+    });
+    return {
+      items: rows.map((r) => ({
+        subjectId: r.subjectId,
+        name: r.subject.name,
+        emoji: r.subject.emoji,
+      })),
+    };
+  }
+
+  @Patch('teachers/:id/subjects')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: "Replace the full set of a teacher's subjects" })
+  async setTeacherSubjects(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') teacherId: string,
+    @Body() dto: SetTeacherSubjectsDto,
+  ): Promise<{ items: TeacherSubjectDto[] }> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const tenantId = user.tenantId;
+    await this.assertTeacher(teacherId, tenantId);
+
+    const uniqueIds = [...new Set(dto.subjectIds)];
+    if (uniqueIds.length > 0) {
+      const found = await this.prisma.subject.count({
+        where: { tenantId, id: { in: uniqueIds }, deletedAt: null },
+      });
+      if (found !== uniqueIds.length) {
+        throw new NotFoundException({ code: 'SUBJECT_NOT_FOUND' });
+      }
+    }
+
+    // Full replace: clear then recreate. Cheap (a teacher has a handful of subjects).
+    await this.prisma.$transaction([
+      this.prisma.teacherSubject.deleteMany({ where: { tenantId, teacherUserId: teacherId } }),
+      ...(uniqueIds.length > 0
+        ? [
+            this.prisma.teacherSubject.createMany({
+              data: uniqueIds.map((subjectId) => ({
+                id: createId(),
+                tenantId,
+                teacherUserId: teacherId,
+                subjectId,
+              })),
+            }),
+          ]
+        : []),
+    ]);
+
+    return this.listTeacherSubjects(user, teacherId);
+  }
+
+  private async assertTeacher(teacherId: string, tenantId: string): Promise<void> {
+    const teacher = await this.prisma.user.findFirst({
+      where: { id: teacherId, tenantId, role: UserRole.TEACHER, deletedAt: null },
+      select: { id: true },
+    });
+    if (!teacher) throw new NotFoundException({ code: 'TEACHER_NOT_FOUND' });
   }
 }

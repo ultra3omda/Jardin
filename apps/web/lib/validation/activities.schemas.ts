@@ -9,5 +9,6 @@ export const activitySchema = z.object({
   scheduledAt: z.string().optional(),
   durationMin: z.coerce.number().int().min(1).max(1440).optional(),
   location: z.string().max(160).optional(),
+  responsibleUserId: z.string().max(40).optional(),
 });
 export type ActivityValues = z.infer<typeof activitySchema>;

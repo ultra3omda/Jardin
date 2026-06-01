@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, UserRole } from '@prisma/client';
+import { Prisma, RelationType, UserRole } from '@prisma/client';
 import { createId } from '@paralleldrive/cuid2';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
@@ -47,6 +47,27 @@ export class StudentsService {
       throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
     }
 
+    const parentEmail = dto.parentEmail.trim().toLowerCase();
+    // Parent obligatoire : le compte parent doit exister dans le tenant. On le
+    // résout AVANT la transaction pour renvoyer une erreur claire et actionnable
+    // (le front propose alors de créer le compte parent puis de réessayer).
+    const parent = await this.prisma.user.findFirst({
+      where: {
+        tenantId: currentUser.tenantId,
+        email: parentEmail,
+        role: UserRole.PARENT,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!parent) {
+      throw new BadRequestException({
+        code: 'PARENT_ACCOUNT_NOT_FOUND',
+        message:
+          "Aucun compte parent pour cet email. Créez d'abord le compte parent, puis réessayez.",
+      });
+    }
+
     const studentId = createId();
     const student = await this.prisma.$transaction(async (tx) => {
       const assignment = await this.resolveClassAssignment(tx, currentUser.tenantId!, dto);
@@ -67,7 +88,7 @@ export class StudentsService {
           classId: assignment.classId,
           enrollmentDate: dto.enrollmentDate ? new Date(dto.enrollmentDate) : new Date(),
           previousSchooling: dto.previousSchooling ?? null,
-          parentEmail: dto.parentEmail.trim().toLowerCase(),
+          parentEmail,
           siblingsCount: dto.siblingsCount ?? 0,
           addressLine: dto.addressLine ?? null,
           city: dto.city ?? null,
@@ -78,6 +99,19 @@ export class StudentsService {
           photoUrl: dto.photoUrl ?? null,
         },
         include: STUDENT_CLASS_INCLUDE,
+      });
+
+      // Lien parent↔élève réel (ParentStudent), créé à la création de l'élève.
+      // Premier rattachement ⇒ contact principal par défaut.
+      await tx.parentStudent.create({
+        data: {
+          id: createId(),
+          tenantId: currentUser.tenantId!,
+          parentUserId: parent.id,
+          studentId: created.id,
+          relationType: dto.parentRelationType ?? RelationType.MOTHER,
+          isPrimaryContact: true,
+        },
       });
 
       await tx.auditLog.create({

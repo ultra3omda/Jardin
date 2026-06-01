@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { requireToken } from '@/lib/auth/require-token';
 import { useResource } from '@/lib/hooks/use-resource';
@@ -18,7 +18,9 @@ import {
   type Activity,
   type ActivityCategory,
 } from '@/lib/api/activities';
+import { listTeachers } from '@/lib/api/staff';
 import { CATEGORIES, type ActivityValues } from '@/lib/validation/activities.schemas';
+import { ManageParticipantsModal } from './manage-participants-modal';
 
 const ACTIVITIES_KEY = ['activities', 'list'] as const;
 
@@ -50,6 +52,7 @@ function toFormValues(activity: Activity): Partial<ActivityValues> {
     scheduledAt: activity.scheduledAt ? activity.scheduledAt.slice(0, 16) : '',
     durationMin: activity.durationMin ?? undefined,
     location: activity.location ?? '',
+    responsibleUserId: activity.responsibleUserId ?? '',
   };
 }
 
@@ -65,6 +68,18 @@ export default function ActivitiesPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
+  const [managing, setManaging] = useState<Activity | null>(null);
+
+  const { data: teachersData } = useQuery({
+    queryKey: ['teachers', 'options'],
+    queryFn: () => listTeachers(requireToken(accessToken)),
+    enabled: !!accessToken && isContributor,
+  });
+  const responsibleOptions = (teachersData?.items ?? []).map((t) => ({
+    id: t.id,
+    firstName: t.firstName,
+    lastName: t.lastName,
+  }));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ACTIVITIES_KEY });
   const errMsg = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
@@ -148,8 +163,16 @@ export default function ActivitiesPage() {
                         )}
                         {schedule && <p className="text-xs capitalize text-muted-foreground">{schedule}</p>}
                         {act.location && <p className="text-xs text-muted-foreground">{act.location}</p>}
+                        {act.responsibleName && (
+                          <p className="text-xs text-muted-foreground">
+                            👤 Responsable : {act.responsibleName}
+                          </p>
+                        )}
                         {isContributor && (
-                          <div className="flex gap-2 pt-1">
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <Button variant="outline" size="sm" onClick={() => setManaging(act)}>
+                              Participants
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => setEditing(act)}>
                               Modifier
                             </Button>
@@ -177,6 +200,7 @@ export default function ActivitiesPage() {
         <ActivityForm
           submitLabel="Créer"
           pending={createMut.isPending}
+          responsibleOptions={responsibleOptions}
           onSubmit={(values) => createMut.mutate(values)}
           onCancel={() => setCreateOpen(false)}
         />
@@ -189,11 +213,20 @@ export default function ActivitiesPage() {
             defaultValues={toFormValues(editing)}
             submitLabel="Enregistrer"
             pending={editMut.isPending}
+            responsibleOptions={responsibleOptions}
             onSubmit={(values) => editMut.mutate({ id: editing.id, values })}
             onCancel={() => setEditing(null)}
           />
         )}
       </CrudModal>
+
+      {managing && (
+        <ManageParticipantsModal
+          activity={managing}
+          onClose={() => setManaging(null)}
+          onChanged={invalidate}
+        />
+      )}
     </>
   );
 }

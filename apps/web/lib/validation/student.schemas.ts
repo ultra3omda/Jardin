@@ -28,8 +28,9 @@ export const createStudentSchema = z.object({
   enrollmentDate: z.string().regex(ISO_DATE, 'Format YYYY-MM-DD').optional().or(z.literal('')),
   previousSchooling: z.string().max(2000).optional().or(z.literal('')),
 
-  // — Famille —
+  // — Famille — (parent rattaché obligatoirement à la création)
   parentEmail: z.string().email('Email invalide').max(254),
+  parentRelationType: z.enum(['FATHER', 'MOTHER', 'LEGAL_GUARDIAN', 'OTHER']).optional(),
   siblingsCount: z.coerce.number().int().min(0).max(20).optional(),
 
   // — Contact —

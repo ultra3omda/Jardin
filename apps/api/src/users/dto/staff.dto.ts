@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class CreateTeacherDto {
@@ -87,4 +96,21 @@ export class StaffUserResponseDto {
 export class ListStaffResponseDto {
   @ApiProperty({ type: [StaffUserResponseDto] }) items!: StaffUserResponseDto[];
   @ApiProperty() total!: number;
+}
+
+export class SetTeacherSubjectsDto {
+  @ApiProperty({
+    type: [String],
+    description: "Liste complète des ids de matières enseignées par l'enseignant (remplace l'existant).",
+  })
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  subjectIds!: string[];
+}
+
+export class TeacherSubjectDto {
+  @ApiProperty() subjectId!: string;
+  @ApiProperty() name!: string;
+  @ApiPropertyOptional({ nullable: true }) emoji?: string | null;
 }
