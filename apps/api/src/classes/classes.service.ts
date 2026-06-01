@@ -84,7 +84,9 @@ export class ClassesService {
       this.prisma.class.count({ where }),
     ]);
     return {
-      items: items.map((c) => this.toClassResponse(c, undefined, undefined, c._count.students)),
+      items: items.map((c) =>
+        this.toClassResponse(c, undefined, undefined, c._count?.students),
+      ),
       total,
     };
   }
