@@ -16,7 +16,7 @@ import {
 const TYPE_COLORS: Record<string, string> = {
   MESSAGE: '#60a5fa',
   GRADE: '#34d399',
-  ATTENDANCE: '#fbb13c',
+  ATTENDANCE: '#f2683f',
   INVOICE: '#f87171',
   ANNOUNCEMENT: '#a78bfa',
   SYSTEM: '#94a3b8',
@@ -92,14 +92,14 @@ function NotifRow({ notification: n, onPress }: NotifRowProps) {
       activeOpacity={0.7}
       onPress={onPress}
       style={{
-        backgroundColor: isUnread ? 'rgba(251,177,60,0.06)' : colors.white,
+        backgroundColor: isUnread ? 'rgba(242,104,63,0.06)' : colors.white,
         borderRadius: radius.lg,
         padding: 14,
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 12,
         borderWidth: 1,
-        borderColor: isUnread ? 'rgba(251,177,60,0.2)' : colors.paper[100],
+        borderColor: isUnread ? 'rgba(242,104,63,0.2)' : colors.paper[100],
       }}
     >
       {/* Type indicator dot */}
@@ -198,7 +198,7 @@ export default function NotificationsScreen() {
               onPress={() => markAllRead.mutate()}
               activeOpacity={0.7}
               style={{
-                backgroundColor: '#fbb13c',
+                backgroundColor: '#f2683f',
                 borderRadius: radius.md,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
@@ -246,7 +246,7 @@ export default function NotificationsScreen() {
           <TouchableOpacity
             onPress={() => void refetch()}
             style={{
-              backgroundColor: '#fbb13c',
+              backgroundColor: '#f2683f',
               borderRadius: radius.md,
               paddingHorizontal: 20,
               paddingVertical: 10,

@@ -10,12 +10,13 @@ export const colors = {
     800: '#1a2028',
     900: '#0f1419',
   },
+  // Accent corail — aligné sur la charte web V7 (remplace l'ancien jaune ambré).
   ambre: {
-    50: '#fff7e0',
-    100: '#fef3c7',
-    500: '#fbb13c',
-    600: '#e89218',
-    700: '#b45309',
+    50: '#fff3ef',
+    100: '#ffe1d7',
+    500: '#f2683f',
+    600: '#df4f2a',
+    700: '#b03a1d',
   },
   paper: {
     50: '#f4f4ef',

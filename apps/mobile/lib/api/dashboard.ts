@@ -13,10 +13,17 @@ export interface DashboardOverview {
   announcements: { title: string; date: string }[];
 }
 
-export function useDashboardOverview() {
+/**
+ * The overview endpoint is admin/teacher/staff only (PARENT and tenant-less
+ * SUPER_ADMIN get 403). Pass the role so we only fetch when allowed — avoids
+ * the "zone blanche / 403" on the parent dashboard.
+ */
+export function useDashboardOverview(role: string | undefined) {
+  const allowed = role === 'SCHOOL_ADMIN' || role === 'TEACHER' || role === 'STAFF';
   return useQuery({
     queryKey: ['dashboard', 'overview'],
     queryFn: () => fetchApi<DashboardOverview>('/api/dashboard/overview'),
+    enabled: allowed,
     staleTime: 30_000,
   });
 }
