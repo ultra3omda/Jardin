@@ -5,6 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Avoid stacking redundant production deploys: if a new commit lands on main
+# while a deploy is still running, cancel the in-flight one. Fewer deploys =
+# fewer file uploads against the Hobby plan's upload rate limit.
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -39,5 +46,9 @@ jobs:
       - name: Build with Vercel
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
+      # --archive=tgz uploads ONE compressed archive instead of thousands of
+      # individual files, which is what tripped the Hobby plan's
+      # "api-upload-free" rate limit (>5000 uploads). This keeps the CLI deploy
+      # path 100% within the free tier.
       - name: Deploy to Vercel
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
