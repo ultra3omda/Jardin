@@ -13,8 +13,17 @@ import { ResourceListPage } from '@/components/crud/resource-list-page';
 import { StaffCreateForm } from '@/components/crud/staff-form';
 import { listParents, createParent, type StaffMutationResult } from '@/lib/api/staff';
 import type { CreateStaffValues } from '@/lib/validation/staff.schemas';
+import { ManageChildrenModal } from './manage-children-modal';
 
 const PARENTS_KEY = ['parents', 'list'] as const;
+
+interface ParentRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  createdAt: string;
+}
 
 export default function ParentsPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -29,6 +38,7 @@ export default function ParentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [tempPassword, setTempPassword] = useState<{ name: string; password: string } | null>(null);
+  const [manageParent, setManageParent] = useState<ParentRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -78,7 +88,7 @@ export default function ParentsPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p) => (
-                <div key={p.id} className="rounded-lg border bg-white p-4 shadow-sm">
+                <div key={p.id} className="flex flex-col rounded-lg border bg-white p-4 shadow-sm">
                   <p className="font-semibold text-navy-900">
                     {p.firstName} {p.lastName}
                   </p>
@@ -86,6 +96,18 @@ export default function ParentsPage() {
                   <p className="mt-2 text-xs text-muted-foreground">
                     Inscrit le {new Date(p.createdAt).toLocaleDateString('fr-FR')}
                   </p>
+                  {isAdmin && (
+                    <div className="mt-3 border-t pt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setManageParent(p)}
+                      >
+                        Gérer les enfants
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -118,6 +140,10 @@ export default function ParentsPage() {
           </div>
         )}
       </CrudModal>
+
+      {manageParent && (
+        <ManageChildrenModal parent={manageParent} onClose={() => setManageParent(null)} />
+      )}
     </>
   );
 }

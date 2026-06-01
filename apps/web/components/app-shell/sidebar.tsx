@@ -36,7 +36,7 @@ export function Sidebar({ onLogout, open = false, onClose }: Props) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[82vw] max-w-[300px] flex-col bg-navy-900 text-[#c8cdd6] transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-[260px] lg:max-w-none lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-[100dvh] w-[82vw] max-w-[300px] flex-col bg-navy-900 text-[#c8cdd6] transition-transform duration-300 ease-out lg:static lg:z-auto lg:h-screen lg:w-[260px] lg:max-w-none lg:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
         aria-label="Navigation principale"

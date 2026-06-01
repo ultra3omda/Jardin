@@ -125,8 +125,16 @@
   * {
     @apply border-border;
   }
+  /* Guard against horizontal overflow on mobile: a stray wide element (mockup,
+     monospace line, decorative absolute) must never push a horizontal scroll /
+     right-hand gutter. Applied on <html> only (the root scroll container) so
+     vertical scroll and `position: sticky` descendants keep working. */
+  html {
+    @apply overflow-x-hidden;
+  }
   body {
     @apply bg-background text-foreground antialiased;
+    max-width: 100%;
   }
 
   /* Paper grain — subtle SVG noise overlay for landing sections on --paper bg */
