@@ -1,0 +1,61 @@
+name: Reset super-admin password
+
+# Manually re-issue (or create) the Klasso super-admin login against the
+# production database. The password is read from the SUPER_ADMIN_NEW_PASSWORD
+# secret, so it is auto-masked in the Actions logs.
+#
+# Required GitHub secrets:
+#   DATABASE_URL              production Postgres connection string
+#   SUPER_ADMIN_NEW_PASSWORD  the password you choose (>= 12 chars)
+# Optional GitHub variable:
+#   SUPER_ADMIN_EMAIL         super-admin email (default: super@klasso.tn)
+#
+# After it runs: log in at https://klasso.tn/login with that email + password.
+# All previous super-admin sessions are invalidated.
+on:
+  workflow_dispatch:
+
+jobs:
+  reset:
+    name: Reset super-admin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate on required secrets
+        id: gate
+        run: |
+          if [ -n "${{ secrets.DATABASE_URL }}" ] && [ -n "${{ secrets.SUPER_ADMIN_NEW_PASSWORD }}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::error::DATABASE_URL and SUPER_ADMIN_NEW_PASSWORD secrets are both required."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter=@ecole-saas/api exec prisma generate
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter=@ecole-saas/api exec prisma migrate deploy
+
+      - name: Reset / create super-admin
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPER_ADMIN_EMAIL: ${{ vars.SUPER_ADMIN_EMAIL || 'super@klasso.tn' }}
+          SUPER_ADMIN_NEW_PASSWORD: ${{ secrets.SUPER_ADMIN_NEW_PASSWORD }}
+        run: pnpm --filter=@ecole-saas/api exec tsx scripts/reset-super-admin-password.ts
