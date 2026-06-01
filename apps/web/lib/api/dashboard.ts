@@ -29,6 +29,8 @@ export interface DashboardOverview {
   announcements: DashboardAnnouncement[];
   todayAttendance: { present: number; absent: number; late: number; excused: number };
   absentStudents: DashboardAbsentStudent[];
+  journalToday: number;
+  activitiesToday: number;
 }
 
 export function getDashboardOverview(token: string): Promise<DashboardOverview> {
