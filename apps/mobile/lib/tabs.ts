@@ -74,4 +74,4 @@ export const ALL_TAB_NAMES = [
  * Detail routes that must NEVER appear as tabs. `students` now owns its own
  * Stack ([id] lives inside it), so only the bulletin detail needs hiding here.
  */
-export const NON_TAB_ROUTES = ['bulletin'] as const;
+export const NON_TAB_ROUTES = ['bulletin', 'manage'] as const;
