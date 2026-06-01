@@ -30,6 +30,7 @@ import {
   HeartHandshake,
   BookMarked,
   CalendarRange,
+  UploadCloud,
 } from 'lucide-react';
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -61,6 +62,7 @@ export const ICONS: Record<string, LucideIcon> = {
   tenants: School,
   audit: Shield,
   branding: Settings,
+  imports: UploadCloud,
   logout: LogOut,
   bell: Bell,
   search: Search,
