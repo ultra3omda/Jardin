@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { StudentPicker } from '@/components/pickers/student-picker';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import {
   infirmaryVisitSchema,
@@ -56,9 +57,9 @@ export function InfirmaryVisitForm({
           name="studentId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Identifiant de l&apos;élève</FormLabel>
+              <FormLabel>Élève</FormLabel>
               <FormControl>
-                <Input placeholder="ID élève" {...field} />
+                <StudentPicker value={field.value ?? ''} onChange={field.onChange} />
               </FormControl>
               <FormMessage />
             </FormItem>
