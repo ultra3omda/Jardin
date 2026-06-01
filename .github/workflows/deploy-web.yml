@@ -38,7 +38,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install Vercel CLI
-        run: pnpm add -g vercel@latest
+        # Pinned: vercel@54.7.0 ships a broken ESM/CJS import
+        # ("isPackageInstalled not found" in @vercel/build-utils) that fails
+        # `vercel build`. 54.6.1 is the last known-good release we deploy with.
+        run: pnpm add -g vercel@54.6.1
 
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
