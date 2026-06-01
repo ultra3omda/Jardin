@@ -1,8 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { getStudent } from '@/lib/api/students';
+import { ConfirmDialog } from '@klasso/ui-mobile';
+import { deleteStudent, getStudent } from '@/lib/api/students';
+import { useAuthStore } from '@/lib/auth/store';
 
 /**
  * V2 — Mobile : détail élève read-only.
@@ -42,6 +45,9 @@ function Section({
 
 export default function StudentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isAdmin = useAuthStore((st) => st.user?.role) === 'SCHOOL_ADMIN';
+  const qc = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const {
     data: s,
     isLoading,
@@ -50,6 +56,15 @@ export default function StudentDetailScreen() {
     queryKey: ['student', id],
     queryFn: () => getStudent(id!),
     enabled: !!id,
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: () => deleteStudent(id!),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['students'] });
+      setConfirmOpen(false);
+      router.replace('/(app)/students');
+    },
   });
 
   if (isLoading) {
@@ -78,6 +93,29 @@ export default function StudentDetailScreen() {
         </Text>
         <Text className="text-sm text-gray-500">Classe {s.classroom}</Text>
       </View>
+
+      {isAdmin ? (
+        <View className="mb-4 flex-row gap-3">
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/(app)/students/edit/[id]', params: { id: s.id } })
+            }
+            className="flex-1 items-center rounded-xl border border-gray-300 bg-white py-3"
+            accessibilityRole="button"
+            accessibilityLabel="Modifier l'élève"
+          >
+            <Text className="text-base font-semibold text-gray-900">Modifier</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setConfirmOpen(true)}
+            className="flex-1 items-center rounded-xl border border-rose-200 bg-rose-50 py-3"
+            accessibilityRole="button"
+            accessibilityLabel="Supprimer l'élève"
+          >
+            <Text className="text-base font-semibold text-rose-600">Supprimer</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <Section title="Identité">
         <Field label="Date de naissance" value={s.dateOfBirth} />
@@ -121,6 +159,17 @@ export default function StudentDetailScreen() {
           <Text className="text-base font-bold text-white">Voir le bulletin</Text>
         </Pressable>
       </Link>
+
+      <ConfirmDialog
+        visible={confirmOpen}
+        title="Supprimer cet élève ?"
+        message={`${s.firstName} ${s.lastName} sera retiré des listes. Cette action est réversible côté administration.`}
+        confirmLabel="Supprimer"
+        destructive
+        loading={removeMutation.isPending}
+        onConfirm={() => removeMutation.mutate()}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </ScrollView>
   );
 }
