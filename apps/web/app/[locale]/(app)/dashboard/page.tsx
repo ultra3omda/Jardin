@@ -63,15 +63,27 @@ export default function DashboardPage() {
       case 'attendanceRate':
       case 'presenceToday':
         return data.attendanceRate === null ? '—' : `${data.attendanceRate}`;
+      case 'presentToday':
+        return String(data.todayAttendance.present);
       case 'globalAverage':
         return data.averageGrade === null ? '—' : String(data.averageGrade);
       case 'overduePayments':
       case 'amountDue':
         return String(data.pendingPayments);
+      case 'photosToday':
+        return String(data.journalToday);
+      case 'activitiesToday':
+        return String(data.activitiesToday);
       default:
         return '—';
     }
   };
+
+  // KPI `sub` may contain a {classesCount} placeholder → interpolate with data.
+  const kpiSub = (sub: string | undefined): string | undefined =>
+    sub === undefined
+      ? undefined
+      : interpolate(sub, { classesCount: data ? String(data.classesCount) : '—' });
 
   const att = data?.todayAttendance ?? { present: 0, absent: 0, late: 0, excused: 0 };
 
@@ -102,7 +114,7 @@ export default function DashboardPage() {
             value={isLoading ? '…' : kpiValue(kpi.selectorKey)}
             variant={kpi.variant}
             icon={kpi.icon}
-            sub={kpi.sub}
+            sub={kpiSub(kpi.sub)}
           />
         ))}
       </section>

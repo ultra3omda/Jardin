@@ -340,8 +340,13 @@ async function seedClass(tenantId: string, name: string, level: string, schoolYe
 }
 
 // -- T2b -- Journal (cahier de liaison) + Activités fixtures ----------------
-// Fixed seed date (deterministic — never Date.now()/argless new Date()).
-const T2B_LOG_DATE = new Date('2026-05-29');
+// Today (midnight) so the KG dashboard "Photos du jour" / journal panel show
+// current data on demo.
+const T2B_LOG_DATE = (() => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+})();
 
 const T2B_SEED_ACTIVITIES = [
   { name: 'Chorale', category: ActivityCategory.MUSIC },
@@ -836,13 +841,18 @@ async function seedLeaves(
 // -- Academic life: class teachers, timetable, evaluations+grades, attendance,
 //    announcements, invoices. Idempotent. Makes the SCHOOL_ADMIN (direction)
 //    dashboard coherent: classes have teachers, students have grades & attendance.
-const T_ANNOUNCE_AT = new Date('2026-05-20T08:00:00.000Z');
-const T_EVAL_DATE = new Date('2026-02-12');
-const T_ATTENDANCE_DAYS = [
-  new Date('2026-05-25'),
-  new Date('2026-05-26'),
-  new Date('2026-05-27'),
-];
+// Dates relative to "now" so the demo dashboards (which read the most recent
+// day with data) always show coherent, current-looking figures — regardless of
+// when the seed runs.
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - n);
+  return d;
+}
+const T_ANNOUNCE_AT = daysAgo(2);
+const T_EVAL_DATE = daysAgo(10);
+const T_ATTENDANCE_DAYS = [daysAgo(2), daysAgo(1), daysAgo(0)];
 
 interface ClassRef {
   id: string;

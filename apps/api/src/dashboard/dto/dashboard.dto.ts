@@ -27,4 +27,8 @@ export interface DashboardOverviewDto {
   announcements: AnnouncementBriefDto[];
   todayAttendance: { present: number; absent: number; late: number; excused: number };
   absentStudents: AbsentStudentDto[];
+  // KG-oriented counts (kindergarten dashboard). Computed for the latest day
+  // with data (journal) / current activities.
+  journalToday: number;
+  activitiesToday: number;
 }

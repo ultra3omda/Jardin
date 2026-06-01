@@ -120,7 +120,13 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   async function handleLogout() {
     await logout().catch(() => undefined);
     clear();
-    router.replace('/login' as never);
+    // Hard navigation (not the SPA router): once the auth state is cleared this
+    // shell immediately renders the loader, and a client-side router.replace can
+    // be swallowed before it commits — leaving the user stuck on the spinner.
+    // A full document navigation guarantees we land on /login. The locale prefix
+    // is preserved from the current path so we stay in the right language.
+    const locale = window.location.pathname.split('/')[1] || 'fr';
+    window.location.assign(`/${locale}/login`);
   }
 
   return (

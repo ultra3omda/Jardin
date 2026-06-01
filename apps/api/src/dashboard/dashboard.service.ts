@@ -21,6 +21,8 @@ const EMPTY: DashboardOverviewDto = {
   announcements: [],
   todayAttendance: { present: 0, absent: 0, late: 0, excused: 0 },
   absentStudents: [],
+  journalToday: 0,
+  activitiesToday: 0,
 };
 
 @Injectable()
@@ -93,6 +95,21 @@ export class DashboardService {
     });
     const announcements = annRows.map((a) => ({ title: a.title, date: fmtDate(a.publishAt) }));
 
+    // KG counts: journal entries on the most recent journal day + total active activities.
+    const latestJournalDay = await this.prisma.dailyLogEntry.findFirst({
+      where: { tenantId, deletedAt: null },
+      orderBy: { date: 'desc' },
+      select: { date: true },
+    });
+    const [journalToday, activitiesToday] = await Promise.all([
+      latestJournalDay
+        ? this.prisma.dailyLogEntry.count({
+            where: { tenantId, deletedAt: null, date: latestJournalDay.date },
+          })
+        : Promise.resolve(0),
+      this.prisma.activity.count({ where: { tenantId, deletedAt: null } }),
+    ]);
+
     // Attendance summary for the most recent day with data.
     const todayAttendance = { present: 0, absent: 0, late: 0, excused: 0 };
     let attendanceRate: number | null = null;
@@ -135,6 +152,8 @@ export class DashboardService {
       announcements,
       todayAttendance,
       absentStudents,
+      journalToday,
+      activitiesToday,
     };
   }
 }
