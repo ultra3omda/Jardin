@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PartialType } from '@nestjs/mapped-types';
-import { Sex } from '@prisma/client';
+import { RelationType, Sex } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -84,10 +84,24 @@ export class CreateStudentDto {
   previousSchooling?: string;
 
   // — Famille —
-  @ApiProperty({ example: 'parent@example.tn', maxLength: 254 })
+  @ApiProperty({
+    example: 'parent@example.tn',
+    maxLength: 254,
+    description:
+      "Email du parent/tuteur. Si un compte parent existe pour cet email, un lien parent↔élève est créé automatiquement à la création.",
+  })
   @IsEmail()
   @MaxLength(254)
   parentEmail!: string;
+
+  @ApiPropertyOptional({
+    enum: RelationType,
+    default: RelationType.MOTHER,
+    description: "Nature du lien du parent rattaché (défaut : MÈRE).",
+  })
+  @IsOptional()
+  @IsEnum(RelationType)
+  parentRelationType?: RelationType;
 
   @ApiPropertyOptional({ example: 0, default: 0, maximum: 20 })
   @IsOptional()

@@ -22,11 +22,20 @@ export interface ActivityFormProps {
   defaultValues?: Partial<ActivityValues>;
   submitLabel: string;
   pending: boolean;
+  /** Teachers/staff selectable as the activity's responsible (animateur). */
+  responsibleOptions?: { id: string; firstName: string; lastName: string }[];
   onSubmit: (values: ActivityValues) => void;
   onCancel: () => void;
 }
 
-export function ActivityForm({ defaultValues, submitLabel, pending, onSubmit, onCancel }: ActivityFormProps) {
+export function ActivityForm({
+  defaultValues,
+  submitLabel,
+  pending,
+  responsibleOptions = [],
+  onSubmit,
+  onCancel,
+}: ActivityFormProps) {
   const form = useForm<ActivityValues>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
@@ -35,6 +44,7 @@ export function ActivityForm({ defaultValues, submitLabel, pending, onSubmit, on
       description: '',
       scheduledAt: '',
       location: '',
+      responsibleUserId: '',
       ...defaultValues,
     },
   });
@@ -133,6 +143,26 @@ export function ActivityForm({ defaultValues, submitLabel, pending, onSubmit, on
               <FormLabel>Lieu</FormLabel>
               <FormControl>
                 <Input placeholder="Salle de musique" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="responsibleUserId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Responsable / animateur</FormLabel>
+              <FormControl>
+                <select className={SELECT_CLASS} {...field} value={field.value ?? ''}>
+                  <option value="">— Aucun —</option>
+                  {responsibleOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.firstName} {o.lastName}
+                    </option>
+                  ))}
+                </select>
               </FormControl>
               <FormMessage />
             </FormItem>

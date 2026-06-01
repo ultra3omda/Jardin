@@ -32,6 +32,7 @@ export const TENANT_SCOPED_MODELS = [
   'PayslipComponent', // T2c V3
   'TenantSubscription', // GTM payments
   'PaymentTransaction', // GTM payments
+  'TeacherSubject', // affectations: matières enseignées
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 

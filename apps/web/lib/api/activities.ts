@@ -10,6 +10,8 @@ export interface Activity {
   scheduledAt: string | null;
   durationMin: number | null;
   location: string | null;
+  responsibleUserId: string | null;
+  responsibleName: string | null;
   participantCount: number;
   createdAt: string;
   updatedAt: string;
@@ -18,6 +20,11 @@ export interface ListActivitiesResponse {
   items: Activity[];
   total: number;
 }
+export interface ActivityParticipation {
+  id: string;
+  studentId: string;
+  studentName: string;
+}
 export interface CreateActivityInput {
   name: string;
   description?: string;
@@ -25,6 +32,7 @@ export interface CreateActivityInput {
   scheduledAt?: string;
   durationMin?: number;
   location?: string;
+  responsibleUserId?: string | null;
 }
 export type UpdateActivityInput = Partial<CreateActivityInput>;
 
@@ -35,3 +43,11 @@ export const createActivity = (token: string, input: CreateActivityInput) =>
 export const updateActivity = (token: string, id: string, input: UpdateActivityInput) =>
   apiPatch<Activity>(`${BASE}/${id}`, token, input);
 export const deleteActivity = (token: string, id: string) => apiDelete(`${BASE}/${id}`, token);
+
+// ── Participations (élèves inscrits à une activité) ──────────────────────────
+export const listParticipations = (token: string, activityId: string) =>
+  apiGet<ActivityParticipation[]>(`${BASE}/${activityId}/participations`, token);
+export const addParticipation = (token: string, activityId: string, studentId: string) =>
+  apiPost<ActivityParticipation>(`${BASE}/${activityId}/participations`, token, { studentId });
+export const removeParticipation = (token: string, activityId: string, studentId: string) =>
+  apiDelete(`${BASE}/${activityId}/participations/${studentId}`, token);

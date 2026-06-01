@@ -19,6 +19,7 @@ import {
 } from '@/lib/api/staff';
 import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import type { CreateStaffValues, EditStaffValues } from '@/lib/validation/staff.schemas';
+import { ManageSubjectsModal } from './manage-subjects-modal';
 
 const TEACHERS_KEY = ['teachers', 'list'] as const;
 
@@ -35,6 +36,7 @@ export default function TeachersPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<StaffUser | null>(null);
+  const [managingSubjects, setManagingSubjects] = useState<StaffUser | null>(null);
   const [tempPassword, setTempPassword] = useState<{ name: string; password: string } | null>(null);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: TEACHERS_KEY });
@@ -123,9 +125,12 @@ export default function TeachersPage() {
                     </td>
                     {isAdmin && (
                       <td className="px-4 py-3">
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button variant="outline" size="sm" onClick={() => setEditing(t)}>
                             Modifier
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setManagingSubjects(t)}>
+                            Matières
                           </Button>
                           {active && (
                             <Button
@@ -168,6 +173,10 @@ export default function TeachersPage() {
           />
         )}
       </CrudModal>
+
+      {managingSubjects && (
+        <ManageSubjectsModal teacher={managingSubjects} onClose={() => setManagingSubjects(null)} />
+      )}
 
       <CrudModal open={!!tempPassword} title="Mot de passe temporaire" onClose={() => setTempPassword(null)}>
         {tempPassword && (

@@ -158,6 +158,9 @@ model Tenant {
   contracts    Contract[]
   inviteTokens InviteToken[]
 
+  // affectations — matières enseignées (périmètre prof)
+  teacherSubjects TeacherSubject[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -213,6 +216,8 @@ model User {
   leaveRequests              LeaveRequest[]            @relation("LeaveRequests") // T2c V2
   leaveReviews               LeaveRequest[]            @relation("LeaveReviews") // T2c V2
   payslips                   Payslip[]                 @relation("Payslips") // T2c V3
+  activitiesResponsible      Activity[]                @relation("ActivityResponsible") // affectations: animateur d'activité
+  teacherSubjects            TeacherSubject[]          @relation("TeacherSubjects") // affectations: matières enseignées
 
   @@unique([tenantId, email], name: "email_per_tenant")
   @@index([tenantId])
@@ -592,8 +597,9 @@ model Subject {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime? // soft-delete
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   evaluations Evaluation[]
+  teachers    TeacherSubject[] @relation("SubjectTeachers")
 
   @@unique([tenantId, name], name: "unique_subject_per_tenant")
   @@index([tenantId])
@@ -887,23 +893,47 @@ model DailyLogEntry {
 
 // T2b — Activité pédagogique (atelier, sortie). Participations N-N via pivot.
 model Activity {
-  id          String           @id
-  tenantId    String
-  name        String           @db.VarChar(160)
-  description String?          @db.Text
-  category    ActivityCategory @default(OTHER)
-  scheduledAt DateTime?
-  durationMin Int?
-  location    String?          @db.VarChar(160)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  deletedAt   DateTime?
+  id                String           @id
+  tenantId          String
+  name              String           @db.VarChar(160)
+  description       String?          @db.Text
+  category          ActivityCategory @default(OTHER)
+  scheduledAt       DateTime?
+  durationMin       Int?
+  location          String?          @db.VarChar(160)
+  // affectations: enseignant/animateur responsable de l'activité (optionnel).
+  responsibleUserId String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  deletedAt         DateTime?
 
   tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsible    User?                   @relation("ActivityResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
   participations ActivityParticipation[]
 
   @@index([tenantId])
+  @@index([responsibleUserId])
   @@map("activities")
+}
+
+// affectations — Matières enseignées par un enseignant (N:N User↔Subject).
+// Distinct de ClassTeacher.subject (qui dit "ce prof enseigne cette matière
+// DANS cette classe") : ici on déclare le périmètre de compétence du prof.
+model TeacherSubject {
+  id            String   @id
+  tenantId      String
+  teacherUserId String
+  subjectId     String
+  createdAt     DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacher User    @relation("TeacherSubjects", fields: [teacherUserId], references: [id], onDelete: Cascade)
+  subject Subject @relation("SubjectTeachers", fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherUserId, subjectId])
+  @@index([tenantId])
+  @@index([subjectId])
+  @@map("teacher_subjects")
 }
 
 // T2b — Pivot élève ↔ activité. Unique (activity, student) — enforce DB.

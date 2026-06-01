@@ -18,11 +18,40 @@ import type {
   UpdateActivityDto,
 } from './dto/activity.dto';
 
-type ActivityRow = Prisma.ActivityGetPayload<{ include: { _count: { select: { participations: true } } } }>;
+const ACTIVITY_INCLUDE = {
+  _count: { select: { participations: true } },
+  responsible: { select: { firstName: true, lastName: true } },
+} satisfies Prisma.ActivityInclude;
+
+type ActivityRow = Prisma.ActivityGetPayload<{ include: typeof ACTIVITY_INCLUDE }>;
 
 @Injectable()
 export class ActivitiesService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Validates that `responsibleUserId` (if provided) is a non-deleted
+   * TEACHER/STAFF/SCHOOL_ADMIN of the current tenant. Returns the value to
+   * persist: a string id, null (explicit clear), or undefined (leave as is).
+   */
+  private async resolveResponsible(
+    responsibleUserId: string | null | undefined,
+    tenantId: string,
+  ): Promise<string | null | undefined> {
+    if (responsibleUserId === undefined) return undefined;
+    if (responsibleUserId === null || responsibleUserId === '') return null;
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: responsibleUserId,
+        tenantId,
+        deletedAt: null,
+        role: { in: ['TEACHER', 'STAFF', 'SCHOOL_ADMIN'] },
+      },
+      select: { id: true },
+    });
+    if (!staff) throw new BadRequestException({ code: 'RESPONSIBLE_NOT_FOUND' });
+    return staff.id;
+  }
 
   async list(user: AuthenticatedUser): Promise<ListActivitiesResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
@@ -30,7 +59,7 @@ export class ActivitiesService {
     const [rows, total] = await Promise.all([
       this.prisma.activity.findMany({
         where,
-        include: { _count: { select: { participations: true } } },
+        include: ACTIVITY_INCLUDE,
         orderBy: { name: 'asc' },
       }),
       this.prisma.activity.count({ where }),
@@ -40,6 +69,7 @@ export class ActivitiesService {
 
   async create(dto: CreateActivityDto, user: AuthenticatedUser): Promise<ActivityResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    const responsibleUserId = await this.resolveResponsible(dto.responsibleUserId, user.tenantId);
     const row = await this.prisma.activity.create({
       data: {
         id: createId(),
@@ -50,8 +80,9 @@ export class ActivitiesService {
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         durationMin: dto.durationMin ?? null,
         location: dto.location ?? null,
+        responsibleUserId: responsibleUserId ?? null,
       },
-      include: { _count: { select: { participations: true } } },
+      include: ACTIVITY_INCLUDE,
     });
     return this.toResponse(row);
   }
@@ -62,6 +93,7 @@ export class ActivitiesService {
       where: { id, tenantId: user.tenantId, deletedAt: null },
     });
     if (!existing) throw new NotFoundException({ code: 'ACTIVITY_NOT_FOUND' });
+    const responsibleUserId = await this.resolveResponsible(dto.responsibleUserId, user.tenantId);
     const row = await this.prisma.activity.update({
       where: { id },
       data: {
@@ -71,8 +103,9 @@ export class ActivitiesService {
         ...(dto.scheduledAt !== undefined ? { scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null } : {}),
         ...(dto.durationMin !== undefined ? { durationMin: dto.durationMin } : {}),
         ...(dto.location !== undefined ? { location: dto.location } : {}),
+        ...(responsibleUserId !== undefined ? { responsibleUserId } : {}),
       },
-      include: { _count: { select: { participations: true } } },
+      include: ACTIVITY_INCLUDE,
     });
     return this.toResponse(row);
   }
@@ -156,6 +189,10 @@ export class ActivitiesService {
       scheduledAt: r.scheduledAt ? r.scheduledAt.toISOString() : null,
       durationMin: r.durationMin,
       location: r.location,
+      responsibleUserId: r.responsibleUserId,
+      responsibleName: r.responsible
+        ? `${r.responsible.firstName} ${r.responsible.lastName}`
+        : null,
       participantCount: r._count.participations,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),

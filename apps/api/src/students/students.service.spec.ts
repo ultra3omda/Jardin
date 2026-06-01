@@ -81,6 +81,8 @@ describe('StudentsService', () => {
         count: vi.fn().mockResolvedValue(1),
         update: vi.fn().mockResolvedValue(makeRow()),
       },
+      // Parent obligatoire : create() résout le compte parent par email AVANT la tx.
+      user: { findFirst: vi.fn().mockResolvedValue({ id: 'parent_1' }) },
       auditLog: { create: vi.fn().mockResolvedValue({}) },
       $transaction: vi.fn(async (fn: any) =>
         fn({
@@ -90,6 +92,8 @@ describe('StudentsService', () => {
           },
           // Lot 3 — resolveClassAssignment résout la classe par id/nom dans la tx.
           class: { findFirst: vi.fn().mockResolvedValue({ id: 'cls_1', name: 'CP-A' }) },
+          // Parent obligatoire : lien ParentStudent créé dans la tx.
+          parentStudent: { create: vi.fn().mockResolvedValue({}) },
           auditLog: { create: vi.fn().mockResolvedValue({}) },
         }),
       ),
