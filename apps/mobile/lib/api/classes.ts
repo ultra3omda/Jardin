@@ -17,8 +17,15 @@ export interface ClassSummary {
   id: string;
   name: string;
   level: string;
-  studentCount: number;
+  schoolYear?: string;
+  studentCount?: number;
   subject?: string;
+}
+
+/** API list envelope: GET /api/classes → { items, total }. */
+interface ClassListResponse {
+  items: ClassSummary[];
+  total: number;
 }
 
 export interface ClassDetail extends ClassSummary {
@@ -48,10 +55,17 @@ export const CLASSES_KEYS = {
  * Returns classes assigned to the current user (teacher or admin).
  * Uses `myOnly=true` to scope the list to the requesting user.
  */
-export function useMyClasses() {
+export function useMyClasses(mine = false) {
   return useQuery({
-    queryKey: CLASSES_KEYS.myClasses(),
-    queryFn: () => fetchApi<ClassSummary[]>('/api/classes?myOnly=true'),
+    queryKey: [...CLASSES_KEYS.myClasses(), mine] as const,
+    // API returns an envelope { items, total } — unwrap to the array the UI
+    // expects. `mine=true` scopes to the teacher's own assigned classes.
+    queryFn: async () => {
+      const res = await fetchApi<ClassListResponse>(
+        `/api/classes${mine ? '?mine=true' : ''}`,
+      );
+      return res.items ?? [];
+    },
   });
 }
 

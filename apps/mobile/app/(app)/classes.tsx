@@ -147,7 +147,7 @@ function ClassCard({ cls }: { cls: ClassSummary }) {
               </Text>
             </View>
             <Text style={{ fontSize: 12, color: colors.ink[500] }}>
-              {cls.studentCount} {cls.studentCount === 1 ? 'élève' : 'élèves'}
+              {cls.studentCount ?? 0} {(cls.studentCount ?? 0) === 1 ? 'élève' : 'élèves'}
             </Text>
           </View>
           {cls.subject ? (
@@ -190,7 +190,8 @@ function TeacherAdminView({ classes, isAdmin }: { classes: ClassSummary[]; isAdm
 }
 
 function TeacherAdminContainer({ isAdmin }: { isAdmin: boolean }) {
-  const { data, isLoading, isError, refetch } = useMyClassesAPI();
+  // Admin sees all classes; teacher sees only their assigned ones (mine=true).
+  const { data, isLoading, isError, refetch } = useMyClassesAPI(!isAdmin);
   if (isLoading) return <SkeletonList />;
   if (isError) return <ErrorState onRetry={() => void refetch()} />;
   return <TeacherAdminView classes={data ?? []} isAdmin={isAdmin} />;

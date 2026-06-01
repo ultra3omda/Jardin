@@ -61,21 +61,32 @@ export class ClassesService {
     }
   }
 
-  async list(user: AuthenticatedUser, schoolYear?: string): Promise<ListClassesResponseDto> {
+  async list(
+    user: AuthenticatedUser,
+    schoolYear?: string,
+    mine?: boolean,
+  ): Promise<ListClassesResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
     const where: Prisma.ClassWhereInput = {
       tenantId: user.tenantId,
       deletedAt: null,
       ...(schoolYear ? { schoolYear } : {}),
+      // `mine=true` (used by teachers) → only classes where the caller is
+      // assigned as a ClassTeacher.
+      ...(mine ? { teachers: { some: { teacherUserId: user.id } } } : {}),
     };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.class.findMany({
         where,
         orderBy: [{ schoolYear: 'desc' }, { level: 'asc' }, { name: 'asc' }],
+        include: { _count: { select: { students: { where: { deletedAt: null } } } } },
       }),
       this.prisma.class.count({ where }),
     ]);
-    return { items: items.map((c) => this.toClassResponse(c)), total };
+    return {
+      items: items.map((c) => this.toClassResponse(c, undefined, undefined, c._count.students)),
+      total,
+    };
   }
 
   /**
@@ -316,6 +327,7 @@ export class ClassesService {
       updatedAt: Date;
       teacher?: { id: string; email: string; firstName: string; lastName: string } | null;
     }>,
+    studentCount?: number,
   ): ClassResponseDto {
     return {
       id: c.id,
@@ -324,6 +336,7 @@ export class ClassesService {
       schoolYear: c.schoolYear,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
+      ...(studentCount !== undefined ? { studentCount } : {}),
       ...(teachers ? { teachers: teachers.map((t) => this.toClassTeacherResponse(t)) } : {}),
       ...(timeSlots ? { timeSlots: timeSlots.map((s) => this.toTimeSlotResponse(s)) } : {}),
     };

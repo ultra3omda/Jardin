@@ -178,6 +178,8 @@ export class ClassResponseDto {
   @ApiProperty() schoolYear!: string;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
+  @ApiPropertyOptional({ description: 'Nombre d’élèves rattachés (non supprimés).' })
+  studentCount?: number;
   @ApiPropertyOptional({ type: [ClassTeacherResponseDto] })
   teachers?: ClassTeacherResponseDto[];
   @ApiPropertyOptional({ type: [TimeSlotResponseDto] })
