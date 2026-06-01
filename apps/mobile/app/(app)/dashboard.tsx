@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
-import { Avatar, Card, KpiCard, ScreenHeader, type KpiVariant, colors } from '@klasso/ui-mobile';
+import { Avatar, Card, EmptyState, KpiCard, ScreenHeader, type KpiVariant, colors } from '@klasso/ui-mobile';
 import { useDashboardOverview, type DashboardOverview } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/lib/auth/store';
 
@@ -52,7 +52,8 @@ function buildKpis(role: string | undefined, isKG: boolean, d?: DashboardOvervie
 export default function DashboardScreen() {
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
-  const { data, isLoading } = useDashboardOverview();
+  const { data, isLoading } = useDashboardOverview(user?.role);
+  const canSeeOverview = user?.role === 'SCHOOL_ADMIN' || user?.role === 'TEACHER' || user?.role === 'STAFF';
 
   const isKG = tenant?.type === 'KINDERGARTEN';
   const heading = user?.firstName ? `Bonjour, ${user.firstName}` : 'Tableau de bord';
@@ -67,7 +68,13 @@ export default function DashboardScreen() {
     >
       <ScreenHeader title={heading} subtitle={subtitle} right={<Avatar initials={initials} size={44} />} />
 
-      {isLoading ? (
+      {!canSeeOverview ? (
+        <EmptyState
+          icon="sparkles-outline"
+          title="Bienvenue sur Klasso"
+          description="Retrouvez vos messages, notifications et le suivi de votre enfant depuis les onglets ci-dessous."
+        />
+      ) : isLoading ? (
         <View style={{ paddingVertical: 48, alignItems: 'center' }}>
           <ActivityIndicator color={colors.ambre[500]} />
         </View>

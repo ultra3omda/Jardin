@@ -31,7 +31,7 @@ const BULLETIN_KEYS = {
 
 function gradeColor(grade: number): string {
   if (grade >= 14) return '#34d399';
-  if (grade >= 10) return '#fbb13c';
+  if (grade >= 10) return '#f2683f';
   return '#f87171';
 }
 

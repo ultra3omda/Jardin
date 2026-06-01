@@ -15,7 +15,7 @@ import {
 
 function gradeColor(grade: number): string {
   if (grade >= 14) return '#34d399';
-  if (grade >= 10) return '#fbb13c';
+  if (grade >= 10) return '#f2683f';
   return '#f87171';
 }
 
@@ -180,7 +180,7 @@ function TeacherView({
                     style={{
                       fontSize: 11,
                       fontWeight: '600',
-                      color: pct === 100 ? '#34d399' : '#fbb13c',
+                      color: pct === 100 ? '#34d399' : '#f2683f',
                     }}
                   >
                     {cls.doneCount}/{cls.studentCount} ({pct}%)
@@ -198,7 +198,7 @@ function TeacherView({
                       height: 4,
                       borderRadius: 2,
                       width: `${pct}%` as `${number}%`,
-                      backgroundColor: pct === 100 ? '#34d399' : '#fbb13c',
+                      backgroundColor: pct === 100 ? '#34d399' : '#f2683f',
                     }}
                   />
                 </View>

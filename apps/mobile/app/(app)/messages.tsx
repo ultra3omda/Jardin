@@ -8,7 +8,7 @@ import { useConversations, type Conversation } from '@/lib/api/messaging';
 // ---------------------------------------------------------------------------
 
 const AVATAR_COLORS = [
-  '#fbb13c', '#60a5fa', '#34d399', '#f87171',
+  '#f2683f', '#60a5fa', '#34d399', '#f87171',
   '#a78bfa', '#fb923c', '#38bdf8', '#4ade80',
 ];
 
@@ -120,7 +120,7 @@ function ThreadRow({ conversation, currentUserId }: ThreadRowProps) {
         alignItems: 'center',
         gap: 12,
         borderWidth: 1,
-        borderColor: unread > 0 ? 'rgba(251,177,60,0.25)' : colors.paper[100],
+        borderColor: unread > 0 ? 'rgba(242,104,63,0.25)' : colors.paper[100],
       }}
     >
       {/* Avatar */}
@@ -186,7 +186,7 @@ function ThreadRow({ conversation, currentUserId }: ThreadRowProps) {
             width: 20,
             height: 20,
             borderRadius: 10,
-            backgroundColor: '#fbb13c',
+            backgroundColor: '#f2683f',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
@@ -233,7 +233,7 @@ export default function MessagesScreen() {
           {totalUnread > 0 && (
             <View
               style={{
-                backgroundColor: '#fbb13c',
+                backgroundColor: '#f2683f',
                 borderRadius: 12,
                 paddingHorizontal: 8,
                 paddingVertical: 2,
@@ -278,7 +278,7 @@ export default function MessagesScreen() {
           <TouchableOpacity
             onPress={() => void refetch()}
             style={{
-              backgroundColor: '#fbb13c',
+              backgroundColor: '#f2683f',
               borderRadius: radius.md,
               paddingHorizontal: 20,
               paddingVertical: 10,

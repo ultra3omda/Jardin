@@ -28,7 +28,11 @@ const T = {
 const ADMIN_TABS: MobileTab[] = [T.dashboard, T.students, T.classes, T.pedagogy, T.notifications, T.profile];
 const TEACHER_TABS: MobileTab[] = [T.dashboard, T.classes, T.life, T.messages, T.notifications, T.profile];
 const PARENT_TABS: MobileTab[] = [T.dashboard, T.child, T.life, T.messages, T.notifications, T.profile];
-const MINIMAL_TABS: MobileTab[] = [T.dashboard, T.messages, T.notifications, T.profile];
+// STAFF has a tenant → can use messaging + notifications.
+const STAFF_TABS: MobileTab[] = [T.dashboard, T.messages, T.notifications, T.profile];
+// SUPER_ADMIN has NO tenant → tenant-scoped features (messaging) would 403.
+// Keep a minimal, safe set.
+const SUPER_ADMIN_TABS: MobileTab[] = [T.dashboard, T.notifications, T.profile];
 
 /**
  * Resolve the bottom tab bar from the connected user's role at runtime. One
@@ -42,10 +46,11 @@ export function getTabsForRole(role: UserRole): MobileTab[] {
       return TEACHER_TABS;
     case 'PARENT':
       return PARENT_TABS;
-    case 'STAFF':
     case 'SUPER_ADMIN':
+      return SUPER_ADMIN_TABS;
+    case 'STAFF':
     default:
-      return MINIMAL_TABS;
+      return STAFF_TABS;
   }
 }
 

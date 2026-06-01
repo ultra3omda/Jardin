@@ -34,7 +34,10 @@ export default function ProfileScreen() {
     ]);
   }
 
-  if (!user || !tenant) {
+  // Only `user` is required. SUPER_ADMIN / COMMERCIAL have no tenant — the
+  // establishment card is simply hidden for them (previously this left the
+  // whole profile stuck on "Chargement…").
+  if (!user) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.paper[50], alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: colors.ink[500], fontSize: 14 }}>Chargement…</Text>
@@ -92,23 +95,25 @@ export default function ProfileScreen() {
         <InfoRow label="Rôle" value={ROLE_LABELS[user.role] ?? user.role} />
       </View>
 
-      {/* Tenant info card */}
-      <View
-        style={{
-          backgroundColor: colors.white,
-          borderRadius: radius.lg,
-          padding: 16,
-          gap: 12,
-          borderWidth: 1,
-          borderColor: colors.paper[100],
-        }}
-      >
-        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink[300], textTransform: 'uppercase', letterSpacing: 1 }}>
-          Établissement
-        </Text>
-        <InfoRow label="Nom" value={tenant.name} />
-        <InfoRow label="Code" value={tenant.slug} />
-      </View>
+      {/* Tenant info card — hidden for tenant-less roles (super-admin). */}
+      {tenant ? (
+        <View
+          style={{
+            backgroundColor: colors.white,
+            borderRadius: radius.lg,
+            padding: 16,
+            gap: 12,
+            borderWidth: 1,
+            borderColor: colors.paper[100],
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink[300], textTransform: 'uppercase', letterSpacing: 1 }}>
+            Établissement
+          </Text>
+          <InfoRow label="Nom" value={tenant.name} />
+          <InfoRow label="Code" value={tenant.slug} />
+        </View>
+      ) : null}
 
       {/* Logout */}
       <View style={{ marginTop: 8 }}>
