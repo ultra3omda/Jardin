@@ -50,6 +50,20 @@ const ENTRIES: Entry[] = [
     icon: 'color-palette-outline',
     color: '#ec4899',
   },
+  {
+    route: '/(app)/manage/announcements',
+    title: 'Annonces',
+    subtitle: 'Communiquer avec parents & équipe',
+    icon: 'megaphone-outline',
+    color: '#0ea5e9',
+  },
+  {
+    route: '/(app)/manage/finance',
+    title: 'Finances',
+    subtitle: 'Factures & paiements',
+    icon: 'card-outline',
+    color: '#14b8a6',
+  },
 ];
 
 /** Admin management hub menu. */
