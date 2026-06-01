@@ -26,7 +26,9 @@ test.describe('Roster — Teachers @smoke', () => {
     await page.goto('/teachers');
     await expect(page.getByRole('heading', { name: /Enseignants/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /Ajouter un enseignant/i }).click();
+    // The header CTA and the empty-state CTA share the same label; on an empty
+    // teachers list both are present, so target the first (header) one.
+    await page.getByRole('button', { name: /Ajouter un enseignant/i }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
     const stamp = Date.now().toString(36);
