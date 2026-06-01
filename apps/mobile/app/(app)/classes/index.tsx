@@ -1,4 +1,5 @@
 import React from 'react';
+import { router } from 'expo-router';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
@@ -103,7 +104,7 @@ function EmptyState({ message }: { message: string }) {
 
 // ─── Teacher / Admin class card ──────────────────────────────────────────────
 
-function ClassCard({ cls }: { cls: ClassSummary }) {
+function ClassCard({ cls, canRecord }: { cls: ClassSummary; canRecord: boolean }) {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
   const accessToken = useAuthStore((s) => s.accessToken);
   const borderColor = levelColor(cls.level);
@@ -111,6 +112,10 @@ function ClassCard({ cls }: { cls: ClassSummary }) {
   function handleOpenGrades() {
     const url = `${apiUrl}/classes/${cls.id}/grades?token=${accessToken ?? ''}`;
     void Linking.openURL(url);
+  }
+
+  function handleRollCall() {
+    router.push({ pathname: '/(app)/classes/attendance/[id]', params: { id: cls.id } });
   }
 
   return (
@@ -165,6 +170,27 @@ function ClassCard({ cls }: { cls: ClassSummary }) {
           </Text>
         </Pressable>
       </View>
+
+      {canRecord ? (
+        <Pressable
+          onPress={handleRollCall}
+          accessibilityRole="button"
+          accessibilityLabel={`Faire l'appel de ${cls.name}`}
+          style={{
+            marginTop: 12,
+            paddingVertical: 10,
+            borderRadius: radius.md,
+            backgroundColor: colors.ambre[50],
+            borderWidth: 1,
+            borderColor: colors.ambre[100],
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ambre[700] }}>
+            Faire l&apos;appel
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -183,7 +209,7 @@ function TeacherAdminView({ classes, isAdmin }: { classes: ClassSummary[]; isAdm
     <View>
       <SectionTitle>{isAdmin ? 'Toutes les classes' : 'Vos classes assignées'}</SectionTitle>
       {classes.map((cls) => (
-        <ClassCard key={cls.id} cls={cls} />
+        <ClassCard key={cls.id} cls={cls} canRecord />
       ))}
     </View>
   );
