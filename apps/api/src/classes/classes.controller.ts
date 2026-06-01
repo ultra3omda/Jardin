@@ -46,8 +46,9 @@ export class ClassesController {
   list(
     @CurrentUser() user: AuthenticatedUser,
     @Query('schoolYear') schoolYear?: string,
+    @Query('mine') mine?: string,
   ): Promise<ListClassesResponseDto> {
-    return this.service.list(user, schoolYear);
+    return this.service.list(user, schoolYear, mine === 'true');
   }
 
   @Post()
