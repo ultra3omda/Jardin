@@ -190,3 +190,22 @@ export class ListClassesResponseDto {
   @ApiProperty()
   total!: number;
 }
+
+/** A single timetable slot enriched with its class name (teacher's own EDT). */
+export class MyScheduleSlotDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() classId!: string;
+  @ApiProperty() className!: string;
+  @ApiProperty() dayOfWeek!: number;
+  @ApiProperty() periodStart!: string;
+  @ApiProperty() periodEnd!: string;
+  @ApiProperty() subject!: string;
+  @ApiPropertyOptional() room?: string | null;
+}
+
+export class MyScheduleResponseDto {
+  @ApiProperty({ type: [MyScheduleSlotDto] })
+  items!: MyScheduleSlotDto[];
+  @ApiProperty()
+  total!: number;
+}

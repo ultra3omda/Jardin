@@ -24,6 +24,7 @@ import {
   CreateClassDto,
   CreateTimeSlotDto,
   ListClassesResponseDto,
+  MyScheduleResponseDto,
   TimeSlotResponseDto,
   UpdateClassDto,
   UpdateTimeSlotDto,
@@ -59,6 +60,17 @@ export class ClassesController {
     @Body() dto: CreateClassDto,
   ): Promise<ClassResponseDto> {
     return this.service.create(dto, user);
+  }
+
+  @Get('my-schedule')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
+  @ApiOperation({ summary: "The caller's own timetable across all their classes" })
+  @ApiResponse({ status: 200, type: MyScheduleResponseDto })
+  mySchedule(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('schoolYear') schoolYear?: string,
+  ): Promise<MyScheduleResponseDto> {
+    return this.service.mySchedule(user, schoolYear);
   }
 
   @Get(':id')

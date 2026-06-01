@@ -13,6 +13,7 @@ interface TimeSlot {
   subject: string;
   room?: string | null;
   teacher?: TeacherSummary | null;
+  className?: string;
 }
 interface ClassDetail { id: string; name: string; schoolYear: string; timeSlots?: TimeSlot[] }
 
@@ -42,14 +43,32 @@ function colorFor(subject: string): string {
 
 export default function SchedulePage() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.user?.role);
+  // TEACHER and STAFF see ONLY their own timetable (aggregated across classes).
+  // SCHOOL_ADMIN / PARENT keep the per-class picker.
+  const isOwnView = role === 'TEACHER' || role === 'STAFF';
+
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [detail, setDetail] = useState<ClassDetail | null>(null);
+  const [ownSlots, setOwnSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // ── Own timetable (teacher / staff) ──
   useEffect(() => {
-    if (!token) return;
+    if (!token || !isOwnView) return;
+    setLoading(true);
+    fetch('/api/classes/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))) as Promise<{ items: TimeSlot[] }>)
+      .then((d) => setOwnSlots(d.items ?? []))
+      .catch(() => setOwnSlots([]))
+      .finally(() => setLoading(false));
+  }, [token, isOwnView]);
+
+  // ── Per-class view (admin / parent) ──
+  useEffect(() => {
+    if (!token || isOwnView) return;
     setLoading(true);
     fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))) as Promise<{ items: ClassOption[] }>)
@@ -60,10 +79,10 @@ export default function SchedulePage() {
       })
       .catch(() => setClasses([]))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, isOwnView]);
 
   const loadDetail = useCallback(async () => {
-    if (!token || !selectedClass) { setDetail(null); return; }
+    if (!token || isOwnView || !selectedClass) { setDetail(null); return; }
     setLoadingDetail(true);
     try {
       const res = await fetch(`/api/classes/${selectedClass}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -74,11 +93,11 @@ export default function SchedulePage() {
     } finally {
       setLoadingDetail(false);
     }
-  }, [token, selectedClass]);
+  }, [token, isOwnView, selectedClass]);
 
   useEffect(() => { void loadDetail(); }, [loadDetail]);
 
-  const slots = detail?.timeSlots ?? [];
+  const slots = isOwnView ? ownSlots : detail?.timeSlots ?? [];
   // Distinct start times, sorted, used as the grid rows.
   const times = [...new Set(slots.map((s) => s.periodStart))].sort();
   const slotAt = (dow: number, time: string): TimeSlot | undefined =>
@@ -87,25 +106,35 @@ export default function SchedulePage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Emploi du temps</h1>
-        <p className="text-sm text-muted-foreground">Consultez les emplois du temps par classe.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-navy-900">
+          {isOwnView ? 'Mon emploi du temps' : 'Emploi du temps'}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isOwnView
+            ? 'Vos créneaux, toutes classes confondues.'
+            : 'Consultez les emplois du temps par classe.'}
+        </p>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <select className="rounded-md border px-3 py-2 text-sm" value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)} disabled={loading}>
-          {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        {detail?.schoolYear && <span className="text-sm text-muted-foreground">Année scolaire {detail.schoolYear}</span>}
-      </div>
+      {!isOwnView && (
+        <div className="flex flex-wrap items-center gap-3">
+          <select className="rounded-md border px-3 py-2 text-sm" value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)} disabled={loading}>
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          {detail?.schoolYear && <span className="text-sm text-muted-foreground">Année scolaire {detail.schoolYear}</span>}
+        </div>
+      )}
 
       {loading || loadingDetail ? (
         <p className="text-sm text-muted-foreground">Chargement…</p>
-      ) : classes.length === 0 ? (
+      ) : !isOwnView && classes.length === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">Aucune classe disponible.</div>
       ) : times.length === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          Aucun créneau configuré pour cette classe.
+          {isOwnView
+            ? "Aucun créneau ne vous est affecté pour l'instant."
+            : 'Aucun créneau configuré pour cette classe.'}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
@@ -129,9 +158,16 @@ export default function SchedulePage() {
                         {slot ? (
                           <div className={`rounded-lg border px-2 py-1.5 ${colorFor(slot.subject)}`}>
                             <div className="font-medium leading-tight">{slot.subject}</div>
-                            {slot.teacher && (
-                              <div className="text-xs opacity-75 mt-0.5">{slot.teacher.firstName} {slot.teacher.lastName}</div>
-                            )}
+                            {/* Own view: show the class. Per-class view: show the teacher. */}
+                            {isOwnView
+                              ? slot.className && (
+                                  <div className="text-xs opacity-75 mt-0.5">{slot.className}</div>
+                                )
+                              : slot.teacher && (
+                                  <div className="text-xs opacity-75 mt-0.5">
+                                    {slot.teacher.firstName} {slot.teacher.lastName}
+                                  </div>
+                                )}
                             {slot.room && <div className="text-xs opacity-60">{slot.room}</div>}
                           </div>
                         ) : (

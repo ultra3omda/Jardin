@@ -17,6 +17,8 @@ import type {
   CreateClassDto,
   CreateTimeSlotDto,
   ListClassesResponseDto,
+  MyScheduleResponseDto,
+  MyScheduleSlotDto,
   TimeSlotResponseDto,
   UpdateClassDto,
   UpdateTimeSlotDto,
@@ -74,6 +76,39 @@ export class ClassesService {
       this.prisma.class.count({ where }),
     ]);
     return { items: items.map((c) => this.toClassResponse(c)), total };
+  }
+
+  /**
+   * A teacher's own timetable: every TimeSlot whose `teacherUserId` is the
+   * caller, across all classes, with the class name attached. Tenant-scoped.
+   * Used by the schedule page for TEACHER / STAFF so each only sees their own.
+   */
+  async mySchedule(
+    user: AuthenticatedUser,
+    schoolYear?: string,
+  ): Promise<MyScheduleResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    const rows = await this.prisma.timeSlot.findMany({
+      where: {
+        tenantId: user.tenantId,
+        teacherUserId: user.id,
+        ...(schoolYear ? { class: { schoolYear } } : {}),
+        class: { deletedAt: null, ...(schoolYear ? { schoolYear } : {}) },
+      },
+      orderBy: [{ dayOfWeek: 'asc' }, { periodStart: 'asc' }],
+      include: { class: { select: { name: true } } },
+    });
+    const items: MyScheduleSlotDto[] = rows.map((s) => ({
+      id: s.id,
+      classId: s.classId,
+      className: s.class.name,
+      dayOfWeek: s.dayOfWeek,
+      periodStart: s.periodStart,
+      periodEnd: s.periodEnd,
+      subject: s.subject,
+      room: s.room,
+    }));
+    return { items, total: items.length };
   }
 
   async findById(id: string, user: AuthenticatedUser): Promise<ClassResponseDto> {
