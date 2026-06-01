@@ -9,6 +9,7 @@ import {
   BillingApiError,
 } from '@/lib/api/billing';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { StudentPicker } from '@/components/pickers/student-picker';
 
 interface Props {
   open: boolean;
@@ -135,19 +136,13 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
               />
             </div>
 
-            {/* Student ID */}
+            {/* Student (searchable) */}
             <div>
               <label htmlFor="inv-student" className="mb-1 block text-sm font-medium">
-                ID Élève{' '}
+                Élève{' '}
                 <span className="text-xs font-normal text-muted-foreground">(optionnel)</span>
               </label>
-              <input
-                id="inv-student"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                placeholder="ID de l'élève concerné"
-                className="h-10 w-full rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500"
-              />
+              <StudentPicker id="inv-student" value={studentId} onChange={setStudentId} />
             </div>
 
             {/* Due date + currency */}

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { StudentPicker } from '@/components/pickers/student-picker';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { mealPlanSchema, REGIMES, type MealPlanValues } from '@/lib/validation/canteen.schemas';
 
@@ -49,10 +50,10 @@ export function MealPlanForm({
             name="studentId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Identifiant de l&apos;élève</FormLabel>
-                <FormControl>
-                  <Input placeholder="ID élève" {...field} />
-                </FormControl>
+                <FormLabel>Élève</FormLabel>
+              <FormControl>
+                <StudentPicker value={field.value ?? ''} onChange={field.onChange} />
+              </FormControl>
                 <FormMessage />
               </FormItem>
             )}

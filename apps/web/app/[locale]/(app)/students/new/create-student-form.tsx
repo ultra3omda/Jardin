@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/students';
 import { listClasses } from '@/lib/api/classes';
 import { listParents } from '@/lib/api/staff';
+import { ComboPicker } from '@/components/pickers/combo-picker';
 import { useSchoolTerms } from '@/lib/school/use-school-terms';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import {
@@ -299,18 +300,22 @@ export function CreateStudentForm() {
             <label className="text-sm font-medium" htmlFor="parentEmail">
               Parent / tuteur *
             </label>
-            <select
-              id="parentEmail"
-              {...form.register('parentEmail')}
-              className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm"
-            >
-              <option value="">— Sélectionner un parent —</option>
-              {parentOptions.map((p) => (
-                <option key={p.id} value={p.email}>
-                  {p.firstName} {p.lastName} ({p.email})
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <ComboPicker
+                id="parentEmail"
+                value={form.watch('parentEmail') ?? ''}
+                onChange={(v) =>
+                  form.setValue('parentEmail', v, { shouldValidate: true, shouldDirty: true })
+                }
+                placeholder="Rechercher un parent…"
+                emptyText="Aucun parent ne correspond."
+                options={parentOptions.map((p) => ({
+                  value: p.email,
+                  label: `${p.firstName} ${p.lastName}`,
+                  hint: p.email,
+                }))}
+              />
+            </div>
             {parentOptions.length === 0 && (
               <p className="mt-1 text-xs text-amber-600">
                 Aucun compte parent. Créez-en un dans la page Parents avant d&apos;ajouter l&apos;élève.
