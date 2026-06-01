@@ -35,6 +35,49 @@ export interface AdminClassPerf {
   studentCount: number;
 }
 
+// Lot 3 — gestion des évaluations (admin + enseignant)
+
+export interface Evaluation {
+  id: string;
+  classId: string;
+  subjectId: string;
+  gradePeriodId: string;
+  title: string;
+  date: string;
+  maxScore: number;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Grade {
+  id: string;
+  evaluationId: string;
+  studentId: string;
+  score: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EvaluationWithGrades {
+  evaluation: Evaluation;
+  grades: Grade[];
+}
+
+export interface CreateEvaluationInput {
+  classId: string;
+  subjectId: string;
+  gradePeriodId: string;
+  title: string;
+  date: string;
+  maxScore: number;
+}
+
+interface ListEvaluationsResponse {
+  items: Evaluation[];
+  total: number;
+}
+
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -78,4 +121,46 @@ export function useAdminClassPerf() {
     queryKey: EVALUATIONS_KEYS.adminPerf(),
     queryFn: () => fetchApi<AdminClassPerf[]>('/api/evaluations/admin-perf'),
   });
+}
+
+// ── Management (admin + teacher) ─────────────────────────────────────────────
+
+/** List evaluations, optionally filtered by class. */
+export function useEvaluations(classId?: string) {
+  const qs = classId ? `?classId=${encodeURIComponent(classId)}` : '';
+  return useQuery({
+    queryKey: ['evaluations', 'list', classId ?? 'all'] as const,
+    queryFn: () => fetchApi<ListEvaluationsResponse>(`/api/evaluations${qs}`),
+  });
+}
+
+/** A single evaluation with its grades (for grade entry). */
+export function useEvaluationDetail(id: string) {
+  return useQuery({
+    queryKey: ['evaluations', 'detail', id] as const,
+    queryFn: () => fetchApi<EvaluationWithGrades>(`/api/evaluations/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function createEvaluation(input: CreateEvaluationInput): Promise<Evaluation> {
+  return fetchApi<Evaluation>('/api/evaluations', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function upsertGrade(
+  evaluationId: string,
+  studentId: string,
+  score: number,
+): Promise<Grade> {
+  return fetchApi<Grade>(`/api/evaluations/${evaluationId}/grades`, {
+    method: 'PUT',
+    body: JSON.stringify({ studentId, score }),
+  });
+}
+
+export function deleteEvaluation(id: string): Promise<void> {
+  return fetchApi<void>(`/api/evaluations/${id}`, { method: 'DELETE' });
 }

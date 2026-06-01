@@ -1,7 +1,10 @@
-import { View, Text } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View, Text } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 
 import { useJournal, type DailyLogEntry, type ChildMood } from '@/lib/api/school-life';
+import { useAuthStore } from '@/lib/auth/store';
+import { JournalComposer } from '@/components/school-life/journal-composer';
 import { EmptyView } from '@/components/ui/empty-view';
 import { ErrorView } from '@/components/ui/error-view';
 import { CardSkeleton } from '@/components/ui/card-skeleton';
@@ -68,7 +71,38 @@ function JournalCard({ entry }: { entry: DailyLogEntry }) {
 
 export function JournalSection() {
   const { data, isLoading, isError, refetch } = useJournal();
+  const role = useAuthStore((s) => s.user?.role);
+  const canWrite = role === 'TEACHER' || role === 'SCHOOL_ADMIN';
+  const [composerOpen, setComposerOpen] = useState(false);
   const entries = data?.items ?? [];
+
+  const addButton = canWrite ? (
+    <Pressable
+      onPress={() => setComposerOpen(true)}
+      accessibilityRole="button"
+      accessibilityLabel="Ajouter une entrée au journal"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: colors.ambre[50],
+        borderWidth: 1,
+        borderColor: colors.ambre[100],
+        borderRadius: radius.lg,
+        paddingVertical: 12,
+        marginBottom: 12,
+      }}
+    >
+      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.ambre[700] }}>
+        + Nouvelle entrée
+      </Text>
+    </Pressable>
+  ) : null;
+
+  const composer = canWrite ? (
+    <JournalComposer visible={composerOpen} onClose={() => setComposerOpen(false)} />
+  ) : null;
 
   if (isLoading) {
     return (
@@ -83,19 +117,29 @@ export function JournalSection() {
   }
   if (entries.length === 0) {
     return (
-      <EmptyView
-        icon="📓"
-        title="Aucune entrée"
-        subtitle="Le cahier de liaison sera mis à jour par l'équipe."
-      />
+      <View>
+        {addButton}
+        <EmptyView
+          icon="📓"
+          title="Aucune entrée"
+          subtitle={
+            canWrite
+              ? 'Ajoutez la première entrée du cahier de liaison.'
+              : "Le cahier de liaison sera mis à jour par l'équipe."
+          }
+        />
+        {composer}
+      </View>
     );
   }
 
   return (
     <View>
+      {addButton}
       {entries.map((e) => (
         <JournalCard key={e.id} entry={e} />
       ))}
+      {composer}
     </View>
   );
 }
