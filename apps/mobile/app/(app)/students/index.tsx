@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
 
+import { Fab } from '@klasso/ui-mobile';
 import { listStudents, type StudentSummary } from '@/lib/api/students';
+import { useAuthStore } from '@/lib/auth/store';
 
 /**
  * V2 — Mobile : liste élèves read-only (toutes personas).
@@ -21,6 +23,7 @@ function Initials({ s }: { s: StudentSummary }) {
 
 export default function StudentsListScreen() {
   const [search, setSearch] = useState('');
+  const isAdmin = useAuthStore((s) => s.user?.role) === 'SCHOOL_ADMIN';
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['students', search],
@@ -88,6 +91,14 @@ export default function StudentsListScreen() {
           )}
         />
       )}
+
+      {isAdmin ? (
+        <Fab
+          label="Ajouter un élève"
+          extended
+          onPress={() => router.push('/(app)/students/new')}
+        />
+      ) : null}
     </View>
   );
 }

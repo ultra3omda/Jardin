@@ -17,6 +17,24 @@ export default function StudentsLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
+      <Stack.Screen
+        name="new"
+        options={{
+          headerShown: true,
+          title: 'Nouvel élève',
+          headerTintColor: colors.ink[900],
+          headerStyle: { backgroundColor: colors.surface },
+        }}
+      />
+      <Stack.Screen
+        name="edit/[id]"
+        options={{
+          headerShown: true,
+          title: "Modifier l'élève",
+          headerTintColor: colors.ink[900],
+          headerStyle: { backgroundColor: colors.surface },
+        }}
+      />
     </Stack>
   );
 }
