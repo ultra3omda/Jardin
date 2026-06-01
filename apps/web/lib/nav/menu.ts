@@ -121,6 +121,7 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
       items: [
         { id: 'subjects',     label: 'Matières',   href: '/settings/subjects',      icon: ICONS.subjects },
         { id: 'gradePeriods', label: 'Trimestres', href: '/settings/grade-periods', icon: ICONS.gradePeriods },
+        { id: 'imports',      label: 'Importer',   href: '/imports',                icon: ICONS.imports },
       ],
     },
     {
@@ -214,6 +215,9 @@ function staffNav(_: BuildContext): NavSection[] {
     ]},
     { id: 'pedagogie', label: 'Pédagogie', items: [
       { id: 'bulletins', label: 'Bulletins (lecture)', href: '/bulletins', icon: ICONS.bulletins },
+    ]},
+    { id: 'outils', label: 'Outils', items: [
+      { id: 'imports', label: 'Importer', href: '/imports', icon: ICONS.imports },
     ]},
     { id: 'communication', label: 'Communication', items: [
       { id: 'messages',      label: 'Messages', href: '/messages',      icon: ICONS.messages },
