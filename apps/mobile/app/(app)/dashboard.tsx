@@ -1,164 +1,140 @@
-import { ScrollView, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
-import { KpiCard, type KpiVariant, colors } from '@klasso/ui-mobile';
+import { Avatar, Card, KpiCard, ScreenHeader, type KpiVariant, colors } from '@klasso/ui-mobile';
+import { useDashboardOverview, type DashboardOverview } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/lib/auth/store';
 
-interface DashboardKpi {
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+interface Kpi {
   label: string;
   value: string;
   variant: KpiVariant;
+  icon: IoniconName;
   sub?: string;
 }
 
-interface DashboardConfig {
-  heading: string;
-  subtitle: string;
-  kpis: DashboardKpi[];
+function nf(n: number | null | undefined): string {
+  return n === null || n === undefined ? '—' : String(n);
 }
 
-/**
- * V7-B — Resolve the dashboard config for the (role, tenant.type) pair.
- * Mirrors apps/web/lib/dashboard/config.ts at a simplified level for mobile.
- */
-function getMobileDashboardConfig(args: {
-  role: string | undefined;
-  tenantType: string | null | undefined;
-  firstName: string | undefined;
-}): DashboardConfig {
-  const { role, tenantType, firstName } = args;
-  const isKG = tenantType === 'KINDERGARTEN';
-  const fn = firstName ?? 'utilisateur';
-
-  if (role === 'SUPER_ADMIN') {
-    return {
-      heading: 'Plateforme',
-      subtitle: '17 écoles · 3 demandes en attente',
-      kpis: [
-        { label: 'Écoles', value: '17', variant: 'purple' },
-        { label: 'Utilisateurs', value: '1.2k', variant: 'blue' },
-        { label: 'Démos', value: '3', variant: 'orange' },
-      ],
-    };
-  }
-
-  if (role === 'SCHOOL_ADMIN' && isKG) {
-    return {
-      heading: 'Tableau de Bord',
-      subtitle: 'Jardin Les Pétales',
-      kpis: [
-        { label: 'Enfants', value: '68', variant: 'pink' },
-        { label: 'Présents', value: '62', variant: 'green' },
-        { label: 'Photos', value: '24', variant: 'amber' },
-      ],
-    };
-  }
-  if (role === 'SCHOOL_ADMIN') {
-    return {
-      heading: 'Tableau de Bord',
-      subtitle: 'École Pilote',
-      kpis: [
-        { label: 'Élèves', value: '312', variant: 'blue' },
-        { label: 'Présence', value: '92%', variant: 'green' },
-        { label: 'Moyenne', value: '14.2', variant: 'amber', sub: 'Sur 17 classes' },
-      ],
-    };
-  }
-
-  if (role === 'TEACHER' && isKG) {
-    return {
-      heading: `Bonjour, ${fn}.`,
-      subtitle: 'Vie quotidienne',
-      kpis: [
-        { label: 'Mes enfants', value: '32', variant: 'pink' },
-        { label: 'Photos', value: '12', variant: 'amber' },
-        { label: 'Présents', value: '29', variant: 'green' },
-      ],
-    };
-  }
-  if (role === 'TEACHER') {
-    return {
-      heading: `Bonjour, ${fn}.`,
-      subtitle: '2 classes · 54 élèves',
-      kpis: [
-        { label: 'Élèves', value: '54', variant: 'blue' },
-        { label: 'Évals', value: '8', variant: 'orange' },
-        { label: 'Cours', value: '5', variant: 'green' },
-      ],
-    };
-  }
-
-  if (role === 'PARENT' && isKG) {
-    return {
-      heading: "Yasmine aujourd'hui",
-      subtitle: 'Présente · 4 photos · 2 activités',
-      kpis: [
-        { label: 'Photos', value: '4', variant: 'pink' },
-        { label: 'Activités', value: '2', variant: 'green' },
-        { label: 'Présence', value: '✓', variant: 'amber' },
-      ],
-    };
+/** Role-aware KPI selection, fed with REAL overview data. */
+function buildKpis(role: string | undefined, isKG: boolean, d?: DashboardOverview): Kpi[] {
+  if (!d) return [];
+  const present = d.todayAttendance.present;
+  if (isKG) {
+    return [
+      { label: 'Enfants', value: nf(d.totalStudents), variant: 'pink', icon: 'happy-outline' },
+      { label: 'Présents', value: nf(present), variant: 'green', icon: 'checkmark-done-outline' },
+      { label: 'Journal', value: nf(d.journalToday), variant: 'amber', icon: 'book-outline' },
+      { label: 'Activités', value: nf(d.activitiesToday), variant: 'purple', icon: 'color-palette-outline' },
+    ];
   }
   if (role === 'PARENT') {
-    return {
-      heading: `Bonjour, ${fn}.`,
-      subtitle: "2 enfants à l'École Pilote",
-      kpis: [
-        { label: 'Enfants', value: '2', variant: 'pink' },
-        { label: 'Notes', value: '5', variant: 'amber' },
-        { label: 'À payer', value: '180€', variant: 'orange' },
-      ],
-    };
+    return [
+      { label: 'Mes enfants', value: nf(d.totalStudents), variant: 'pink', icon: 'people-outline' },
+      { label: 'À régler', value: nf(d.pendingPayments), variant: 'orange', icon: 'card-outline' },
+      { label: 'Présence', value: d.attendanceRate === null ? '—' : `${d.attendanceRate}%`, variant: 'green', icon: 'checkmark-circle-outline' },
+      { label: 'Moyenne', value: d.averageGrade === null ? '—' : nf(d.averageGrade), variant: 'amber', icon: 'school-outline' },
+    ];
   }
-
-  return {
-    heading: `Bonjour, ${fn}.`,
-    subtitle: 'Bienvenue dans Klasso',
-    kpis: [{ label: 'Bienvenue', value: '👋', variant: 'amber' }],
-  };
+  // SCHOOL_ADMIN / TEACHER / STAFF
+  return [
+    { label: 'Élèves', value: nf(d.totalStudents), variant: 'blue', icon: 'people-outline' },
+    { label: 'Présence', value: d.attendanceRate === null ? '—' : `${d.attendanceRate}%`, variant: 'green', icon: 'checkmark-circle-outline' },
+    { label: 'Paiements', value: nf(d.pendingPayments), variant: 'orange', icon: 'card-outline', sub: 'en attente' },
+    { label: 'Moyenne', value: d.averageGrade === null ? '—' : nf(d.averageGrade), variant: 'amber', icon: 'school-outline', sub: `${nf(d.classesCount)} classes` },
+  ];
 }
 
 export default function DashboardScreen() {
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
+  const { data, isLoading } = useDashboardOverview();
 
-  const config = getMobileDashboardConfig({
-    role: user?.role,
-    tenantType: tenant?.type ?? null,
-    firstName: user?.firstName,
-  });
+  const isKG = tenant?.type === 'KINDERGARTEN';
+  const heading = user?.firstName ? `Bonjour, ${user.firstName}` : 'Tableau de bord';
+  const subtitle = tenant?.name ?? 'Bienvenue dans Klasso';
+  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}` || 'K';
+  const kpis = buildKpis(user?.role, isKG, data);
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 16, gap: 16 }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
     >
-      <View>
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: '700',
-            color: colors.ink[900],
-            lineHeight: 28,
-          }}
-        >
-          {config.heading}
-        </Text>
-        <Text style={{ fontSize: 13, color: colors.ink[500], marginTop: 4 }}>
-          {config.subtitle}
-        </Text>
-      </View>
+      <ScreenHeader title={heading} subtitle={subtitle} right={<Avatar initials={initials} size={44} />} />
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        {config.kpis.map((kpi, i) => (
-          <KpiCard
-            key={i}
-            label={kpi.label}
-            value={kpi.value}
-            variant={kpi.variant}
-            sub={kpi.sub}
-          />
-        ))}
-      </View>
+      {isLoading ? (
+        <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+          <ActivityIndicator color={colors.ambre[500]} />
+        </View>
+      ) : (
+        <>
+          {/* KPI grid — 2 columns */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+            {kpis.map((kpi, i) => (
+              <View key={i} style={{ width: '47.5%', flexGrow: 1 }}>
+                <KpiCard label={kpi.label} value={kpi.value} variant={kpi.variant} icon={kpi.icon} sub={kpi.sub} />
+              </View>
+            ))}
+          </View>
+
+          {/* Attendance breakdown */}
+          {data ? (
+            <Card style={{ marginTop: 16 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink[900], marginBottom: 12 }}>
+                Présence du jour
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <AttPill label="Présents" value={data.todayAttendance.present} tint="rgba(5,150,105,0.10)" color="#059669" />
+                <AttPill label="Absents" value={data.todayAttendance.absent} tint="rgba(239,68,68,0.10)" color="#ef4444" />
+                <AttPill label="Retards" value={data.todayAttendance.late} tint="rgba(217,119,6,0.10)" color="#d97706" />
+                <AttPill label="Excusés" value={data.todayAttendance.excused} tint="rgba(71,85,105,0.10)" color="#475569" />
+              </View>
+            </Card>
+          ) : null}
+
+          {/* Latest announcements */}
+          {data && data.announcements.length > 0 ? (
+            <Card style={{ marginTop: 16 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink[900], marginBottom: 10 }}>
+                Annonces
+              </Text>
+              {data.announcements.slice(0, 3).map((a, i) => (
+                <View
+                  key={i}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    paddingVertical: 8,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: 'rgba(15,20,25,0.05)',
+                  }}
+                >
+                  <Ionicons name="megaphone-outline" size={16} color={colors.ambre[500]} />
+                  <Text style={{ flex: 1, fontSize: 13, color: colors.ink[700] }} numberOfLines={1}>
+                    {a.title}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.ink[300] }}>{a.date}</Text>
+                </View>
+              ))}
+            </Card>
+          ) : null}
+        </>
+      )}
     </ScrollView>
+  );
+}
+
+function AttPill({ label, value, tint, color }: { label: string; value: number; tint: string; color: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: tint, borderRadius: 12, paddingVertical: 10, alignItems: 'center' }}>
+      <Text style={{ fontSize: 18, fontWeight: '800', color }}>{value}</Text>
+      <Text style={{ fontSize: 10, color: colors.ink[500], marginTop: 2 }}>{label}</Text>
+    </View>
   );
 }

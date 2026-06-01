@@ -1,50 +1,38 @@
+import type { ComponentProps } from 'react';
+import type { Ionicons } from '@expo/vector-icons';
+
 import type { UserRole } from '@/lib/auth/types';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export interface MobileTab {
   /** Route name relative to `app/(app)/` — must match a .tsx file. */
   name: string;
   label: string;
+  /** Ionicons base name (the "-outline" inactive variant). */
+  icon: IoniconName;
 }
 
-const ADMIN_TABS: MobileTab[] = [
-  { name: 'dashboard', label: 'Tableau' },
-  { name: 'students', label: 'Élèves' },
-  { name: 'classes', label: 'Classes' },
-  { name: 'pedagogy', label: 'Pédagogie' },
-  { name: 'notifications', label: 'Notifs' },
-  { name: 'profile', label: 'Profil' },
-];
+const T = {
+  dashboard: { name: 'dashboard', label: 'Accueil', icon: 'home-outline' as IoniconName },
+  students: { name: 'students', label: 'Élèves', icon: 'people-outline' as IoniconName },
+  child: { name: 'students', label: 'Mon enfant', icon: 'happy-outline' as IoniconName },
+  classes: { name: 'classes', label: 'Classes', icon: 'school-outline' as IoniconName },
+  pedagogy: { name: 'pedagogy', label: 'Pédagogie', icon: 'book-outline' as IoniconName },
+  life: { name: 'life', label: 'Vie scolaire', icon: 'color-palette-outline' as IoniconName },
+  messages: { name: 'messages', label: 'Messages', icon: 'chatbubbles-outline' as IoniconName },
+  notifications: { name: 'notifications', label: 'Notifs', icon: 'notifications-outline' as IoniconName },
+  profile: { name: 'profile', label: 'Profil', icon: 'person-outline' as IoniconName },
+} satisfies Record<string, MobileTab>;
 
-const TEACHER_TABS: MobileTab[] = [
-  { name: 'dashboard', label: 'Accueil' },
-  { name: 'classes', label: 'Mes classes' },
-  { name: 'life', label: 'Vie scolaire' }, // T2b mobile reads (journal + activités)
-  { name: 'messages', label: 'Messages' },
-  { name: 'notifications', label: 'Notifs' },
-  { name: 'profile', label: 'Profil' },
-];
-
-const PARENT_TABS: MobileTab[] = [
-  { name: 'dashboard', label: 'Accueil' },
-  { name: 'students', label: 'Mon enfant' },
-  { name: 'life', label: 'Vie scolaire' }, // T2b mobile reads (journal + activités + cantine)
-  { name: 'messages', label: 'Messages' },
-  { name: 'notifications', label: 'Notifs' },
-  { name: 'profile', label: 'Profil' },
-];
-
-/** STAFF + SUPER_ADMIN: minimal, role-agnostic set — all screens already exist. */
-const MINIMAL_TABS: MobileTab[] = [
-  { name: 'dashboard', label: 'Accueil' },
-  { name: 'messages', label: 'Messages' },
-  { name: 'notifications', label: 'Notifs' },
-  { name: 'profile', label: 'Profil' },
-];
+const ADMIN_TABS: MobileTab[] = [T.dashboard, T.students, T.classes, T.pedagogy, T.notifications, T.profile];
+const TEACHER_TABS: MobileTab[] = [T.dashboard, T.classes, T.life, T.messages, T.notifications, T.profile];
+const PARENT_TABS: MobileTab[] = [T.dashboard, T.child, T.life, T.messages, T.notifications, T.profile];
+const MINIMAL_TABS: MobileTab[] = [T.dashboard, T.messages, T.notifications, T.profile];
 
 /**
- * V1.7-A — Resolve the bottom tab bar from the connected user's role at
- * RUNTIME (replaces the build-time EXPO_PUBLIC_PERSONA selection). One binary
- * serves all three personas; tabs always match the role carried by the JWT.
+ * Resolve the bottom tab bar from the connected user's role at runtime. One
+ * binary serves all personas; tabs always match the JWT role.
  */
 export function getTabsForRole(role: UserRole): MobileTab[] {
   switch (role) {
@@ -60,3 +48,25 @@ export function getTabsForRole(role: UserRole): MobileTab[] {
       return MINIMAL_TABS;
   }
 }
+
+/**
+ * Every screen that can appear as a tab for SOME role. The layout registers all
+ * of them and hides the ones not in the current role's set (href:null), so the
+ * tab bar never shows stray routes.
+ */
+export const ALL_TAB_NAMES = [
+  'dashboard',
+  'students',
+  'classes',
+  'pedagogy',
+  'life',
+  'messages',
+  'notifications',
+  'profile',
+] as const;
+
+/**
+ * Detail routes that must NEVER appear as tabs. `students` now owns its own
+ * Stack ([id] lives inside it), so only the bulletin detail needs hiding here.
+ */
+export const NON_TAB_ROUTES = ['bulletin'] as const;

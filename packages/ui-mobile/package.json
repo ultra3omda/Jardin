@@ -17,6 +17,7 @@
     "typescript": "~5.3.3"
   },
   "peerDependencies": {
-    "nativewind": "^4.1.0"
+    "nativewind": "^4.1.0",
+    "@expo/vector-icons": "*"
   }
 }
