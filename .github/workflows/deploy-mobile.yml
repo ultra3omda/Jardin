@@ -65,7 +65,9 @@ jobs:
           EOF
 
       - name: Install Vercel CLI
-        run: pnpm add -g vercel@latest
+        # Pinned to the last known-good release; vercel@54.7.0 fails `vercel build`
+        # with "isPackageInstalled not found" (@vercel/build-utils ESM/CJS bug).
+        run: pnpm add -g vercel@54.6.1
 
       - name: Deploy static bundle to Vercel production
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --scope=ultra3omda-6664s-projects --cwd apps/mobile/klasso-mobile
