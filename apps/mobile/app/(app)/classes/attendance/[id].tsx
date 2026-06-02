@@ -41,7 +41,7 @@ export default function AttendanceScreen() {
 
   const roster = useQuery({
     queryKey: ['attendance-roster', classId],
-    queryFn: () => listStudents({ classId, pageSize: 200 }),
+    queryFn: () => listStudents({ classId, pageSize: 100 }),
     enabled: !!classId,
   });
 

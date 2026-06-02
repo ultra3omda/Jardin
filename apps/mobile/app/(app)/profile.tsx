@@ -1,6 +1,7 @@
-import { Alert, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Button, colors, radius } from '@klasso/ui-mobile';
+import { useState } from 'react';
+import { Platform, ScrollView, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Button, ConfirmDialog, colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { deleteRefreshToken, deleteTenantSlug } from '@/lib/auth/secure-storage';
 
@@ -13,25 +14,30 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function ProfileScreen() {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
   const clear = useAuthStore((s) => s.clear);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  async function handleLogout() {
-    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Déconnecter',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteRefreshToken();
-          await deleteTenantSlug();
-          clear();
-          router.replace('/(onboarding)/school-code');
-        },
-      },
-    ]);
+  // `Alert.alert` is a no-op on react-native-web (our deployed target), so the
+  // confirm + logout never fired. Use a cross-platform ConfirmDialog, and force
+  // a hard navigation on web where router.replace after clear() is unreliable.
+  async function confirmLogout() {
+    setLoggingOut(true);
+    try {
+      await deleteRefreshToken();
+      await deleteTenantSlug();
+    } catch {
+      /* secure-storage best-effort */
+    }
+    clear();
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).location?.assign('/');
+    } else {
+      router.replace('/(onboarding)/school-code');
+    }
   }
 
   // Only `user` is required. SUPER_ADMIN / COMMERCIAL have no tenant — the
@@ -117,8 +123,19 @@ export default function ProfileScreen() {
 
       {/* Logout */}
       <View style={{ marginTop: 8 }}>
-        <Button label="Se déconnecter" variant="secondary" onPress={handleLogout} />
+        <Button label="Se déconnecter" variant="secondary" onPress={() => setConfirmOpen(true)} />
       </View>
+
+      <ConfirmDialog
+        visible={confirmOpen}
+        title="Déconnexion"
+        message="Voulez-vous vraiment vous déconnecter ?"
+        confirmLabel="Déconnecter"
+        destructive
+        loading={loggingOut}
+        onConfirm={confirmLogout}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </ScrollView>
   );
 }

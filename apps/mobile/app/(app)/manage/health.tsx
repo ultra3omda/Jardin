@@ -28,7 +28,7 @@ export default function ManageHealthScreen() {
   const { data, isLoading, isError } = useHealthRecords();
   const { data: studentsData } = useQuery({
     queryKey: ['students', 'health-picker'],
-    queryFn: () => listStudents({ pageSize: 200 }),
+    queryFn: () => listStudents({ pageSize: 100 }),
   });
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<HealthRecord | null>(null);
