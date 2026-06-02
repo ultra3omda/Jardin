@@ -25,6 +25,8 @@ export interface DashboardOverview {
   attendanceRate: number | null;
   averageGrade: number | null;
   pendingPayments: number;
+  newGrades: number;
+  amountDue: number;
   recentGrades: DashboardRecentGrade[];
   announcements: DashboardAnnouncement[];
   todayAttendance: { present: number; absent: number; late: number; excused: number };

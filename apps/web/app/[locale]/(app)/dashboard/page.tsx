@@ -80,8 +80,11 @@ export default function DashboardPage() {
       case 'globalAverage':
         return data.averageGrade === null ? '—' : String(data.averageGrade);
       case 'overduePayments':
-      case 'amountDue':
         return String(data.pendingPayments);
+      case 'amountDue':
+        return String(data.amountDue);
+      case 'newGrades':
+        return String(data.newGrades);
       case 'photosToday':
         return String(data.journalToday);
       case 'activitiesToday':
