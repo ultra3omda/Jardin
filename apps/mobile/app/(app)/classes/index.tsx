@@ -1,6 +1,6 @@
 import React from 'react';
 import { router } from 'expo-router';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { useMyClasses as useMyClassesAPI, type ClassSummary } from '@/lib/api/classes';
@@ -105,14 +105,7 @@ function EmptyState({ message }: { message: string }) {
 // ─── Teacher / Admin class card ──────────────────────────────────────────────
 
 function ClassCard({ cls, canRecord }: { cls: ClassSummary; canRecord: boolean }) {
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
-  const accessToken = useAuthStore((s) => s.accessToken);
   const borderColor = levelColor(cls.level);
-
-  function handleOpenGrades() {
-    const url = `${apiUrl}/classes/${cls.id}/grades?token=${accessToken ?? ''}`;
-    void Linking.openURL(url);
-  }
 
   function handleRollCall() {
     router.push({ pathname: '/(app)/classes/attendance/[id]', params: { id: cls.id } });
@@ -131,9 +124,7 @@ function ClassCard({ cls, canRecord }: { cls: ClassSummary; canRecord: boolean }
         marginBottom: 10,
       }}
     >
-      <View
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-      >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink[900] }}>
             {cls.name}
@@ -159,16 +150,6 @@ function ClassCard({ cls, canRecord }: { cls: ClassSummary; canRecord: boolean }
             <Text style={{ fontSize: 12, color: colors.ink[300], marginTop: 3 }}>{cls.subject}</Text>
           ) : null}
         </View>
-        <Pressable
-          onPress={handleOpenGrades}
-          style={{ paddingLeft: 12 }}
-          accessibilityRole="link"
-          accessibilityLabel={`Voir les notes de ${cls.name}`}
-        >
-          <Text style={{ fontSize: 12, color: colors.ambre[600], fontWeight: '600' }}>
-            Voir les notes →
-          </Text>
-        </Pressable>
       </View>
 
       {canRecord ? (

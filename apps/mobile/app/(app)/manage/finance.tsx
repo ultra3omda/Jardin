@@ -55,7 +55,7 @@ export default function ManageFinanceScreen() {
   const { data, isLoading, isError } = useInvoices();
   const { data: studentsData } = useQuery({
     queryKey: ['students', 'finance-picker'],
-    queryFn: () => listStudents({ pageSize: 200 }),
+    queryFn: () => listStudents({ pageSize: 100 }),
   });
 
   const [createOpen, setCreateOpen] = useState(false);

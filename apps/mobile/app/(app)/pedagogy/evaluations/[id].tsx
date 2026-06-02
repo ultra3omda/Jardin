@@ -28,7 +28,7 @@ export default function GradeEntryScreen() {
 
   const roster = useQuery({
     queryKey: ['attendance-roster', classId],
-    queryFn: () => listStudents({ classId: classId!, pageSize: 200 }),
+    queryFn: () => listStudents({ classId: classId!, pageSize: 100 }),
     enabled: !!classId,
   });
 

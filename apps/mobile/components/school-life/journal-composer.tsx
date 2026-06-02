@@ -38,7 +38,7 @@ export function JournalComposer({ visible, onClose }: { visible: boolean; onClos
 
   const { data: studentsData } = useQuery({
     queryKey: ['students', 'journal-picker'],
-    queryFn: () => listStudents({ pageSize: 200 }),
+    queryFn: () => listStudents({ pageSize: 100 }),
     enabled: visible,
   });
 
