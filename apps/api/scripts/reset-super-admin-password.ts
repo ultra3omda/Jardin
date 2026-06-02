@@ -57,8 +57,11 @@ function generatePassword(): string {
 
 async function main(): Promise<void> {
   const email = normalizeEmail(process.env.SUPER_ADMIN_EMAIL ?? DEFAULT_SUPER_ADMIN_EMAIL);
-  const newPassword = process.env.SUPER_ADMIN_NEW_PASSWORD ?? generatePassword();
-  const passwordWasGenerated = !process.env.SUPER_ADMIN_NEW_PASSWORD;
+  // Une chaîne vide (input de workflow laissé vide) doit déclencher la
+  // génération automatique — pas seulement `undefined`.
+  const provided = process.env.SUPER_ADMIN_NEW_PASSWORD?.trim();
+  const passwordWasGenerated = !provided;
+  const newPassword = provided && provided.length > 0 ? provided : generatePassword();
 
   if (newPassword.length < 12) {
     throw new Error(
