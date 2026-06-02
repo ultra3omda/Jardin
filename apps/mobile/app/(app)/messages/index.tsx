@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { colors, radius } from '@klasso/ui-mobile';
+import { Fab, colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { useConversations, type Conversation, type Participant } from '@/lib/api/messaging';
 
@@ -114,13 +114,11 @@ export default function MessagesScreen() {
   const conversations = data?.items ?? [];
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-    >
-      <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink[900], marginBottom: 16 }}>
-        Messages
-      </Text>
+    <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
+        <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink[900], marginBottom: 16 }}>
+          Messages
+        </Text>
 
       {isLoading ? (
         <Text style={{ color: colors.ink[500] }}>Chargement…</Text>
@@ -143,6 +141,9 @@ export default function MessagesScreen() {
       ) : (
         conversations.map((c) => <ThreadRow key={c.id} conv={c} meId={meId} />)
       )}
-    </ScrollView>
+      </ScrollView>
+
+      <Fab label="Nouvelle conversation" extended onPress={() => router.push('/(app)/messages/new')} />
+    </View>
   );
 }

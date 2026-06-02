@@ -64,6 +64,20 @@ const ENTRIES: Entry[] = [
     icon: 'card-outline',
     color: '#14b8a6',
   },
+  {
+    route: '/(app)/manage/transport',
+    title: 'Transport',
+    subtitle: 'Lignes de bus & chauffeurs',
+    icon: 'bus-outline',
+    color: '#f97316',
+  },
+  {
+    route: '/(app)/manage/health',
+    title: 'Santé',
+    subtitle: 'Dossiers médicaux (RGPD)',
+    icon: 'medkit-outline',
+    color: '#ef4444',
+  },
 ];
 
 /** Admin management hub menu. */
