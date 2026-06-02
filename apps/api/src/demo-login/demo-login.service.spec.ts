@@ -73,22 +73,6 @@ describe('DemoLoginService', () => {
     expect(auth.issueTokens).toHaveBeenCalledTimes(1);
   });
 
-  it('handles super-admin persona (null tenant)', async () => {
-    prisma.user.findFirst.mockResolvedValue({
-      id: 'su1',
-      tenantId: null,
-      email: 'super@klasso.tn',
-      firstName: 'Super',
-      lastName: 'Admin',
-      role: 'SUPER_ADMIN',
-      locale: 'fr',
-      tenant: null,
-    });
-    const res = await service.demoLogin('super-admin', '127.0.0.1');
-    expect(res.tenant).toBeNull();
-    expect(res.user.role).toBe('SUPER_ADMIN');
-  });
-
   it('writes audit log with persona + ip on success', async () => {
     prisma.user.findFirst.mockResolvedValue({
       id: 'u1',
@@ -156,25 +140,4 @@ describe('DemoLoginService', () => {
     );
   });
 
-  it('V7-C — auto-seeds super-admin (null tenant) when not found', async () => {
-    prisma.user.findFirst.mockResolvedValueOnce(null); // initial lookup miss
-    prisma.user.findFirst.mockResolvedValueOnce(null); // ensureDemoUserSeeded existing check
-    prisma.user.create.mockResolvedValueOnce({
-      id: 'su-seeded',
-      tenantId: null,
-      email: 'super@klasso.tn',
-      firstName: 'Super',
-      lastName: 'Admin',
-      role: 'SUPER_ADMIN',
-      locale: 'fr',
-      passwordHash: 'hashed',
-    });
-
-    const res = await service.demoLogin('super-admin', '127.0.0.1');
-
-    expect(prisma.tenant.upsert).not.toHaveBeenCalled();
-    expect(prisma.user.create).toHaveBeenCalledTimes(1);
-    expect(res.user.role).toBe('SUPER_ADMIN');
-    expect(res.tenant).toBeNull();
-  });
 });

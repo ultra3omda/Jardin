@@ -9,7 +9,6 @@ export const DEMO_PERSONAS = [
   'parent-primary',
   'parent-kindergarten',
   'staff',
-  'super-admin',
 ] as const;
 
 export type DemoPersona = (typeof DEMO_PERSONAS)[number];
