@@ -81,3 +81,18 @@ export class ListMessagesResponseDto {
   @ApiProperty({ description: 'true s’il existe encore des messages plus anciens' })
   hasMore!: boolean;
 }
+
+/** A user the caller is allowed to start a 1:1 conversation with. */
+export class ContactDto {
+  @ApiProperty() userId!: string;
+  @ApiProperty() firstName!: string;
+  @ApiProperty() lastName!: string;
+  @ApiProperty() email!: string;
+  @ApiProperty({ description: "Rôle du contact (TEACHER, PARENT, …)" })
+  role!: string;
+}
+
+export class ContactsResponseDto {
+  @ApiProperty({ type: [ContactDto] })
+  items!: ContactDto[];
+}

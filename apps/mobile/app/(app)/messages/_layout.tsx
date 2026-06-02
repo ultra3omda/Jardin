@@ -21,6 +21,15 @@ export default function MessagesLayout() {
           headerStyle: { backgroundColor: colors.surface },
         }}
       />
+      <Stack.Screen
+        name="new"
+        options={{
+          headerShown: true,
+          title: 'Nouvelle conversation',
+          headerTintColor: colors.ink[900],
+          headerStyle: { backgroundColor: colors.surface },
+        }}
+      />
     </Stack>
   );
 }

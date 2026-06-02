@@ -19,7 +19,7 @@ const userB = { id: 'user_B' };
 
 function makePrismaMock() {
   return {
-    user: { findFirst: vi.fn(), findUnique: vi.fn() },
+    user: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn() },
     conversation: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -73,6 +73,40 @@ describe('MessagingService', () => {
     const res = await service.createOrGetConversation({ recipientUserId: userB.id }, userA);
     expect(res.id).toBe('conv_1');
     expect(prisma.conversation.create).not.toHaveBeenCalled();
+  });
+
+  it('listContacts scopes a PARENT to teachers & admins, excluding self', async () => {
+    const parent: AuthenticatedUser = { ...userA, id: 'parent_1', role: UserRole.PARENT };
+    prisma.user.findMany.mockResolvedValueOnce([
+      { id: 't1', firstName: 'T', lastName: 'One', email: 't1@s.tn', role: UserRole.TEACHER },
+    ]);
+    const res = await service.listContacts(parent);
+    expect(res.items).toEqual([
+      { userId: 't1', firstName: 'T', lastName: 'One', email: 't1@s.tn', role: UserRole.TEACHER },
+    ]);
+    const where = prisma.user.findMany.mock.calls[0][0].where;
+    expect(where.role.in).toEqual([UserRole.TEACHER, UserRole.SCHOOL_ADMIN]);
+    expect(where.id).toEqual({ not: 'parent_1' });
+    expect(where.tenantId).toBe(tenantA);
+    expect(where.deletedAt).toBeNull();
+  });
+
+  it('listContacts gives staff/admin the full tenant directory', async () => {
+    prisma.user.findMany.mockResolvedValueOnce([]);
+    await service.listContacts(userA);
+    const where = prisma.user.findMany.mock.calls[0][0].where;
+    expect(where.role.in).toEqual([
+      UserRole.SCHOOL_ADMIN,
+      UserRole.TEACHER,
+      UserRole.STAFF,
+      UserRole.PARENT,
+    ]);
+  });
+
+  it('listContacts requires a tenant', async () => {
+    await expect(
+      service.listContacts({ ...userA, tenantId: null } as AuthenticatedUser),
+    ).rejects.toMatchObject({ response: { code: 'TENANT_REQUIRED' } });
   });
 
   it('createOrGetConversation rejects messaging self', async () => {

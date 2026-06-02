@@ -6,12 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
+  ContactsResponseDto,
   ConversationResponseDto,
   CreateConversationDto,
   ListConversationsResponseDto,
@@ -100,6 +101,42 @@ export class MessagingService {
     });
     return {
       items: conversations.map((c) => this.toConversationResponse(c, user.id)),
+    };
+  }
+
+  /**
+   * Users the caller may start a 1:1 conversation with, scoped by role:
+   *  - PARENT → teachers & school admins only
+   *  - TEACHER / STAFF / SCHOOL_ADMIN → everyone in the tenant (minus self)
+   * Self and soft-deleted users are always excluded.
+   */
+  async listContacts(user: AuthenticatedUser): Promise<ContactsResponseDto> {
+    if (!user.tenantId) {
+      throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    }
+    const targetRoles: UserRole[] =
+      user.role === UserRole.PARENT
+        ? [UserRole.TEACHER, UserRole.SCHOOL_ADMIN]
+        : [UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.PARENT];
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        tenantId: user.tenantId,
+        deletedAt: null,
+        id: { not: user.id },
+        role: { in: targetRoles },
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, role: true },
+      orderBy: [{ role: 'asc' }, { lastName: 'asc' }],
+    });
+    return {
+      items: users.map((u) => ({
+        userId: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        role: u.role,
+      })),
     };
   }
 

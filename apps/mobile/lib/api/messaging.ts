@@ -45,11 +45,28 @@ export interface MessagesResponse {
   hasMore: boolean;
 }
 
+export interface Contact {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
 export const MESSAGING_KEYS = {
   all: ['messaging'] as const,
   conversations: () => ['conversations'] as const,
   messages: (id: string) => ['conversation-messages', id] as const,
+  contacts: () => ['messaging-contacts'] as const,
 } as const;
+
+/** Users the current user may start a conversation with (role-scoped server-side). */
+export function useContacts() {
+  return useQuery({
+    queryKey: MESSAGING_KEYS.contacts(),
+    queryFn: () => fetchApi<{ items: Contact[] }>('/api/messaging/contacts'),
+  });
+}
 
 /** Fetch all conversations for the current user. */
 export function useConversations() {

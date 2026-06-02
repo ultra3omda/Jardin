@@ -15,6 +15,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import {
+  ContactsResponseDto,
   ConversationResponseDto,
   CreateConversationDto,
   ListConversationsResponseDto,
@@ -58,6 +59,14 @@ export class MessagingController {
   @ApiResponse({ status: 200, type: ListConversationsResponseDto })
   list(@CurrentUser() user: AuthenticatedUser): Promise<ListConversationsResponseDto> {
     return this.service.listConversations(user);
+  }
+
+  @Get('contacts')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.PARENT)
+  @ApiOperation({ summary: 'Users I can start a 1:1 conversation with (role-scoped)' })
+  @ApiResponse({ status: 200, type: ContactsResponseDto })
+  contacts(@CurrentUser() user: AuthenticatedUser): Promise<ContactsResponseDto> {
+    return this.service.listContacts(user);
   }
 
   @Get('conversations/:id/messages')
