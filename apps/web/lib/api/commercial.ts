@@ -38,7 +38,7 @@ export interface CreateOrganizationInput {
   adminEmail: string;
   adminFirstName: string;
   adminLastName: string;
-  contract: {
+  contract?: {
     reference?: string;
     fileKey: string;
     fileName: string;

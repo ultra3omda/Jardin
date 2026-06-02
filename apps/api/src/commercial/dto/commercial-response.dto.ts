@@ -35,7 +35,8 @@ export class OrganizationSummaryDto {
 
 export class CreateOrganizationResponseDto {
   @ApiProperty({ type: OrganizationSummaryDto }) organization!: OrganizationSummaryDto;
-  @ApiProperty({ type: ContractSummaryDto }) contract!: ContractSummaryDto;
+  @ApiPropertyOptional({ type: ContractSummaryDto, nullable: true })
+  contract!: ContractSummaryDto | null;
   @ApiProperty({ type: InviteSummaryDto }) invite!: InviteSummaryDto;
   @ApiProperty() inviteEmailSent!: boolean;
 }
