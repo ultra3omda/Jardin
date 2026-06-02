@@ -21,6 +21,7 @@ describe('TenantsService.create', () => {
     prisma = {
       tenant: {
         findUnique: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: 't1',
           name: 'Demo',
@@ -174,5 +175,13 @@ describe('TenantsService.create', () => {
       {},
     );
     expect(res.inviteEmailSent).toBe(false);
+  });
+
+  it('list() excludes seeded demo schools (slug demo-*)', async () => {
+    await service.list();
+    expect(prisma.tenant.findMany).toHaveBeenCalledWith({
+      where: { deletedAt: null, slug: { not: { startsWith: 'demo-' } } },
+      orderBy: { createdAt: 'desc' },
+    });
   });
 });

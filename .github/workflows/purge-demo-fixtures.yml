@@ -1,0 +1,48 @@
+name: Purge demo fixtures
+
+# Supprime les fixtures de démonstration commerciales seedées qui polluaient
+# l'interface super-admin :
+#   - le commercial démo (commercial@klasso.tn)
+#   - le contrat démo (référence KL-2026-DEMO)
+#   - les demandes de démo seedées (AuditLog requestId `dr_seed_*`)
+#
+# NE TOUCHE PAS aux 3 écoles démo (demo-*) ni au super-admin réel.
+# Idempotent : relançable sans risque.
+#
+# Secret requis : DATABASE_URL (chaîne de connexion Postgres prod)
+on:
+  workflow_dispatch:
+
+jobs:
+  purge:
+    name: Purge demo fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate on DATABASE_URL secret
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "::error::Le secret DATABASE_URL est requis (chaîne Postgres prod)."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter=@ecole-saas/api exec prisma generate
+
+      - name: Purge demo fixtures
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter=@ecole-saas/api exec tsx scripts/purge-demo-fixtures.ts

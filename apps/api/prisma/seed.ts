@@ -1169,6 +1169,12 @@ async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
 
+  // Sales/marketing demo fixtures (commercial agent, signed contract, demo
+  // requests) are opt-in. They are NEVER created in production so the
+  // super-admin only ever sees real data; set SEED_DEMO_CONTENT=true locally
+  // to get the full GTM pipeline demo.
+  const seedDemoContent = process.env.SEED_DEMO_CONTENT === 'true';
+
   // -- DEMO TENANT 1 -- Ecole primaire ---------------------------------------
   const ecole = await prisma.tenant.upsert({
     where: { slug: 'demo-ecole' },
@@ -1238,17 +1244,8 @@ async function main(): Promise<void> {
     passwordHash,
   });
 
-  // -- GTM — Commercial sub-admin (platform, tenantId null) ------------------
-  const commercial = await upsertUser({
-    tenantId: null,
-    email: 'commercial@klasso.tn',
-    firstName: 'Sami',
-    lastName: 'Commercial',
-    role: UserRole.COMMERCIAL,
-    passwordHash,
-  });
-
   // -- GTM — A signed organization still awaiting its admin's onboarding -----
+  // Kept as a demo school (slug demo-*, hidden from the super-admin views).
   const pendingOrg = await prisma.tenant.upsert({
     where: { slug: 'demo-lycee-avenir' },
     update: { name: 'Démo Lycée Avenir', type: TenantType.PRIMARY_SCHOOL },
@@ -1262,22 +1259,34 @@ async function main(): Promise<void> {
       // Left PENDING_ONBOARDING on purpose to demo the commercial pipeline.
     },
   });
-  const existingContract = await prisma.contract.findFirst({ where: { tenantId: pendingOrg.id } });
-  if (!existingContract) {
-    await prisma.contract.create({
-      data: {
-        id: createId(),
-        tenantId: pendingOrg.id,
-        reference: 'KL-2026-DEMO',
-        fileKey: 'contracts/demo-lycee-avenir.pdf',
-        fileName: 'contrat-demo-lycee-avenir.pdf',
-        signedAt: new Date('2026-05-20'),
-        startDate: new Date('2026-06-01'),
-        endDate: new Date('2027-06-01'),
-        notes: 'Contrat de démonstration (pipeline commercial).',
-        createdById: commercial.id,
-      },
+
+  // -- GTM demo fixtures — commercial agent + signed contract (opt-in only) ---
+  if (seedDemoContent) {
+    const commercial = await upsertUser({
+      tenantId: null,
+      email: 'commercial@klasso.tn',
+      firstName: 'Sami',
+      lastName: 'Commercial',
+      role: UserRole.COMMERCIAL,
+      passwordHash,
     });
+    const existingContract = await prisma.contract.findFirst({ where: { tenantId: pendingOrg.id } });
+    if (!existingContract) {
+      await prisma.contract.create({
+        data: {
+          id: createId(),
+          tenantId: pendingOrg.id,
+          reference: 'KL-2026-DEMO',
+          fileKey: 'contracts/demo-lycee-avenir.pdf',
+          fileName: 'contrat-demo-lycee-avenir.pdf',
+          signedAt: new Date('2026-05-20'),
+          startDate: new Date('2026-06-01'),
+          endDate: new Date('2027-06-01'),
+          notes: 'Contrat de démonstration (pipeline commercial).',
+          createdById: commercial.id,
+        },
+      });
+    }
   }
 
   // -- V6 academic seed (subjects + grade periods) ---------------------------
@@ -1395,7 +1404,10 @@ async function main(): Promise<void> {
   await seedHr(maternelle.id);
 
   // -- Demo requests (platform-level, event-sourced in AuditLog) -------------
-  await seedDemoRequests(prisma, superAdmin.id);
+  // Opt-in only: fake prospects must never pollute the production pipeline.
+  if (seedDemoContent) {
+    await seedDemoRequests(prisma, superAdmin.id);
+  }
 
   console.log('');
   console.log(
@@ -1414,8 +1426,10 @@ async function main(): Promise<void> {
   console.log(`    parent  : parent@demo-maternelle.klasso.tn`);
   console.log(`    staff   : staff@demo-maternelle.klasso.tn`);
   console.log(`  Super-admin (réel, non-démo): support@klasso.tn`);
-  console.log(`  Commercial : commercial@klasso.tn`);
-  console.log(`  Pending org (commercial pipeline): ${pendingOrg.slug}`);
+  if (seedDemoContent) {
+    console.log(`  Commercial : commercial@klasso.tn`);
+    console.log(`  Pending org (commercial pipeline): ${pendingOrg.slug}`);
+  }
   console.log('');
   if (process.env.NODE_ENV !== 'production') {
     console.log(`  Password (all accounts): ${password}`);
