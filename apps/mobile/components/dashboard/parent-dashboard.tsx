@@ -93,6 +93,7 @@ export function ParentDashboard() {
       {/* Quick actions */}
       <SectionTitle>Accès rapide</SectionTitle>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        <Action icon="reader-outline" label="Devoirs" color="#8b5cf6" onPress={() => router.push('/(app)/parent/homework')} />
         <Action icon="calendar-outline" label="Emploi du temps" color="#3b82f6" onPress={() => router.push('/(app)/parent/schedule')} />
         <Action icon="card-outline" label="Paiements" color="#14b8a6" onPress={() => router.push('/(app)/parent/payments')} />
         <Action icon="book-outline" label="Journal" color="#f59e0b" onPress={() => router.push('/(app)/life')} />
