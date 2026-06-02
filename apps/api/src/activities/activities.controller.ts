@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
@@ -71,6 +71,18 @@ export class ActivitiesController {
     @Body() dto: AddParticipationDto,
   ): Promise<ParticipationResponseDto> {
     return this.service.addParticipation(id, dto, user);
+  }
+
+  @Post(':id/participations/fill-from-attendance')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER)
+  @ApiOperation({ summary: 'Auto-remplir les participations depuis les présents du jour (classe de l\'atelier)' })
+  fillFromAttendance(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query('date') date?: string,
+  ): Promise<ParticipationResponseDto[]> {
+    return this.service.fillFromAttendance(id, date, user);
   }
 
   @Delete(':id/participations/:studentId')
