@@ -412,6 +412,29 @@ export default function PedagogyScreen() {
         </Pressable>
       )}
 
+      {(user?.role === 'TEACHER' || user?.role === 'SCHOOL_ADMIN') && (
+        <Pressable
+          onPress={() => router.push('/(app)/pedagogy/homework')}
+          accessibilityRole="button"
+          accessibilityLabel="Gérer les devoirs"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: colors.ink[900],
+            borderRadius: radius.lg,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            marginBottom: 20,
+          }}
+        >
+          <Text style={{ color: colors.white, fontWeight: '700', fontSize: 14 }}>
+            Devoirs (TAF)
+          </Text>
+          <Text style={{ color: colors.ambre[500], fontWeight: '700', fontSize: 16 }}>→</Text>
+        </Pressable>
+      )}
+
       {user?.role === 'TEACHER' && <TeacherContainer isKG={isKG} />}
       {user?.role === 'PARENT' && <ParentContainer />}
       {user?.role === 'SCHOOL_ADMIN' && <AdminContainer />}

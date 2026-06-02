@@ -18,6 +18,7 @@ import {
   SecurityIncidentType,
   SecuritySeverity,
   Sex,
+  SubmissionStatus,
   TenantType,
   TransportDirection,
   UserRole,
@@ -923,6 +924,69 @@ interface ClassRef {
   students: SeededStudent[];
 }
 
+function daysFromNow(n: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+// Devoirs (TAF) — quelques devoirs sur la 1re classe + rendus variés, pour que
+// la vue enseignant (suivi) ET la vue parent (statut de l'enfant) aient du contenu.
+async function seedHomework(tenantId: string): Promise<void> {
+  const teacher = await prisma.user.findFirst({
+    where: { tenantId, role: UserRole.TEACHER, deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+  });
+  const cls = await prisma.class.findFirst({
+    where: { tenantId, deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+    include: { students: { where: { deletedAt: null }, take: 5, orderBy: { createdAt: 'asc' } } },
+  });
+  if (!teacher || !cls || cls.students.length === 0) return;
+  const subject = await prisma.subject.findFirst({ where: { tenantId } });
+
+  const defs = [
+    { title: 'Exercices de mathématiques p.42', instructions: 'Faire les exercices 1 à 5. À rendre lundi.', dueIn: 3 },
+    { title: 'Lecture — chapitre 4', instructions: 'Lire le chapitre 4 et résumer en 5 lignes.', dueIn: 6 },
+  ];
+  const statuses = [SubmissionStatus.SUBMITTED, SubmissionStatus.PENDING, SubmissionStatus.LATE];
+
+  for (const d of defs) {
+    let hw = await prisma.homework.findFirst({ where: { tenantId, classId: cls.id, title: d.title } });
+    if (!hw) {
+      hw = await prisma.homework.create({
+        data: {
+          id: createId(),
+          tenantId,
+          classId: cls.id,
+          subjectId: subject?.id ?? null,
+          createdById: teacher.id,
+          title: d.title,
+          instructions: d.instructions,
+          dueDate: daysFromNow(d.dueIn),
+        },
+      });
+    }
+    for (let i = 0; i < Math.min(3, cls.students.length); i += 1) {
+      const st = cls.students[i];
+      const status = statuses[i % statuses.length];
+      await prisma.homeworkSubmission.upsert({
+        where: { unique_submission_per_student: { homeworkId: hw.id, studentId: st.id } },
+        update: {},
+        create: {
+          id: createId(),
+          tenantId,
+          homeworkId: hw.id,
+          studentId: st.id,
+          status,
+          submittedAt: status === SubmissionStatus.PENDING ? null : new Date(),
+        },
+      });
+    }
+  }
+}
+
 async function seedAcademicLife(
   tenantId: string,
   classes: ClassRef[],
@@ -1298,8 +1362,12 @@ async function main(): Promise<void> {
     '2025-2026',
   );
 
+  // -- Devoirs (TAF) -- devoirs + rendus variés sur la 1re classe ------------
+  await seedHomework(ecole.id);
+  await seedHomework(maternelle.id);
+
   // -- Démo parent -- rattache le parent de démo à ses premiers enfants -------
-  // (ces élèves ont déjà notes/présences/EDT/factures via seedAcademicLife).
+  // (ces élèves ont déjà notes/présences/EDT/factures/devoirs via les seeds).
   await linkDemoParentToChildren(ecole.id, 'parent@demo-ecole.klasso.tn', cpA);
   await linkDemoParentToChildren(maternelle.id, 'parent@demo-maternelle.klasso.tn', matPS);
 

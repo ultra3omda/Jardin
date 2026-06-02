@@ -11,6 +11,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { BulletinsModule } from './bulletins/bulletins.module';
+import { HomeworkModule } from './homework/homework.module';
 import { CanteenModule } from './canteen/canteen.module';
 import { CommercialModule } from './commercial/commercial.module';
 import { ImportsModule } from './imports/imports.module';
@@ -100,6 +101,7 @@ import { UsersModule } from './users/users.module';
     BulletinsModule, // V6
     DemoLoginModule, // V7
     BillingModule, // V8
+    HomeworkModule, // Devoirs / TAF
     AnnouncementsModule, // V9
     AttendanceModule, // V9
   ],

@@ -23,6 +23,9 @@ export default function PedagogyLayout() {
       <Stack.Screen name="evaluations/index" options={{ ...header, title: 'Évaluations' }} />
       <Stack.Screen name="evaluations/new" options={{ ...header, title: 'Nouvelle évaluation' }} />
       <Stack.Screen name="evaluations/[id]" options={{ ...header, title: 'Saisie des notes' }} />
+      <Stack.Screen name="homework/index" options={{ ...header, title: 'Devoirs' }} />
+      <Stack.Screen name="homework/new" options={{ ...header, title: 'Nouveau devoir' }} />
+      <Stack.Screen name="homework/[id]" options={{ ...header, title: 'Suivi du devoir' }} />
     </Stack>
   );
 }
