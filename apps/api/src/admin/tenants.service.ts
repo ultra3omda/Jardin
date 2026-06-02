@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { webcrypto } from 'node:crypto';
 
 import { PrismaService } from '../common/prisma/prisma.service';
+import { DEMO_TENANT_SLUG_PREFIX } from './constants/demo-tenants';
 import { ResendService } from '../common/email/resend.service';
 import { InviteEmail } from '../common/email/templates/invite';
 import type { RequestMeta } from '../auth/utils/request-meta.utils';
@@ -244,8 +245,10 @@ export class TenantsService {
   }
 
   async list(): Promise<TenantSummaryDto[]> {
+    // Seeded demo schools (slug `demo-*`) stay in the DB for the public demo
+    // login but must never appear in the super-admin establishments list.
     const rows = await this.prisma.tenant.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, slug: { not: { startsWith: DEMO_TENANT_SLUG_PREFIX } } },
       orderBy: { createdAt: 'desc' },
     });
     return Promise.all(rows.map((t) => this.buildSummary(t.id)));

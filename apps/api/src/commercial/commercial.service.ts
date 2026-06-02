@@ -11,6 +11,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { Contract, Locale, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+import { DEMO_TENANT_SLUG_PREFIX } from '../admin/constants/demo-tenants';
 import { RESERVED_SLUGS } from '../admin/constants/reserved-slugs';
 import { InviteSummaryDto } from '../admin/dto/tenant-response.dto';
 import { InviteTokensService } from '../admin/invite-tokens.service';
@@ -167,10 +168,12 @@ export class CommercialService {
    * they closed (i.e. tenants holding a contract they created).
    */
   async listOrganizations(actorId: string, role: UserRole): Promise<OrganizationSummaryDto[]> {
+    // Exclude seeded demo schools (slug `demo-*`) from the commercial pipeline.
+    const notDemo = { not: { startsWith: DEMO_TENANT_SLUG_PREFIX } };
     const where =
       role === UserRole.SUPER_ADMIN
-        ? { deletedAt: null }
-        : { deletedAt: null, contracts: { some: { createdById: actorId } } };
+        ? { deletedAt: null, slug: notDemo }
+        : { deletedAt: null, slug: notDemo, contracts: { some: { createdById: actorId } } };
     const tenants = await this.prisma.tenant.findMany({
       where,
       orderBy: { createdAt: 'desc' },
