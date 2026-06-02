@@ -1,56 +1,55 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from './client';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+/**
+ * Messagerie 1:1 (tous les rôles). Aligné sur
+ * apps/api/src/messaging/messaging.controller.ts :
+ *  - GET  /messaging/conversations                  → { items }
+ *  - GET  /messaging/conversations/:id/messages     → { items, hasMore }
+ *  - POST /messaging/messages { conversationId, body }
+ *  - POST /messaging/conversations { recipientUserId }
+ *  - POST /messaging/conversations/:id/read
+ */
 
 export interface Participant {
-  id: string;
+  userId: string;
   firstName: string;
   lastName: string;
-  role: string;
+  email: string;
 }
 
 export interface Message {
   id: string;
-  content: string;
+  conversationId: string;
   senderId: string;
+  body: string;
   createdAt: string;
-  sender: Participant;
+  readAt?: string | null;
 }
 
 export interface Conversation {
   id: string;
-  participants: { user: Participant }[];
-  lastMessage?: Message;
-  unreadCount: number;
+  createdAt: string;
   updatedAt: string;
+  participants: Participant[];
+  lastMessage?: { id: string; body: string; senderId: string; createdAt: string };
+  unreadCount: number;
 }
 
 export interface ConversationsResponse {
   items: Conversation[];
-  total: number;
 }
 
-export interface ConversationDetailResponse {
-  conversation: Conversation;
-  messages: Message[];
+export interface MessagesResponse {
+  items: Message[];
+  hasMore: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// Query keys
-// ---------------------------------------------------------------------------
 
 export const MESSAGING_KEYS = {
   all: ['messaging'] as const,
   conversations: () => ['conversations'] as const,
-  conversation: (id: string) => ['conversation', id] as const,
+  messages: (id: string) => ['conversation-messages', id] as const,
 } as const;
-
-// ---------------------------------------------------------------------------
-// Hooks
-// ---------------------------------------------------------------------------
 
 /** Fetch all conversations for the current user. */
 export function useConversations() {
@@ -60,15 +59,13 @@ export function useConversations() {
   });
 }
 
-/** Fetch a single conversation with its messages. */
-export function useConversation(id: string) {
+/** Fetch the message history of a conversation (most recent first from API). */
+export function useMessages(conversationId: string) {
   return useQuery({
-    queryKey: MESSAGING_KEYS.conversation(id),
+    queryKey: MESSAGING_KEYS.messages(conversationId),
     queryFn: () =>
-      fetchApi<ConversationDetailResponse>(
-        `/api/messaging/conversations/${id}/messages`,
-      ),
-    enabled: !!id,
+      fetchApi<MessagesResponse>(`/api/messaging/conversations/${conversationId}/messages`),
+    enabled: !!conversationId,
   });
 }
 
@@ -76,14 +73,27 @@ export function useConversation(id: string) {
 export function useSendMessage(conversationId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) =>
-      fetchApi<Message>(`/api/messaging/conversations/${conversationId}/messages`, {
+    mutationFn: (body: string) =>
+      fetchApi<Message>('/api/messaging/messages', {
         method: 'POST',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ conversationId, body }),
       }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: MESSAGING_KEYS.conversation(conversationId) });
+      void qc.invalidateQueries({ queryKey: MESSAGING_KEYS.messages(conversationId) });
       void qc.invalidateQueries({ queryKey: MESSAGING_KEYS.conversations() });
     },
   });
+}
+
+/** Open (or get) a 1:1 conversation with a recipient. */
+export function openConversation(recipientUserId: string): Promise<Conversation> {
+  return fetchApi<Conversation>('/api/messaging/conversations', {
+    method: 'POST',
+    body: JSON.stringify({ recipientUserId }),
+  });
+}
+
+/** Mark all messages in a conversation as read. */
+export function markConversationRead(conversationId: string): Promise<void> {
+  return fetchApi<void>(`/api/messaging/conversations/${conversationId}/read`, { method: 'POST' });
 }

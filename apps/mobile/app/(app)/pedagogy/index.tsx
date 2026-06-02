@@ -1,4 +1,5 @@
 import React from 'react';
+import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
@@ -387,6 +388,29 @@ export default function PedagogyScreen() {
       <Text style={{ fontSize: 13, color: colors.ink[500], marginBottom: 20 }}>
         {subtitle}
       </Text>
+
+      {(user?.role === 'TEACHER' || user?.role === 'SCHOOL_ADMIN') && (
+        <Pressable
+          onPress={() => router.push('/(app)/pedagogy/evaluations')}
+          accessibilityRole="button"
+          accessibilityLabel="Gérer les évaluations"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: colors.ink[900],
+            borderRadius: radius.lg,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            marginBottom: 20,
+          }}
+        >
+          <Text style={{ color: colors.white, fontWeight: '700', fontSize: 14 }}>
+            Gérer les évaluations
+          </Text>
+          <Text style={{ color: colors.ambre[500], fontWeight: '700', fontSize: 16 }}>→</Text>
+        </Pressable>
+      )}
 
       {user?.role === 'TEACHER' && <TeacherContainer isKG={isKG} />}
       {user?.role === 'PARENT' && <ParentContainer />}

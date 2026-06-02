@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Avatar, Card, EmptyState, KpiCard, ScreenHeader, type KpiVariant, colors } from '@klasso/ui-mobile';
 import { useDashboardOverview, type DashboardOverview } from '@/lib/api/dashboard';
@@ -88,6 +89,35 @@ export default function DashboardScreen() {
               </View>
             ))}
           </View>
+
+          {/* Admin management entry */}
+          {user?.role === 'SCHOOL_ADMIN' ? (
+            <Pressable
+              onPress={() => router.push('/(app)/manage')}
+              accessibilityRole="button"
+              accessibilityLabel="Gérer l'établissement"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                backgroundColor: colors.ink[900],
+                borderRadius: 16,
+                padding: 16,
+                marginTop: 16,
+              }}
+            >
+              <Ionicons name="settings-outline" size={22} color={colors.ambre[500]} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.white }}>
+                  Gérer l&apos;établissement
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.ink[300], marginTop: 2 }}>
+                  Annuaire, classes, matières, cantine, activités
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.ink[300]} />
+            </Pressable>
+          ) : null}
 
           {/* Attendance breakdown */}
           {data ? (

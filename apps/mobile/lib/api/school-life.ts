@@ -80,3 +80,68 @@ export function useCanteenMenus() {
     queryFn: () => fetchApi<ListResponse<CanteenMenu>>('/api/canteen-menus'),
   });
 }
+
+// ── Write (admin + teacher) ──────────────────────────────────────────────────
+
+export interface CreateDailyLogInput {
+  studentId: string;
+  date: string;
+  mood?: ChildMood;
+  meals?: string;
+  nap?: string;
+  bathroom?: string;
+  activitiesNote?: string;
+  generalNote?: string;
+}
+
+export interface CreateActivityInput {
+  name: string;
+  description?: string;
+  category?: ActivityCategory;
+  scheduledAt?: string;
+  durationMin?: number;
+  location?: string;
+}
+
+export interface CreateCanteenMenuInput {
+  date: string;
+  starter?: string;
+  main?: string;
+  dessert?: string;
+  vegetarian?: string;
+}
+
+/** Drop empty strings/undefined so the API doesn't see explicit nulls. */
+function clean<T extends object>(o: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (v === '' || v === undefined || v === null) continue;
+    out[k] = v;
+  }
+  return out as Partial<T>;
+}
+
+export function createDailyLog(input: CreateDailyLogInput): Promise<DailyLogEntry> {
+  return fetchApi<DailyLogEntry>('/api/journal', {
+    method: 'POST',
+    body: JSON.stringify(clean(input)),
+  });
+}
+
+export function createActivity(input: CreateActivityInput): Promise<Activity> {
+  return fetchApi<Activity>('/api/activities', {
+    method: 'POST',
+    body: JSON.stringify(clean(input)),
+  });
+}
+
+export function deleteActivity(id: string): Promise<void> {
+  return fetchApi<void>(`/api/activities/${id}`, { method: 'DELETE' });
+}
+
+export function createCanteenMenu(input: CreateCanteenMenuInput): Promise<CanteenMenu> {
+  return fetchApi<CanteenMenu>('/api/canteen-menus', {
+    method: 'POST',
+    body: JSON.stringify(clean(input)),
+  });
+}

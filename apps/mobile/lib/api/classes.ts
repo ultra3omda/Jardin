@@ -79,3 +79,34 @@ export function useClassDetail(id: string) {
     enabled: !!id,
   });
 }
+
+// ── Management (SCHOOL_ADMIN) ────────────────────────────────────────────────
+
+export interface CreateClassInput {
+  name: string;
+  level: string;
+  schoolYear: string;
+}
+
+export function createClass(input: CreateClassInput): Promise<ClassSummary> {
+  return fetchApi<ClassSummary>('/api/classes', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteClass(id: string): Promise<void> {
+  return fetchApi<void>(`/api/classes/${id}`, { method: 'DELETE' });
+}
+
+export function assignClassTeacher(
+  classId: string,
+  teacherUserId: string,
+  subject: string,
+  isMainTeacher = false,
+): Promise<unknown> {
+  return fetchApi<unknown>(`/api/classes/${classId}/teachers`, {
+    method: 'POST',
+    body: JSON.stringify({ teacherUserId, subject, isMainTeacher }),
+  });
+}
