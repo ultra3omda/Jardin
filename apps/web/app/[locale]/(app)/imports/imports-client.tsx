@@ -148,7 +148,7 @@ export function ImportsClient() {
             </p>
           )}
           {result.errors.length > 0 && (
-            <div className="max-h-64 overflow-y-auto rounded-md border">
+            <div className="max-h-64 overflow-auto rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr>

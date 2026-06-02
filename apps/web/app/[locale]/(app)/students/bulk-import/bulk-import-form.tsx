@@ -118,7 +118,7 @@ export function BulkImportForm() {
           </dl>
 
           {hasErrors && (
-            <div className="mt-4 max-h-80 overflow-y-auto rounded border">
+            <div className="mt-4 max-h-80 overflow-auto rounded border">
               <table className="min-w-full text-sm">
                 <thead className="sticky top-0 bg-muted/80 text-xs uppercase">
                   <tr>

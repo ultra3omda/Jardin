@@ -244,7 +244,7 @@ export function GradesClient({ classId }: Props): JSX.Element {
           className="border rounded p-4 space-y-3 bg-gray-50"
         >
           <h2 className="font-semibold">Nouvelle évaluation</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <select
               required
               value={createForm.subjectId}
@@ -370,7 +370,8 @@ function EvaluationCard({
           de la classe).
         </p>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[20rem] text-sm">
           <thead className="text-left text-gray-500">
             <tr>
               <th className="py-1">Élève</th>
@@ -408,6 +409,7 @@ function EvaluationCard({
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

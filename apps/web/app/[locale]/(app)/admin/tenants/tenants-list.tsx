@@ -35,7 +35,7 @@ export function TenantsList() {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="min-w-full divide-y divide-border">
         <thead className="bg-muted/50">
           <tr>

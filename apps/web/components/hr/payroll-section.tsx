@@ -251,7 +251,7 @@ function PayslipDetail({
         </span>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <tbody>
             <tr className="border-b">
