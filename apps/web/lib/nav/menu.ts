@@ -247,7 +247,7 @@ function commercialNav(): NavSection[] {
 function platformNav(): NavSection[] {
   return [
     { id: 'plateforme', label: 'Plateforme', items: [
-      { id: 'dashboard',     label: 'Vue plateforme', href: '/admin',          icon: ICONS.dashboard },
+      { id: 'dashboard',     label: 'Tableau de bord', href: '/admin',          icon: ICONS.dashboard },
       { id: 'tenants',       label: 'Tenants',        href: '/admin/tenants',  icon: ICONS.tenants },
       { id: 'demoRequests',  label: 'Demandes démo',  href: '/admin/demo',     icon: ICONS.bell },
       { id: 'inviteTokens',  label: 'Invitations',    href: '/admin/invite-tokens', icon: ICONS.enrollments },

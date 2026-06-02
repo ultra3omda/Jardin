@@ -1,8 +1,9 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
+import { useRouter } from '@/i18n/routing';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { NotesPanel } from '@/components/dashboard/notes-panel';
 import { QuickAction } from '@/components/dashboard/quick-action';
@@ -25,17 +26,28 @@ const STATUS_LABEL: Record<'ABSENT' | 'LATE' | 'EXCUSED', { label: string; cls: 
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
+
+  // The super-admin has no tenant: the per-tenant dashboard is meaningless for
+  // them. Their home is the platform overview (/admin), which shows real
+  // (non-demo) figures. Bounce there regardless of the login entry point.
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  useEffect(() => {
+    if (isSuperAdmin) router.replace('/admin');
+  }, [isSuperAdmin, router]);
 
   const config = useMemo(() => {
     if (!user) return null;
     return getDashboardConfig(user.role, tenant?.type ?? null);
   }, [user, tenant?.type]);
 
-  const { data, isLoading } = useResource(['dashboard', 'overview'], getDashboardOverview);
+  const { data, isLoading } = useResource(['dashboard', 'overview'], getDashboardOverview, {
+    enabled: !isSuperAdmin,
+  });
 
-  if (!user || !config) return null;
+  if (!user || !config || isSuperAdmin) return null;
 
   const heading = interpolate(config.heading, {
     firstName: user.firstName ?? '',
@@ -91,7 +103,7 @@ export default function DashboardPage() {
     <div className="space-y-5">
       <header className="flex items-start justify-between pt-2">
         <div>
-          <h1 className="text-[28px] font-bold leading-tight text-ink-900">{heading}</h1>
+          <h1 className="text-xl font-bold leading-tight text-ink-900 sm:text-2xl md:text-[28px]">{heading}</h1>
           <p className="mt-1 text-sm text-ink-500">{subtitle}</p>
         </div>
         <button

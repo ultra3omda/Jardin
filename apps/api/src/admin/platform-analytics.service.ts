@@ -2,7 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { deriveDemoRequests, isPendingDemo, MAX_DEMO_AUDIT_ROWS } from '../demo-requests/demo-status.util';
+import { DEMO_TENANT_SLUG_PREFIX } from './constants/demo-tenants';
 import { AnalyticsDto, CategoryCountDto, GrowthPointDto, OverviewDto } from './dto/platform.dto';
+
+/**
+ * Excludes seeded demo tenants (slug `demo-*`) from platform figures. Applied to
+ * `tenant.slug` directly, or nested under `tenant` for user/student counts —
+ * which also drops internal super-admins (no tenant) from the user count.
+ */
+const NOT_DEMO_SLUG = { not: { startsWith: DEMO_TENANT_SLUG_PREFIX } };
 
 function monthKey(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -40,9 +48,9 @@ export class PlatformAnalyticsService {
 
   async overview(): Promise<OverviewDto> {
     const [tenants, users, students, requested, statuses, activeSubs] = await Promise.all([
-      this.prisma.tenant.count({ where: { deletedAt: null } }),
-      this.prisma.user.count({ where: { deletedAt: null } }),
-      this.prisma.student.count({ where: { deletedAt: null } }),
+      this.prisma.tenant.count({ where: { deletedAt: null, slug: NOT_DEMO_SLUG } }),
+      this.prisma.user.count({ where: { deletedAt: null, tenant: { slug: NOT_DEMO_SLUG } } }),
+      this.prisma.student.count({ where: { deletedAt: null, tenant: { slug: NOT_DEMO_SLUG } } }),
       this.prisma.auditLog.findMany({
         where: { action: 'demo.requested' },
         orderBy: { createdAt: 'desc' },
@@ -84,8 +92,8 @@ export class PlatformAnalyticsService {
 
   async analytics(): Promise<AnalyticsDto> {
     const [tenants, users] = await Promise.all([
-      this.prisma.tenant.findMany({ where: { deletedAt: null }, select: { createdAt: true, type: true, locale: true } }),
-      this.prisma.user.findMany({ where: { deletedAt: null }, select: { role: true } }),
+      this.prisma.tenant.findMany({ where: { deletedAt: null, slug: NOT_DEMO_SLUG }, select: { createdAt: true, type: true, locale: true } }),
+      this.prisma.user.findMany({ where: { deletedAt: null, tenant: { slug: NOT_DEMO_SLUG } }, select: { role: true } }),
     ]);
     return {
       tenantGrowth: buildGrowth(tenants.map((t) => t.createdAt)),

@@ -45,6 +45,17 @@ describe('PlatformAnalyticsService', () => {
       arr: '0',
       currency: 'TND',
     });
+
+    // Real figures only: seeded demo tenants (slug `demo-*`) are excluded from
+    // every count — and the nested tenant filter also drops internal super-admins.
+    const notDemo = { not: { startsWith: 'demo-' } };
+    expect(prisma.tenant.count).toHaveBeenCalledWith({ where: { deletedAt: null, slug: notDemo } });
+    expect(prisma.user.count).toHaveBeenCalledWith({
+      where: { deletedAt: null, tenant: { slug: notDemo } },
+    });
+    expect(prisma.student.count).toHaveBeenCalledWith({
+      where: { deletedAt: null, tenant: { slug: notDemo } },
+    });
   });
 
   it('overview computes MRR from active subscriptions (yearly normalised /12)', async () => {
