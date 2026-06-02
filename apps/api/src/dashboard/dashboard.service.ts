@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { InvoiceStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import type {
@@ -18,6 +18,8 @@ const EMPTY: DashboardOverviewDto = {
   attendanceRate: null,
   averageGrade: null,
   pendingPayments: 0,
+  newGrades: 0,
+  amountDue: 0,
   recentGrades: [],
   announcements: [],
   todayAttendance: { present: 0, absent: 0, late: 0, excused: 0 },
@@ -25,6 +27,15 @@ const EMPTY: DashboardOverviewDto = {
   journalToday: 0,
   activitiesToday: 0,
 };
+
+const UNPAID_STATUSES: InvoiceStatus[] = [
+  InvoiceStatus.PENDING,
+  InvoiceStatus.OVERDUE,
+  InvoiceStatus.PARTIAL,
+];
+
+/** Grades published within this window count as "new" on the parent dashboard. */
+const NEW_GRADES_WINDOW_DAYS = 14;
 
 @Injectable()
 export class DashboardService {
@@ -39,9 +50,13 @@ export class DashboardService {
     const tenantId = user.tenantId;
     if (!tenantId) return EMPTY;
 
-    // A TEACHER only sees their own classes (students, attendance, grades) and
-    // never finance. ADMIN / STAFF keep the tenant-wide view.
+    // Scope the whole overview to what the user is allowed to see:
+    //  - TEACHER → only their assigned classes (finance hidden).
+    //  - PARENT  → only their own children (via ParentStudent).
+    //  - ADMIN / STAFF → tenant-wide.
     const isTeacher = user.role === UserRole.TEACHER;
+    const isParent = user.role === UserRole.PARENT;
+
     let classIds: string[] | null = null;
     if (isTeacher) {
       const assigned = await this.prisma.classTeacher.findMany({
@@ -50,16 +65,49 @@ export class DashboardService {
       });
       classIds = [...new Set(assigned.map((a) => a.classId))];
     }
-    const studentScope = classIds ? { classId: { in: classIds } } : {};
-    const attendanceScope = classIds ? { classId: { in: classIds } } : {};
-    const gradeScope = classIds ? { evaluation: { classId: { in: classIds } } } : {};
 
-    const [totalStudents, classesCountAll, pendingPaymentsAll, gradeAgg, latestAttDay] =
+    let studentIds: string[] | null = null;
+    if (isParent) {
+      const links = await this.prisma.parentStudent.findMany({
+        where: { tenantId, parentUserId: user.id, student: { deletedAt: null } },
+        select: { studentId: true },
+      });
+      studentIds = [...new Set(links.map((l) => l.studentId))];
+    }
+
+    const studentScope: Prisma.StudentWhereInput = isParent
+      ? { id: { in: studentIds ?? [] } }
+      : classIds
+        ? { classId: { in: classIds } }
+        : {};
+    const attendanceScope: Prisma.AttendanceWhereInput = isParent
+      ? { studentId: { in: studentIds ?? [] } }
+      : classIds
+        ? { classId: { in: classIds } }
+        : {};
+    const gradeScope: Prisma.GradeWhereInput = isParent
+      ? { studentId: { in: studentIds ?? [] } }
+      : classIds
+        ? { evaluation: { classId: { in: classIds } } }
+        : {};
+
+    // Unpaid invoices: a parent only sees their children's; admin/staff see the
+    // whole tenant; a teacher never sees finance.
+    const invoiceWhere: Prisma.InvoiceWhereInput = {
+      tenantId,
+      status: { in: UNPAID_STATUSES },
+      ...(isParent ? { studentId: { in: studentIds ?? [] } } : {}),
+    };
+    const newGradesSince = new Date(Date.now() - NEW_GRADES_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+    const [totalStudents, classesCountAll, pendingPaymentsAll, dueAgg, newGradesCount, gradeAgg, latestAttDay] =
       await Promise.all([
         this.prisma.student.count({ where: { tenantId, deletedAt: null, ...studentScope } }),
         this.prisma.class.count({ where: { tenantId, deletedAt: null } }),
-        this.prisma.invoice.count({
-          where: { tenantId, status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] } },
+        this.prisma.invoice.count({ where: invoiceWhere }),
+        this.prisma.invoice.aggregate({ _sum: { amount: true }, where: invoiceWhere }),
+        this.prisma.grade.count({
+          where: { tenantId, ...gradeScope, createdAt: { gte: newGradesSince } },
         }),
         this.prisma.grade.findMany({
           where: { tenantId, ...gradeScope },
@@ -75,6 +123,8 @@ export class DashboardService {
     // Teacher: classes = their assignments, finance hidden.
     const classesCount = classIds ? classIds.length : classesCountAll;
     const pendingPayments = isTeacher ? 0 : pendingPaymentsAll;
+    const amountDue = isTeacher ? 0 : Math.round(Number(dueAgg._sum.amount ?? 0));
+    const newGrades = newGradesCount;
 
     // Average grade normalised to /20.
     let averageGrade: number | null = null;
@@ -116,7 +166,11 @@ export class DashboardService {
     const announcements = annRows.map((a) => ({ title: a.title, date: fmtDate(a.publishAt) }));
 
     // KG counts: journal entries on the most recent journal day + total active activities.
-    const journalScope = classIds ? { student: { classId: { in: classIds } } } : {};
+    const journalScope: Prisma.DailyLogEntryWhereInput = isParent
+      ? { studentId: { in: studentIds ?? [] } }
+      : classIds
+        ? { student: { classId: { in: classIds } } }
+        : {};
     const latestJournalDay = await this.prisma.dailyLogEntry.findFirst({
       where: { tenantId, deletedAt: null, ...journalScope },
       orderBy: { date: 'desc' },
@@ -169,6 +223,8 @@ export class DashboardService {
       attendanceRate,
       averageGrade,
       pendingPayments,
+      newGrades,
+      amountDue,
       recentGrades,
       announcements,
       todayAttendance,

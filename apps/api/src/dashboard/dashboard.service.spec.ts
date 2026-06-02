@@ -10,14 +10,19 @@ import { DashboardService } from './dashboard.service';
 const TENANT = 't1';
 const admin: AuthenticatedUser = { id: 'u_admin', email: 'a@s.tn', tenantId: TENANT, role: UserRole.SCHOOL_ADMIN };
 const teacher: AuthenticatedUser = { id: 'u_teach', email: 't@s.tn', tenantId: TENANT, role: UserRole.TEACHER };
+const parent: AuthenticatedUser = { id: 'u_par', email: 'p@s.tn', tenantId: TENANT, role: UserRole.PARENT };
 
 function makePrisma() {
   return {
     classTeacher: { findMany: vi.fn().mockResolvedValue([{ classId: 'c1' }]) },
+    parentStudent: { findMany: vi.fn().mockResolvedValue([]) },
     student: { count: vi.fn().mockResolvedValue(16) },
     class: { count: vi.fn().mockResolvedValue(3) },
-    invoice: { count: vi.fn().mockResolvedValue(7) },
-    grade: { findMany: vi.fn().mockResolvedValue([]) },
+    invoice: {
+      count: vi.fn().mockResolvedValue(7),
+      aggregate: vi.fn().mockResolvedValue({ _sum: { amount: 1200 } }),
+    },
+    grade: { findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
     attendance: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
     announcement: { findMany: vi.fn().mockResolvedValue([]) },
     dailyLogEntry: { findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0) },
@@ -55,6 +60,25 @@ describe('DashboardService.overview', () => {
     expect(prisma.student.count.mock.calls[0][0].where.classId).toBeUndefined();
     expect(res.classesCount).toBe(3);
     expect(res.pendingPayments).toBe(7);
+  });
+
+  it('scopes a PARENT to their own children and returns parent figures', async () => {
+    prisma.parentStudent.findMany.mockResolvedValue([{ studentId: 's1' }, { studentId: 's2' }]);
+    prisma.invoice.count.mockResolvedValue(2);
+    prisma.invoice.aggregate.mockResolvedValue({ _sum: { amount: 640 } });
+    prisma.grade.count.mockResolvedValue(3);
+
+    const res = await service.overview(parent);
+
+    // Children resolved via ParentStudent, not class assignments.
+    expect(prisma.classTeacher.findMany).not.toHaveBeenCalled();
+    expect(prisma.student.count.mock.calls[0][0].where.id).toEqual({ in: ['s1', 's2'] });
+    expect(prisma.grade.findMany.mock.calls[0][0].where.studentId).toEqual({ in: ['s1', 's2'] });
+    expect(prisma.invoice.count.mock.calls[0][0].where.studentId).toEqual({ in: ['s1', 's2'] });
+    // Parent-specific figures surface real values (no more dashes).
+    expect(res.pendingPayments).toBe(2);
+    expect(res.amountDue).toBe(640);
+    expect(res.newGrades).toBe(3);
   });
 
   it('returns empty for a user without a tenant', async () => {

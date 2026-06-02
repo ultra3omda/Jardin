@@ -23,6 +23,11 @@ export interface DashboardOverviewDto {
   attendanceRate: number | null;
   averageGrade: number | null;
   pendingPayments: number;
+  // Parent-oriented figures (scoped to the connected parent's children).
+  // `newGrades` = grades published in the last 14 days; `amountDue` = total
+  // unpaid invoice amount (TND, rounded).
+  newGrades: number;
+  amountDue: number;
   recentGrades: RecentGradeDto[];
   announcements: AnnouncementBriefDto[];
   todayAttendance: { present: number; absent: number; late: number; excused: number };

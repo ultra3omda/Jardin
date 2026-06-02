@@ -16,7 +16,7 @@ export class DashboardController {
   constructor(private readonly service: DashboardService) {}
 
   @Get('overview')
-  @Roles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STAFF')
+  @Roles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STAFF', 'PARENT')
   overview(@CurrentUser() user: AuthenticatedUser): Promise<DashboardOverviewDto> {
     return this.service.overview(user);
   }
