@@ -35,6 +35,8 @@ export interface Activity {
   scheduledAt?: string | null;
   durationMin?: number | null;
   location?: string | null;
+  classId?: string | null;
+  className?: string | null;
   participantCount: number;
   createdAt: string;
   updatedAt: string;
@@ -104,6 +106,7 @@ export interface CreateActivityInput {
   scheduledAt?: string;
   durationMin?: number;
   location?: string;
+  classId?: string;
 }
 
 export interface CreateCanteenMenuInput {

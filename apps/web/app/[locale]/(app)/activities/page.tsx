@@ -19,6 +19,7 @@ import {
   type ActivityCategory,
 } from '@/lib/api/activities';
 import { listTeachers } from '@/lib/api/staff';
+import { listClasses } from '@/lib/api/classes';
 import { CATEGORIES, type ActivityValues } from '@/lib/validation/activities.schemas';
 import { ManageParticipantsModal } from './manage-participants-modal';
 
@@ -53,6 +54,7 @@ function toFormValues(activity: Activity): Partial<ActivityValues> {
     durationMin: activity.durationMin ?? undefined,
     location: activity.location ?? '',
     responsibleUserId: activity.responsibleUserId ?? '',
+    classId: activity.classId ?? '',
   };
 }
 
@@ -79,6 +81,17 @@ export default function ActivitiesPage() {
     id: t.id,
     firstName: t.firstName,
     lastName: t.lastName,
+  }));
+
+  const { data: classesData } = useQuery({
+    queryKey: ['classes', 'options'],
+    queryFn: () => listClasses(requireToken(accessToken)),
+    enabled: !!accessToken && isContributor,
+  });
+  const classOptions = (classesData?.items ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    level: c.level,
   }));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ACTIVITIES_KEY });
@@ -201,6 +214,7 @@ export default function ActivitiesPage() {
           submitLabel="Créer"
           pending={createMut.isPending}
           responsibleOptions={responsibleOptions}
+          classOptions={classOptions}
           onSubmit={(values) => createMut.mutate(values)}
           onCancel={() => setCreateOpen(false)}
         />
@@ -214,6 +228,7 @@ export default function ActivitiesPage() {
             submitLabel="Enregistrer"
             pending={editMut.isPending}
             responsibleOptions={responsibleOptions}
+            classOptions={classOptions}
             onSubmit={(values) => editMut.mutate({ id: editing.id, values })}
             onCancel={() => setEditing(null)}
           />

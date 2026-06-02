@@ -24,6 +24,8 @@ export interface ActivityFormProps {
   pending: boolean;
   /** Teachers/staff selectable as the activity's responsible (animateur). */
   responsibleOptions?: { id: string; firstName: string; lastName: string }[];
+  /** Classes selectable to auto-derive participants from attendance. */
+  classOptions?: { id: string; name: string; level: string }[];
   onSubmit: (values: ActivityValues) => void;
   onCancel: () => void;
 }
@@ -33,6 +35,7 @@ export function ActivityForm({
   submitLabel,
   pending,
   responsibleOptions = [],
+  classOptions = [],
   onSubmit,
   onCancel,
 }: ActivityFormProps) {
@@ -45,6 +48,7 @@ export function ActivityForm({
       scheduledAt: '',
       location: '',
       responsibleUserId: '',
+      classId: '',
       ...defaultValues,
     },
   });
@@ -160,6 +164,26 @@ export function ActivityForm({
                   {responsibleOptions.map((o) => (
                     <option key={o.id} value={o.id}>
                       {o.firstName} {o.lastName}
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="classId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Classe (participants = présents du jour)</FormLabel>
+              <FormControl>
+                <select className={SELECT_CLASS} {...field} value={field.value ?? ''}>
+                  <option value="">— Aucune (inscription manuelle) —</option>
+                  {classOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.level})
                     </option>
                   ))}
                 </select>

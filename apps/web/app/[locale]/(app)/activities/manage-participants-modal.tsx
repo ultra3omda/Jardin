@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { CrudModal } from '@/components/crud/crud-modal';
 import {
   addParticipation,
+  fillParticipationsFromAttendance,
   listParticipations,
   removeParticipation,
 } from '@/lib/api/activities';
@@ -16,8 +17,12 @@ import { requireToken } from '@/lib/auth/require-token';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { useToast } from '@/lib/ui/use-toast';
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 interface Props {
-  activity: { id: string; name: string };
+  activity: { id: string; name: string; classId?: string | null; className?: string | null };
   onClose: () => void;
   onChanged?: () => void;
 }
@@ -28,6 +33,7 @@ export function ManageParticipantsModal({ activity, onClose, onChanged }: Props)
   const qc = useQueryClient();
   const toast = useToast();
   const [search, setSearch] = useState('');
+  const [fillDate, setFillDate] = useState(today());
 
   const partKey = ['activity-participations', activity.id] as const;
   const partQuery = useQuery({
@@ -72,12 +78,51 @@ export function ManageParticipantsModal({ activity, onClose, onChanged }: Props)
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Retrait impossible.'),
   });
 
+  const fillMut = useMutation({
+    mutationFn: () =>
+      fillParticipationsFromAttendance(requireToken(accessToken), activity.id, fillDate),
+    onSuccess: (rows) => {
+      settle();
+      toast.success(`${rows.length} présent(s) inscrit(s).`);
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : 'Remplissage impossible.'),
+  });
+
   const participants = partQuery.data ?? [];
   const results = (studentsQuery.data?.items ?? []).filter((s) => !enrolledIds.has(s.id));
 
   return (
     <CrudModal open title={`Participants — ${activity.name}`} onClose={onClose}>
       <div className="space-y-6">
+        {activity.classId ? (
+          <section className="rounded-lg border border-ambre-200 bg-ambre-50 p-3">
+            <p className="text-sm font-semibold text-navy-900">
+              Atelier rattaché à {activity.className ?? 'une classe'}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Inscris automatiquement les élèves présents au pointage du jour choisi.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <Input
+                type="date"
+                value={fillDate}
+                onChange={(e) => setFillDate(e.target.value)}
+                className="h-9 w-auto"
+                aria-label="Date du pointage"
+              />
+              <Button size="sm" onClick={() => fillMut.mutate()} disabled={fillMut.isPending}>
+                {fillMut.isPending ? 'Remplissage…' : 'Remplir depuis les présents'}
+              </Button>
+            </div>
+          </section>
+        ) : (
+          <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+            Rattachez une classe à cet atelier (formulaire d&apos;édition) pour inscrire
+            automatiquement les présents du jour.
+          </p>
+        )}
+
         <section>
           <h3 className="mb-2 text-sm font-semibold text-navy-900">
             Élèves inscrits ({participants.length})

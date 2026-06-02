@@ -12,6 +12,8 @@ export interface Activity {
   location: string | null;
   responsibleUserId: string | null;
   responsibleName: string | null;
+  classId: string | null;
+  className: string | null;
   participantCount: number;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +35,7 @@ export interface CreateActivityInput {
   durationMin?: number;
   location?: string;
   responsibleUserId?: string | null;
+  classId?: string | null;
 }
 export type UpdateActivityInput = Partial<CreateActivityInput>;
 
@@ -51,3 +54,15 @@ export const addParticipation = (token: string, activityId: string, studentId: s
   apiPost<ActivityParticipation>(`${BASE}/${activityId}/participations`, token, { studentId });
 export const removeParticipation = (token: string, activityId: string, studentId: string) =>
   apiDelete(`${BASE}/${activityId}/participations/${studentId}`, token);
+
+/** Auto-remplit les participants depuis les présents du jour (classe de l'atelier). */
+export const fillParticipationsFromAttendance = (
+  token: string,
+  activityId: string,
+  date?: string,
+) =>
+  apiPost<ActivityParticipation[]>(
+    `${BASE}/${activityId}/participations/fill-from-attendance${date ? `?date=${date}` : ''}`,
+    token,
+    {},
+  );

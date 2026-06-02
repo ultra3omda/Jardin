@@ -11,6 +11,8 @@ export class CreateActivityDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(160) location?: string;
   @ApiPropertyOptional({ description: 'Enseignant/animateur responsable (userId), ou null pour aucun.' })
   @IsOptional() @IsString() @MaxLength(40) responsibleUserId?: string | null;
+  @ApiPropertyOptional({ description: 'Classe rattachée — participants = présents du jour.' })
+  @IsOptional() @IsString() @MaxLength(40) classId?: string | null;
 }
 
 export class UpdateActivityDto {
@@ -22,6 +24,7 @@ export class UpdateActivityDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(160) location?: string;
   @ApiPropertyOptional({ description: 'Enseignant/animateur responsable (userId), ou null pour aucun.' })
   @IsOptional() @IsString() @MaxLength(40) responsibleUserId?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) classId?: string | null;
 }
 
 export class AddParticipationDto {
@@ -44,6 +47,8 @@ export class ActivityResponseDto {
   @ApiPropertyOptional() location?: string | null;
   @ApiPropertyOptional() responsibleUserId?: string | null;
   @ApiPropertyOptional() responsibleName?: string | null;
+  @ApiPropertyOptional() classId?: string | null;
+  @ApiPropertyOptional() className?: string | null;
   @ApiProperty() participantCount!: number;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;

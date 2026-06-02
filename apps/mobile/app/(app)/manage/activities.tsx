@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
@@ -22,6 +22,7 @@ import {
   type Activity,
   type ActivityCategory,
 } from '@/lib/api/school-life';
+import { useMyClasses } from '@/lib/api/classes';
 
 const CATEGORY_OPTIONS: PickerOption[] = [
   { value: 'ART', label: '🎨 Art' },
@@ -41,7 +42,14 @@ export default function ManageActivitiesScreen() {
   const [category, setCategory] = useState('ART');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
+  const [classId, setClassId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { data: classes } = useMyClasses(false);
+  const classOptions = useMemo<PickerOption[]>(
+    () => (classes ?? []).map((c) => ({ value: c.id, label: c.name, hint: c.level })),
+    [classes],
+  );
 
   const items = data?.items ?? [];
 
@@ -52,6 +60,7 @@ export default function ManageActivitiesScreen() {
         category: category as ActivityCategory,
         location: location || undefined,
         description: description || undefined,
+        classId: classId || undefined,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: SCHOOL_LIFE_KEYS.activities });
@@ -59,6 +68,7 @@ export default function ManageActivitiesScreen() {
       setName('');
       setLocation('');
       setDescription('');
+      setClassId('');
       setErrors({});
     },
   });
@@ -145,6 +155,13 @@ export default function ManageActivitiesScreen() {
       >
         <FormField label="Nom" required value={name} onChangeText={setName} error={errors.name} placeholder="Atelier peinture" />
         <Picker label="Catégorie" value={category} onChange={setCategory} options={CATEGORY_OPTIONS} />
+        <Picker
+          label="Classe (participants = présents du jour)"
+          value={classId}
+          onChange={setClassId}
+          options={classOptions}
+          placeholder="(optionnel)"
+        />
         <FormField label="Lieu" value={location} onChangeText={setLocation} placeholder="Salle d'éveil" />
         <FormField label="Description" value={description} onChangeText={setDescription} multiline />
         {createM.error ? (

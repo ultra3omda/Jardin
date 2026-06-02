@@ -21,6 +21,7 @@ import type {
 const ACTIVITY_INCLUDE = {
   _count: { select: { participations: true } },
   responsible: { select: { firstName: true, lastName: true } },
+  class: { select: { name: true } },
 } satisfies Prisma.ActivityInclude;
 
 type ActivityRow = Prisma.ActivityGetPayload<{ include: typeof ACTIVITY_INCLUDE }>;
@@ -53,6 +54,21 @@ export class ActivitiesService {
     return staff.id;
   }
 
+  /** Validate an optional classId belongs to the tenant. */
+  private async resolveClass(
+    classId: string | null | undefined,
+    tenantId: string,
+  ): Promise<string | null | undefined> {
+    if (classId === undefined) return undefined;
+    if (classId === null || classId === '') return null;
+    const cls = await this.prisma.class.findFirst({
+      where: { id: classId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!cls) throw new BadRequestException({ code: 'CLASS_NOT_FOUND' });
+    return cls.id;
+  }
+
   async list(user: AuthenticatedUser): Promise<ListActivitiesResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
     const where: Prisma.ActivityWhereInput = { tenantId: user.tenantId, deletedAt: null };
@@ -70,6 +86,7 @@ export class ActivitiesService {
   async create(dto: CreateActivityDto, user: AuthenticatedUser): Promise<ActivityResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
     const responsibleUserId = await this.resolveResponsible(dto.responsibleUserId, user.tenantId);
+    const classId = await this.resolveClass(dto.classId, user.tenantId);
     const row = await this.prisma.activity.create({
       data: {
         id: createId(),
@@ -81,6 +98,7 @@ export class ActivitiesService {
         durationMin: dto.durationMin ?? null,
         location: dto.location ?? null,
         responsibleUserId: responsibleUserId ?? null,
+        classId: classId ?? null,
       },
       include: ACTIVITY_INCLUDE,
     });
@@ -94,6 +112,7 @@ export class ActivitiesService {
     });
     if (!existing) throw new NotFoundException({ code: 'ACTIVITY_NOT_FOUND' });
     const responsibleUserId = await this.resolveResponsible(dto.responsibleUserId, user.tenantId);
+    const classId = await this.resolveClass(dto.classId, user.tenantId);
     const row = await this.prisma.activity.update({
       where: { id },
       data: {
@@ -104,6 +123,7 @@ export class ActivitiesService {
         ...(dto.durationMin !== undefined ? { durationMin: dto.durationMin } : {}),
         ...(dto.location !== undefined ? { location: dto.location } : {}),
         ...(responsibleUserId !== undefined ? { responsibleUserId } : {}),
+        ...(classId !== undefined ? { classId } : {}),
       },
       include: ACTIVITY_INCLUDE,
     });
@@ -172,6 +192,40 @@ export class ActivitiesService {
     }
   }
 
+  /**
+   * Remplit les participations depuis le pointage : ajoute (idempotent) tous les
+   * élèves de la classe de l'atelier marqués PRÉSENTS le jour donné (ou today).
+   * Évite la sélection 1-par-1. On peut ensuite retirer un élève manuellement.
+   */
+  async fillFromAttendance(
+    activityId: string,
+    date: string | undefined,
+    user: AuthenticatedUser,
+  ): Promise<ParticipationResponseDto[]> {
+    if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    const activity = await this.prisma.activity.findFirst({
+      where: { id: activityId, tenantId: user.tenantId, deletedAt: null },
+      select: { id: true, classId: true },
+    });
+    if (!activity) throw new NotFoundException({ code: 'ACTIVITY_NOT_FOUND' });
+    if (!activity.classId) throw new BadRequestException({ code: 'ACTIVITY_HAS_NO_CLASS' });
+
+    const day = date ? new Date(date) : new Date();
+    day.setHours(0, 0, 0, 0);
+    const present = await this.prisma.attendance.findMany({
+      where: { tenantId: user.tenantId, classId: activity.classId, date: day, status: 'PRESENT' },
+      select: { studentId: true },
+    });
+    for (const p of present) {
+      await this.prisma.activityParticipation.upsert({
+        where: { unique_participation: { activityId, studentId: p.studentId } },
+        update: {},
+        create: { id: createId(), tenantId: user.tenantId, activityId, studentId: p.studentId },
+      });
+    }
+    return this.listParticipations(activityId, user);
+  }
+
   async removeParticipation(activityId: string, studentId: string, user: AuthenticatedUser): Promise<void> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
     const res = await this.prisma.activityParticipation.deleteMany({
@@ -193,6 +247,8 @@ export class ActivitiesService {
       responsibleName: r.responsible
         ? `${r.responsible.firstName} ${r.responsible.lastName}`
         : null,
+      classId: r.classId,
+      className: r.class?.name ?? null,
       participantCount: r._count.participations,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
