@@ -47,8 +47,32 @@ const EMPTY_STATS: BillingStats = {
   pendingCount: 0,
 };
 
+/** Parent KPIs are derived from their own children's invoices (no admin /stats). */
+function computeParentStats(items: Invoice[]): BillingStats {
+  let totalPaid = 0;
+  let totalDue = 0;
+  let overdueCount = 0;
+  for (const i of items) {
+    if (i.status === 'PAID') totalPaid += i.amount;
+    else if (i.status === 'CANCELLED') continue;
+    else {
+      totalDue += i.amount;
+      if (i.status === 'OVERDUE') overdueCount += 1;
+    }
+  }
+  return {
+    totalBilled: totalPaid + totalDue,
+    totalPaid,
+    totalPending: totalDue,
+    totalOverdue: 0,
+    overdueCount,
+    pendingCount: 0,
+  };
+}
+
 export default function PaymentsPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const isParent = useAuthStore((s) => s.user?.role) === 'PARENT';
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stats, setStats] = useState<BillingStats>(EMPTY_STATS);
   const [filterStatus, setFilterStatus] = useState('');
@@ -56,6 +80,18 @@ export default function PaymentsPage() {
   const load = useCallback(async () => {
     if (!token) return;
     try {
+      // Parents see only their children's invoices (read-only); the admin
+      // dashboard endpoints (/invoices, /stats) are SCHOOL_ADMIN-only.
+      if (isParent) {
+        const res = await fetch('/api/billing/my-invoices', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = res.ok ? ((await res.json()) as { items: Invoice[] }) : null;
+        const items = data?.items ?? [];
+        setInvoices(items);
+        setStats(computeParentStats(items));
+        return;
+      }
       const [invRes, statsRes] = await Promise.all([
         fetch('/api/billing/invoices', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/billing/stats', { headers: { Authorization: `Bearer ${token}` } }),
@@ -68,7 +104,7 @@ export default function PaymentsPage() {
       setInvoices([]);
       setStats(EMPTY_STATS);
     }
-  }, [token]);
+  }, [token, isParent]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -84,15 +120,26 @@ export default function PaymentsPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-navy-900">Paiements</h1>
-        <p className="text-sm text-muted-foreground">Consultez l&apos;historique des paiements et règlements.</p>
+        <p className="text-sm text-muted-foreground">
+          {isParent
+            ? 'Consultez les factures de vos enfants et leur règlement.'
+            : "Consultez l'historique des paiements et règlements."}
+        </p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          { label: 'Revenus encaissés', value: fmt(stats.totalPaid, 'TND'), color: 'text-green-700' },
-          { label: 'En attente', value: fmt(stats.totalPending, 'TND'), color: 'text-yellow-700' },
-          { label: 'Factures en retard', value: String(stats.overdueCount), color: 'text-red-700' },
-        ].map((s) => (
+        {(isParent
+          ? [
+              { label: 'Déjà payé', value: fmt(stats.totalPaid, 'TND'), color: 'text-green-700' },
+              { label: 'Reste à payer', value: fmt(stats.totalPending, 'TND'), color: 'text-yellow-700' },
+              { label: 'Factures en retard', value: String(stats.overdueCount), color: 'text-red-700' },
+            ]
+          : [
+              { label: 'Revenus encaissés', value: fmt(stats.totalPaid, 'TND'), color: 'text-green-700' },
+              { label: 'En attente', value: fmt(stats.totalPending, 'TND'), color: 'text-yellow-700' },
+              { label: 'Factures en retard', value: String(stats.overdueCount), color: 'text-red-700' },
+            ]
+        ).map((s) => (
           <div key={s.label} className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">{s.label}</p>
             <p className={`mt-1 text-2xl font-bold ${s.color}`}>{s.value}</p>

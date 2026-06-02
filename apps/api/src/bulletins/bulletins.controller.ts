@@ -49,7 +49,7 @@ export class BulletinsController {
   }
 
   @Get(':studentId/:gradePeriodId/latest')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.PARENT)
   @ApiOperation({ summary: 'Get latest bulletin metadata for (student, period) — null if not generated yet' })
   @ApiResponse({ status: 200, type: BulletinResponseDto })
   latest(
