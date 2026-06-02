@@ -43,7 +43,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { Locale, PrismaClient, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-const DEFAULT_SUPER_ADMIN_EMAIL = 'superadmin@ecole-saas.test';
+const DEFAULT_SUPER_ADMIN_EMAIL = 'support@klasso.tn';
 const PASSWORD_BYTES = 18; // 18 raw bytes → 24 chars in base64url
 const BCRYPT_ROUNDS = 12;
 

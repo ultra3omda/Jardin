@@ -1,19 +1,27 @@
 name: Reset super-admin password
 
-# Manually re-issue (or create) the Klasso super-admin login against the
-# production database. The password is read from the SUPER_ADMIN_NEW_PASSWORD
-# secret, so it is auto-masked in the Actions logs.
+# Crée (ou ré-émet) le compte super-admin Klasso sur la base de production.
 #
-# Required GitHub secrets:
-#   DATABASE_URL              production Postgres connection string
-#   SUPER_ADMIN_NEW_PASSWORD  the password you choose (>= 12 chars)
-# Optional GitHub variable:
-#   SUPER_ADMIN_EMAIL         super-admin email (default: super@klasso.tn)
+# Le mot de passe vient de l'input `password` (ou est GÉNÉRÉ automatiquement et
+# affiché dans les logs si laissé vide) — plus besoin de secret pour ça.
 #
-# After it runs: log in at https://klasso.tn/login with that email + password.
-# All previous super-admin sessions are invalidated.
+# Secret requis :   DATABASE_URL   (chaîne de connexion Postgres prod)
+# Inputs :          email          (défaut: support@klasso.tn)
+#                   password       (optionnel; vide => généré + affiché)
+#
+# Après exécution : connexion sur https://klasso.tn/login avec cet email + mot
+# de passe. Toutes les sessions super-admin précédentes sont invalidées.
 on:
   workflow_dispatch:
+    inputs:
+      email:
+        description: 'Email du super-admin'
+        required: false
+        default: 'support@klasso.tn'
+      password:
+        description: 'Mot de passe (>=12 car.). Laisser VIDE pour en générer un automatiquement (affiché dans les logs).'
+        required: false
+        default: ''
 
 jobs:
   reset:
@@ -22,14 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Gate on required secrets
-        id: gate
+      - name: Gate on DATABASE_URL secret
         run: |
-          if [ -n "${{ secrets.DATABASE_URL }}" ] && [ -n "${{ secrets.SUPER_ADMIN_NEW_PASSWORD }}" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::error::DATABASE_URL and SUPER_ADMIN_NEW_PASSWORD secrets are both required."
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "::error::Le secret DATABASE_URL est requis (chaîne Postgres prod)."
             exit 1
           fi
 
@@ -56,6 +60,7 @@ jobs:
       - name: Reset / create super-admin
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPER_ADMIN_EMAIL: ${{ vars.SUPER_ADMIN_EMAIL || 'super@klasso.tn' }}
-          SUPER_ADMIN_NEW_PASSWORD: ${{ secrets.SUPER_ADMIN_NEW_PASSWORD }}
+          SUPER_ADMIN_EMAIL: ${{ inputs.email }}
+          # Vide => le script génère un mot de passe et l'affiche dans les logs.
+          SUPER_ADMIN_NEW_PASSWORD: ${{ inputs.password }}
         run: pnpm --filter=@ecole-saas/api exec tsx scripts/reset-super-admin-password.ts
