@@ -237,3 +237,14 @@ export class ListStudentsResponseDto {
   @ApiProperty() page!: number;
   @ApiProperty() pageSize!: number;
 }
+
+/** Lot démo parent — un enfant rattaché au parent connecté (avec sa classe). */
+export class MyChildDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() firstName!: string;
+  @ApiProperty() lastName!: string;
+  @ApiPropertyOptional() classId!: string | null;
+  @ApiPropertyOptional() className!: string | null;
+  @ApiPropertyOptional() classLevel!: string | null;
+  @ApiPropertyOptional() photoUrl!: string | null;
+}

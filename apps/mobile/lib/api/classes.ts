@@ -8,9 +8,10 @@ import { fetchApi } from './client';
 export interface TimeSlot {
   id: string;
   dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  subjectName: string;
+  periodStart: string;
+  periodEnd: string;
+  subject: string;
+  room?: string | null;
 }
 
 export interface ClassSummary {

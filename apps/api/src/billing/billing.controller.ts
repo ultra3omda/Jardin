@@ -44,6 +44,14 @@ export class BillingController {
     return this.service.getDashboardStats(user.tenantId!);
   }
 
+  @Get('my-invoices')
+  @Roles(UserRole.PARENT)
+  @ApiOperation({ summary: "Invoices for the connected parent's children (read-only)" })
+  @ApiResponse({ status: 200, type: ListInvoicesResponseDto })
+  myInvoices(@CurrentUser() user: AuthenticatedUser): Promise<ListInvoicesResponseDto> {
+    return this.service.myInvoices(user);
+  }
+
   @Get('invoices')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'List invoices (paginated, optional filters: status, studentId)' })

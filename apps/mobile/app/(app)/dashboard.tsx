@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Avatar, Card, EmptyState, KpiCard, ScreenHeader, type KpiVariant, colors } from '@klasso/ui-mobile';
 import { useDashboardOverview, type DashboardOverview } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/lib/auth/store';
+import { ParentDashboard } from '@/components/dashboard/parent-dashboard';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -69,7 +70,9 @@ export default function DashboardScreen() {
     >
       <ScreenHeader title={heading} subtitle={subtitle} right={<Avatar initials={initials} size={44} />} />
 
-      {!canSeeOverview ? (
+      {user?.role === 'PARENT' ? (
+        <ParentDashboard />
+      ) : !canSeeOverview ? (
         <EmptyState
           icon="sparkles-outline"
           title="Bienvenue sur Klasso"

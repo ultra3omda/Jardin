@@ -328,6 +328,69 @@ async function seedParentLinks(
   return links;
 }
 
+/**
+ * Lot démo parent — rattache le PARENT de démo (persona `parent-primary` /
+ * `parent-kindergarten`) à ses premiers élèves, qui ont déjà notes, présences,
+ * emploi du temps, factures et journal. Sans ça, le compte parent de démo
+ * n'avait aucun enfant et toutes ses vues étaient vides.
+ */
+async function linkDemoParentToChildren(
+  tenantId: string,
+  demoParentEmail: string,
+  students: SeededStudent[],
+  count = 2,
+): Promise<void> {
+  const parent = await prisma.user.findFirst({
+    where: { tenantId, email: normalizeEmail(demoParentEmail), role: UserRole.PARENT },
+  });
+  if (!parent) return;
+  const author = await prisma.user.findFirst({
+    where: { tenantId, role: UserRole.SCHOOL_ADMIN },
+  });
+  const linked = students.slice(0, count);
+  for (const s of linked) {
+    const exists = await prisma.parentStudent.findFirst({
+      where: { parentUserId: parent.id, studentId: s.id },
+    });
+    if (!exists) {
+      await prisma.parentStudent.create({
+        data: {
+          id: createId(),
+          tenantId,
+          parentUserId: parent.id,
+          studentId: s.id,
+          relationType: RelationType.MOTHER,
+          isPrimaryContact: true,
+        },
+      });
+    }
+
+    // Cahier de liaison : 2 entrées récentes par enfant pour que la vue parent
+    // « Journal » ne soit jamais vide (la fixture générique cible d'autres élèves).
+    if (author) {
+      const moods = [ChildMood.HAPPY, ChildMood.CALM];
+      for (let d = 0; d < 2; d += 1) {
+        const date = daysAgo(d);
+        await prisma.dailyLogEntry.upsert({
+          where: { unique_daily_log_per_day: { tenantId, studentId: s.id, date } },
+          update: {},
+          create: {
+            id: createId(),
+            tenantId,
+            studentId: s.id,
+            date,
+            meals: 'A bien mangé à la cantine',
+            nap: 'Repos calme',
+            mood: moods[d % moods.length],
+            generalNote: 'Bonne journée, participation active en classe.',
+            authorId: author.id,
+          },
+        });
+      }
+    }
+  }
+}
+
 async function seedClass(tenantId: string, name: string, level: string, schoolYear: string): Promise<string> {
   const existing = await prisma.class.findFirst({
     where: { tenantId, schoolYear, name },
@@ -1234,6 +1297,11 @@ async function main(): Promise<void> {
     ],
     '2025-2026',
   );
+
+  // -- Démo parent -- rattache le parent de démo à ses premiers enfants -------
+  // (ces élèves ont déjà notes/présences/EDT/factures via seedAcademicLife).
+  await linkDemoParentToChildren(ecole.id, 'parent@demo-ecole.klasso.tn', cpA);
+  await linkDemoParentToChildren(maternelle.id, 'parent@demo-maternelle.klasso.tn', matPS);
 
   // -- T2b -- Journal + Activités fixtures (idempotent, students-only) -------
   // Called for both demo tenants; no-op where there are no students yet.

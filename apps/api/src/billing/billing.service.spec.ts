@@ -158,6 +158,27 @@ describe('BillingService', () => {
 
   // ─── create ────────────────────────────────────────────────────────────────
 
+  describe('myInvoices', () => {
+    const parentUser = { id: 'u_parent', email: 'p@demo.tn', tenantId: TENANT_A, role: 'PARENT' as const };
+
+    it('returns invoices for the parent children only', async () => {
+      prisma.parentStudent.findMany.mockResolvedValueOnce([{ studentId: 's1' }, { studentId: 's2' }]);
+      prisma.invoice.findMany.mockResolvedValueOnce([makeInvoice({ studentId: 's1' })]);
+      const res = await service.myInvoices(parentUser);
+      expect(res.total).toBe(1);
+      const where = prisma.invoice.findMany.mock.calls[0][0].where;
+      expect(where.studentId).toEqual({ in: ['s1', 's2'] });
+      expect(where.tenantId).toBe(TENANT_A);
+    });
+
+    it('short-circuits to empty when the parent has no children', async () => {
+      prisma.parentStudent.findMany.mockResolvedValueOnce([]);
+      const res = await service.myInvoices(parentUser);
+      expect(res).toEqual({ items: [], total: 0, page: 1, limit: 0 });
+      expect(prisma.invoice.findMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('create', () => {
     const baseDto: CreateInvoiceDto = {
       title: 'Facture T1 2025-2026',

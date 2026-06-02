@@ -83,6 +83,7 @@ describe('StudentsService', () => {
       },
       // Parent obligatoire : create() résout le compte parent par email AVANT la tx.
       user: { findFirst: vi.fn().mockResolvedValue({ id: 'parent_1' }) },
+      parentStudent: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null) },
       auditLog: { create: vi.fn().mockResolvedValue({}) },
       $transaction: vi.fn(async (fn: any) =>
         fn({
@@ -184,6 +185,41 @@ describe('StudentsService', () => {
     });
   });
 
+  describe('myChildren', () => {
+    it('maps ParentStudent links to children with their class', async () => {
+      prisma.parentStudent.findMany.mockResolvedValueOnce([
+        {
+          student: {
+            id: 's1',
+            firstName: 'Eya',
+            lastName: 'Cherni',
+            classId: 'cls_1',
+            photoUrl: null,
+            class: { id: 'cls_1', name: 'CP-A', level: 'CP' },
+          },
+        },
+      ]);
+      const res = await service.myChildren(parent);
+      expect(res).toEqual([
+        {
+          id: 's1',
+          firstName: 'Eya',
+          lastName: 'Cherni',
+          classId: 'cls_1',
+          className: 'CP-A',
+          classLevel: 'CP',
+          photoUrl: null,
+        },
+      ]);
+      expect(prisma.parentStudent.findMany.mock.calls[0][0].where.parentUserId).toBe('u_parent');
+    });
+
+    it('returns [] when the parent has no tenant', async () => {
+      const res = await service.myChildren({ ...parent, tenantId: null });
+      expect(res).toEqual([]);
+    });
+  });
+
   describe('getById', () => {
     it('throws NotFound when row does not exist', async () => {
       prisma.student.findFirst.mockResolvedValueOnce(null);
@@ -198,6 +234,15 @@ describe('StudentsService', () => {
     });
 
     it('returns the student when PARENT owns it (case-insensitive email match)', async () => {
+      const res = await service.getById('stu_1', parent);
+      expect(res.id).toBe('stu_1');
+    });
+
+    it('allows PARENT via a ParentStudent link even if parentEmail differs', async () => {
+      prisma.student.findFirst.mockResolvedValueOnce(
+        makeRow({ parentEmail: 'someone-else@example.tn' }),
+      );
+      prisma.parentStudent.findFirst.mockResolvedValueOnce({ id: 'link_1' });
       const res = await service.getById('stu_1', parent);
       expect(res.id).toBe('stu_1');
     });
