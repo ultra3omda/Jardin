@@ -34,8 +34,15 @@ Messagerie + notifications (périmètre support).
 ### Maternelle (mêmes rôles)
 `admin-kindergarten`, `teacher-kindergarten` (animatrice Leila Marzouki), `parent-kindergarten` (2 enfants en Petite Section) — cahier de liaison riche (humeur, repas, sieste), activités d'éveil, cantine.
 
-### 🔴 Super-admin — `super-admin` (`super@klasso.tn`)
-Niveau **plateforme**, **sans tenant** : pas d'accès aux données d'un établissement (les endpoints tenant renvoient 403, c'est attendu). Sur mobile : Accueil, Notifs, Profil.
+### 🔴 Super-admin — **réel, hors démo** (`support@klasso.tn`)
+Le super-admin **n'est PAS un compte de démo** : aucun bouton « Super-admin » sur l'écran de connexion (web + mobile), et le persona `super-admin` n'existe plus dans le 1-clic démo. Le compte réel `support@klasso.tn` (`SUPER_ADMIN`, **sans tenant**) est créé par le seed ; son mot de passe se définit via le script **reset-super-admin** :
+
+```
+SUPER_ADMIN_EMAIL=support@klasso.tn SUPER_ADMIN_NEW_PASSWORD="…" \
+  pnpm --filter=@ecole-saas/api exec tsx scripts/reset-super-admin-password.ts
+```
+
+Niveau plateforme : pas d'accès aux données d'un établissement (403 attendu sur les endpoints tenant).
 
 ### Commercial — `commercial@klasso.tn`
 Pipeline commercial (création de sous-admins / organisations), côté web.

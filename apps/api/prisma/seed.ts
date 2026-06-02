@@ -1227,11 +1227,13 @@ async function main(): Promise<void> {
   await upsertUser({ tenantId: maternelle.id, email: 'parent@demo-maternelle.klasso.tn', firstName: 'Fatma',   lastName: 'Zouari',   role: UserRole.PARENT,       passwordHash });
   await upsertUser({ tenantId: maternelle.id, email: 'staff@demo-maternelle.klasso.tn',  firstName: 'Nour',    lastName: 'Hamdi',    role: UserRole.STAFF,        passwordHash });
 
+  // Vrai super-admin (NON exposé en démo). Mot de passe à définir via le
+  // workflow reset-super-admin (SUPER_ADMIN_EMAIL=support@klasso.tn).
   const superAdmin = await upsertUser({
     tenantId: null,
-    email: 'super@klasso.tn',
-    firstName: 'Super',
-    lastName: 'Admin',
+    email: 'support@klasso.tn',
+    firstName: 'Support',
+    lastName: 'Klasso',
     role: UserRole.SUPER_ADMIN,
     passwordHash,
   });
@@ -1411,7 +1413,7 @@ async function main(): Promise<void> {
   console.log(`    teacher : anim@demo-maternelle.klasso.tn`);
   console.log(`    parent  : parent@demo-maternelle.klasso.tn`);
   console.log(`    staff   : staff@demo-maternelle.klasso.tn`);
-  console.log(`  Super-admin: super@klasso.tn`);
+  console.log(`  Super-admin (réel, non-démo): support@klasso.tn`);
   console.log(`  Commercial : commercial@klasso.tn`);
   console.log(`  Pending org (commercial pipeline): ${pendingOrg.slug}`);
   console.log('');

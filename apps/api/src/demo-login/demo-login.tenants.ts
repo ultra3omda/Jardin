@@ -38,5 +38,4 @@ export const DEMO_ROLE_MAP: Record<string, UserRole> = {
   'parent-primary': UserRole.PARENT,
   'parent-kindergarten': UserRole.PARENT,
   staff: UserRole.STAFF,
-  'super-admin': UserRole.SUPER_ADMIN,
 };

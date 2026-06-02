@@ -25,7 +25,6 @@ const PERSONAS_MORE: PersonaButton[] = [
   { persona: 'admin-kindergarten',  label: 'Dir. Maternelle',   email: 'admin@demo-maternelle.klasso.tn',  icon: ShieldCheck },
   { persona: 'parent-kindergarten', label: 'Parent maternelle', email: 'parent@demo-maternelle.klasso.tn', icon: Users },
   { persona: 'staff',               label: 'Personnel',         email: 'staff@demo-ecole.klasso.tn',       icon: Users },
-  { persona: 'super-admin',         label: 'Super-admin',       email: 'super@klasso.tn',                  icon: ShieldCheck },
 ];
 
 export function DemoAccountsBlock() {
@@ -91,7 +90,7 @@ export function DemoAccountsBlock() {
         onClick={() => setShowMore((v) => !v)}
         className="mt-3 w-full text-center text-[11px] font-semibold text-ambre-600 hover:text-ambre-700"
       >
-        {showMore ? '— Moins de démos' : '+ Plus de démos (4 autres personas)'}
+        {showMore ? '— Moins de démos' : '+ Plus de démos (3 autres personas)'}
       </button>
 
       {error && (
