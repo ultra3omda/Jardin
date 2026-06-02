@@ -8,6 +8,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import {
   CreateDailyLogDto,
   DailyLogResponseDto,
+  JournalPhotoUploadDto,
+  JournalPhotoUploadResponseDto,
   ListJournalQueryDto,
   ListJournalResponseDto,
   UpdateDailyLogDto,
@@ -35,6 +37,17 @@ export class JournalController {
   @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.PARENT)
   getById(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string): Promise<DailyLogResponseDto> {
     return this.service.getById(id, user);
+  }
+
+  @Post('photo-upload-url')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER)
+  @ApiOperation({ summary: 'Signed R2 PUT URL for the daily photo' })
+  photoUploadUrl(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: JournalPhotoUploadDto,
+  ): Promise<JournalPhotoUploadResponseDto> {
+    return this.service.getPhotoUploadUrl(dto.contentType, user);
   }
 
   @Post()

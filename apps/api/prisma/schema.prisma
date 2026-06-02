@@ -537,6 +537,7 @@ model Class {
 
   disciplineIncidents DisciplineIncident[] // T2b PR-2
   homeworks           Homework[]
+  activities          Activity[]
 
   @@unique([tenantId, schoolYear, name], name: "unique_class_per_year")
   @@index([tenantId, schoolYear])
@@ -940,6 +941,7 @@ model DailyLogEntry {
   bathroom       String?    @db.VarChar(200)
   activitiesNote String?    @db.Text
   generalNote    String?    @db.Text
+  photoUrl       String? // photo du jour (URL publique R2)
   authorId       String
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -967,12 +969,15 @@ model Activity {
   location          String?          @db.VarChar(160)
   // affectations: enseignant/animateur responsable de l'activité (optionnel).
   responsibleUserId String?
+  // atelier rattaché à une classe → participants = présents du jour (optionnel).
+  classId           String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   deletedAt         DateTime?
 
   tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   responsible    User?                   @relation("ActivityResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  class          Class?                  @relation(fields: [classId], references: [id], onDelete: SetNull)
   participations ActivityParticipation[]
 
   @@index([tenantId])
