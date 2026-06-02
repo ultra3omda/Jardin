@@ -42,7 +42,16 @@ function buildKpis(role: string | undefined, isKG: boolean, d?: DashboardOvervie
       { label: 'Moyenne', value: d.averageGrade === null ? '—' : nf(d.averageGrade), variant: 'amber', icon: 'school-outline' },
     ];
   }
-  // SCHOOL_ADMIN / TEACHER / STAFF
+  // TEACHER — scoped to their classes, no finance.
+  if (role === 'TEACHER') {
+    return [
+      { label: 'Mes élèves', value: nf(d.totalStudents), variant: 'blue', icon: 'people-outline' },
+      { label: 'Présence', value: d.attendanceRate === null ? '—' : `${d.attendanceRate}%`, variant: 'green', icon: 'checkmark-circle-outline' },
+      { label: 'Moyenne', value: d.averageGrade === null ? '—' : nf(d.averageGrade), variant: 'amber', icon: 'school-outline' },
+      { label: 'Mes classes', value: nf(d.classesCount), variant: 'purple', icon: 'easel-outline' },
+    ];
+  }
+  // SCHOOL_ADMIN / STAFF
   return [
     { label: 'Élèves', value: nf(d.totalStudents), variant: 'blue', icon: 'people-outline' },
     { label: 'Présence', value: d.attendanceRate === null ? '—' : `${d.attendanceRate}%`, variant: 'green', icon: 'checkmark-circle-outline' },

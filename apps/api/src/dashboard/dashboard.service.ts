@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import type {
@@ -38,23 +39,42 @@ export class DashboardService {
     const tenantId = user.tenantId;
     if (!tenantId) return EMPTY;
 
-    const [totalStudents, classesCount, pendingPayments, gradeAgg, latestAttDay] =
+    // A TEACHER only sees their own classes (students, attendance, grades) and
+    // never finance. ADMIN / STAFF keep the tenant-wide view.
+    const isTeacher = user.role === UserRole.TEACHER;
+    let classIds: string[] | null = null;
+    if (isTeacher) {
+      const assigned = await this.prisma.classTeacher.findMany({
+        where: { tenantId, teacherUserId: user.id },
+        select: { classId: true },
+      });
+      classIds = [...new Set(assigned.map((a) => a.classId))];
+    }
+    const studentScope = classIds ? { classId: { in: classIds } } : {};
+    const attendanceScope = classIds ? { classId: { in: classIds } } : {};
+    const gradeScope = classIds ? { evaluation: { classId: { in: classIds } } } : {};
+
+    const [totalStudents, classesCountAll, pendingPaymentsAll, gradeAgg, latestAttDay] =
       await Promise.all([
-        this.prisma.student.count({ where: { tenantId, deletedAt: null } }),
+        this.prisma.student.count({ where: { tenantId, deletedAt: null, ...studentScope } }),
         this.prisma.class.count({ where: { tenantId, deletedAt: null } }),
         this.prisma.invoice.count({
           where: { tenantId, status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] } },
         }),
         this.prisma.grade.findMany({
-          where: { tenantId },
+          where: { tenantId, ...gradeScope },
           select: { score: true, evaluation: { select: { maxScore: true } } },
         }),
         this.prisma.attendance.findFirst({
-          where: { tenantId },
+          where: { tenantId, ...attendanceScope },
           orderBy: { date: 'desc' },
           select: { date: true },
         }),
       ]);
+
+    // Teacher: classes = their assignments, finance hidden.
+    const classesCount = classIds ? classIds.length : classesCountAll;
+    const pendingPayments = isTeacher ? 0 : pendingPaymentsAll;
 
     // Average grade normalised to /20.
     let averageGrade: number | null = null;
@@ -68,7 +88,7 @@ export class DashboardService {
 
     // Recent grades (latest 5) with student + subject names.
     const recentGradeRows = await this.prisma.grade.findMany({
-      where: { tenantId },
+      where: { tenantId, ...gradeScope },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: {
@@ -96,15 +116,16 @@ export class DashboardService {
     const announcements = annRows.map((a) => ({ title: a.title, date: fmtDate(a.publishAt) }));
 
     // KG counts: journal entries on the most recent journal day + total active activities.
+    const journalScope = classIds ? { student: { classId: { in: classIds } } } : {};
     const latestJournalDay = await this.prisma.dailyLogEntry.findFirst({
-      where: { tenantId, deletedAt: null },
+      where: { tenantId, deletedAt: null, ...journalScope },
       orderBy: { date: 'desc' },
       select: { date: true },
     });
     const [journalToday, activitiesToday] = await Promise.all([
       latestJournalDay
         ? this.prisma.dailyLogEntry.count({
-            where: { tenantId, deletedAt: null, date: latestJournalDay.date },
+            where: { tenantId, deletedAt: null, date: latestJournalDay.date, ...journalScope },
           })
         : Promise.resolve(0),
       this.prisma.activity.count({ where: { tenantId, deletedAt: null } }),
@@ -117,7 +138,7 @@ export class DashboardService {
 
     if (latestAttDay) {
       const rows = await this.prisma.attendance.findMany({
-        where: { tenantId, date: latestAttDay.date },
+        where: { tenantId, date: latestAttDay.date, ...attendanceScope },
         select: {
           status: true,
           student: { select: { firstName: true, lastName: true, classroom: true } },
