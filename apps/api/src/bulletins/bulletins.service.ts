@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
+import { UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -136,6 +137,14 @@ export class BulletinsService {
     user: AuthenticatedUser,
   ): Promise<BulletinResponseDto | null> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    // A parent may only read the bulletins of their own children.
+    if (user.role === UserRole.PARENT) {
+      const link = await this.prisma.parentStudent.findFirst({
+        where: { tenantId: user.tenantId, parentUserId: user.id, studentId },
+        select: { id: true },
+      });
+      if (!link) throw new ForbiddenException({ code: 'NOT_YOUR_CHILD' });
+    }
     const b = await this.prisma.bulletin.findFirst({
       where: { tenantId: user.tenantId, studentId, gradePeriodId },
     });

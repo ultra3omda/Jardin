@@ -17,8 +17,11 @@ async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Pro
   return t ? (JSON.parse(t) as T) : (null as T);
 }
 
+interface MyChild { id: string; firstName: string; lastName: string; className: string | null }
+
 export default function BulletinsPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const isParent = useAuthStore((s) => s.user?.role) === 'PARENT';
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [periods, setPeriods] = useState<PeriodOption[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
@@ -34,8 +37,20 @@ export default function BulletinsPage() {
     if (!token) return;
     setLoadingStudents(true);
     try {
+      // A parent only sees their own children (the tenant-wide /students list
+      // is admin/teacher-only); admins/teachers keep the full roster.
+      const studentsReq = isParent
+        ? apiFetch<MyChild[]>('/api/students/my-children', token).then((rows) => ({
+            items: (rows ?? []).map((c) => ({
+              id: c.id,
+              firstName: c.firstName,
+              lastName: c.lastName,
+              classroom: c.className ?? '',
+            })),
+          }))
+        : apiFetch<{ items: StudentOption[] }>('/api/students?limit=200', token);
       const [sData, pData] = await Promise.allSettled([
-        apiFetch<{ items: StudentOption[] }>('/api/students?limit=200', token),
+        studentsReq,
         apiFetch<{ items: PeriodOption[] }>('/api/grade-periods', token),
       ]);
       const sItems = sData.status === 'fulfilled' ? (sData.value?.items ?? []) : [];
@@ -47,7 +62,7 @@ export default function BulletinsPage() {
       setStudents([]);
       setPeriods([]);
     } finally { setLoadingStudents(false); }
-  }, [token]);
+  }, [token, isParent]);
 
   useEffect(() => { void loadBase(); }, [loadBase]);
 
@@ -126,19 +141,25 @@ export default function BulletinsPage() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-navy-900">Bulletins</h1>
-          <p className="text-sm text-muted-foreground">Générez et téléchargez les bulletins de notes.</p>
+          <p className="text-sm text-muted-foreground">
+            {isParent
+              ? 'Téléchargez les bulletins de vos enfants.'
+              : 'Générez et téléchargez les bulletins de notes.'}
+          </p>
         </div>
         <div className="flex gap-2">
           <select className="rounded-md border px-3 py-2 text-sm" value={selectedPeriodId} onChange={(e) => setSelectedPeriodId(e.target.value)}>
             {periods.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.schoolYear}</option>)}
           </select>
-          {totalCount > 0 ? (
-            <span className="flex items-center text-sm text-muted-foreground">Génération {progressCount}/{totalCount}…</span>
-          ) : (
-            <button onClick={() => void handleGenerateAll()} className="rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 py-2 text-sm font-medium text-white">
-              Générer tous
-            </button>
-          )}
+          {/* Generation is an admin/teacher action — never shown to parents. */}
+          {!isParent &&
+            (totalCount > 0 ? (
+              <span className="flex items-center text-sm text-muted-foreground">Génération {progressCount}/{totalCount}…</span>
+            ) : (
+              <button onClick={() => void handleGenerateAll()} className="rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 py-2 text-sm font-medium text-white">
+                Générer tous
+              </button>
+            ))}
         </div>
       </header>
 
@@ -183,9 +204,13 @@ export default function BulletinsPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         {b?.pdfUrl && <a href={b.pdfUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Télécharger PDF</a>}
-                        <button disabled={isGenerating} onClick={() => void handleGenerate(s.id)} className="text-xs text-ambre-600 hover:underline disabled:opacity-50">
-                          {isGenerating ? 'Génération…' : 'Générer'}
-                        </button>
+                        {isParent ? (
+                          !b && <span className="text-xs text-muted-foreground">Non disponible</span>
+                        ) : (
+                          <button disabled={isGenerating} onClick={() => void handleGenerate(s.id)} className="text-xs text-ambre-600 hover:underline disabled:opacity-50">
+                            {isGenerating ? 'Génération…' : 'Générer'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

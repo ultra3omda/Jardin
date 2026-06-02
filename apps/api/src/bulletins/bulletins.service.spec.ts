@@ -19,8 +19,13 @@ function buildPrismaMock() {
       upsert: vi.fn(),
       findFirst: vi.fn(),
     },
+    parentStudent: { findFirst: vi.fn() },
   };
 }
+
+const parentUser = {
+  id: 'u_par', tenantId: 't_demo', role: 'PARENT', email: 'parent@demo.tn',
+} as AuthenticatedUser;
 
 function buildPdfMock() {
   return {
@@ -141,5 +146,22 @@ describe('BulletinsService', () => {
     const noTenant = { ...adminUser, tenantId: null } as AuthenticatedUser;
     await expect(service.generate({ studentId: 'st1', gradePeriodId: 'p1' }, noTenant))
       .rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('getLatest: a parent can read the bulletin of their own child', async () => {
+    prisma.parentStudent.findFirst.mockResolvedValue({ id: 'ps1' });
+    prisma.bulletin.findFirst.mockResolvedValue({
+      id: 'b1', studentId: 'st1', gradePeriodId: 'p1',
+      generatedAt: new Date(), generatedById: 'u_admin', pdfUrl: null,
+    });
+    const res = await service.getLatest('st1', 'p1', parentUser);
+    expect(res?.id).toBe('b1');
+  });
+
+  it('getLatest: a parent cannot read a bulletin of a child that is not theirs', async () => {
+    prisma.parentStudent.findFirst.mockResolvedValue(null);
+    await expect(service.getLatest('st_other', 'p1', parentUser))
+      .rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.bulletin.findFirst).not.toHaveBeenCalled();
   });
 });
