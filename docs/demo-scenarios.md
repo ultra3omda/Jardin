@@ -35,12 +35,7 @@ Messagerie + notifications (périmètre support).
 `admin-kindergarten`, `teacher-kindergarten` (animatrice Leila Marzouki), `parent-kindergarten` (2 enfants en Petite Section) — cahier de liaison riche (humeur, repas, sieste), activités d'éveil, cantine.
 
 ### 🔴 Super-admin — **réel, hors démo** (`support@klasso.tn`)
-Le super-admin **n'est PAS un compte de démo** : aucun bouton « Super-admin » sur l'écran de connexion (web + mobile), et le persona `super-admin` n'existe plus dans le 1-clic démo. Le compte réel `support@klasso.tn` (`SUPER_ADMIN`, **sans tenant**) est créé par le seed ; son mot de passe se définit via le script **reset-super-admin** :
-
-```
-SUPER_ADMIN_EMAIL=support@klasso.tn SUPER_ADMIN_NEW_PASSWORD="…" \
-  pnpm --filter=@ecole-saas/api exec tsx scripts/reset-super-admin-password.ts
-```
+Le super-admin **n'est PAS un compte de démo** : aucun bouton « Super-admin » sur l'écran de connexion (web + mobile), et le persona `super-admin` n'existe plus dans le 1-clic démo. Le compte réel `support@klasso.tn` (`SUPER_ADMIN`, **sans tenant**) est créé par le seed ; son mot de passe se définit via le **workflow GitHub Actions « Reset super-admin password »** (déclenchement manuel) : email pré-rempli à `support@klasso.tn`, et **mot de passe en input** (laisser vide pour en générer un, affiché dans les logs). Seul le secret `DATABASE_URL` est requis.
 
 Niveau plateforme : pas d'accès aux données d'un établissement (403 attendu sur les endpoints tenant).
 
