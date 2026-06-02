@@ -34,6 +34,7 @@ import {
   CreateStudentDto,
   ListStudentsQueryDto,
   ListStudentsResponseDto,
+  MyChildDto,
   StudentResponseDto,
   UpdateStudentDto,
 } from './dto/student.dto';
@@ -104,6 +105,14 @@ export class StudentsController {
     @Query() query: ListStudentsQueryDto,
   ): Promise<ListStudentsResponseDto> {
     return this.students.list(query, user);
+  }
+
+  @Get('my-children')
+  @Roles(UserRole.PARENT, UserRole.SCHOOL_ADMIN)
+  @ApiOperation({ summary: "The connected parent's children (with their class)" })
+  @ApiResponse({ status: 200, type: [MyChildDto] })
+  myChildren(@CurrentUser() user: AuthenticatedUser): Promise<MyChildDto[]> {
+    return this.students.myChildren(user);
   }
 
   @Get(':id')

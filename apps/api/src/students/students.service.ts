@@ -15,6 +15,7 @@ import type {
   CreateStudentDto,
   ListStudentsQueryDto,
   ListStudentsResponseDto,
+  MyChildDto,
   StudentResponseDto,
   UpdateStudentDto,
 } from './dto/student.dto';
@@ -133,6 +134,32 @@ export class StudentsService {
     return this.toResponse(student);
   }
 
+  /**
+   * Lot démo parent — enfants rattachés au parent connecté via ParentStudent
+   * (source fiable, contrairement au filtre `parentEmail`), avec leur classe.
+   */
+  async myChildren(currentUser: AuthenticatedUser): Promise<MyChildDto[]> {
+    if (!currentUser.tenantId) return [];
+    const links = await this.prisma.parentStudent.findMany({
+      where: {
+        parentUserId: currentUser.id,
+        tenantId: currentUser.tenantId,
+        student: { deletedAt: null },
+      },
+      include: { student: { include: STUDENT_CLASS_INCLUDE } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return links.map((l) => ({
+      id: l.student.id,
+      firstName: l.student.firstName,
+      lastName: l.student.lastName,
+      classId: l.student.classId ?? null,
+      className: l.student.class?.name ?? null,
+      classLevel: l.student.class?.level ?? null,
+      photoUrl: l.student.photoUrl ?? null,
+    }));
+  }
+
   async list(
     query: ListStudentsQueryDto,
     currentUser: AuthenticatedUser,
@@ -194,11 +221,20 @@ export class StudentsService {
     if (!student) {
       throw new NotFoundException({ code: 'STUDENT_NOT_FOUND' });
     }
-    if (
-      currentUser.role === UserRole.PARENT &&
-      student.parentEmail.toLowerCase() !== currentUser.email.toLowerCase()
-    ) {
-      throw new ForbiddenException({ code: 'STUDENT_NOT_OWNED_BY_PARENT' });
+    if (currentUser.role === UserRole.PARENT) {
+      const ownsByEmail =
+        student.parentEmail.toLowerCase() === currentUser.email.toLowerCase();
+      // Fallback fiable : lien ParentStudent réel (le filtre email ne couvre pas
+      // les comptes multi-enfants / de démo).
+      const link = ownsByEmail
+        ? true
+        : await this.prisma.parentStudent.findFirst({
+            where: { tenantId: currentUser.tenantId, parentUserId: currentUser.id, studentId: id },
+            select: { id: true },
+          });
+      if (!link) {
+        throw new ForbiddenException({ code: 'STUDENT_NOT_OWNED_BY_PARENT' });
+      }
     }
     return this.toResponse(student);
   }

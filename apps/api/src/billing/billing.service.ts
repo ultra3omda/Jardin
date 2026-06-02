@@ -6,6 +6,7 @@ import {
 import { createId } from '@paralleldrive/cuid2';
 import { InvoiceStatus, Prisma } from '@prisma/client';
 
+import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
@@ -28,6 +29,32 @@ export class BillingService {
   ) {}
 
   // ───── Queries ─────
+
+  /**
+   * Lot démo parent — factures rattachées aux enfants du parent connecté
+   * (lecture seule ; le paiement en ligne arrive en Vague 7).
+   */
+  async myInvoices(user: AuthenticatedUser): Promise<ListInvoicesResponseDto> {
+    if (!user.tenantId) return { items: [], total: 0, page: 1, limit: 0 };
+    const links = await this.prisma.parentStudent.findMany({
+      where: { parentUserId: user.id, tenantId: user.tenantId },
+      select: { studentId: true },
+    });
+    const childIds = links.map((l) => l.studentId);
+    if (childIds.length === 0) return { items: [], total: 0, page: 1, limit: 0 };
+
+    const items = await this.prisma.invoice.findMany({
+      where: { tenantId: user.tenantId, studentId: { in: childIds } },
+      include: { items: true, payments: true },
+      orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
+    });
+    return {
+      items: items.map((inv) => this.toInvoiceResponse(inv)),
+      total: items.length,
+      page: 1,
+      limit: items.length,
+    };
+  }
 
   async findAll(tenantId: string, query: InvoiceQueryDto): Promise<ListInvoicesResponseDto> {
     const page = query.page ?? 1;
