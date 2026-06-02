@@ -108,10 +108,14 @@ export class CreateOrganizationDto {
   @MaxLength(100)
   adminLastName!: string;
 
-  @ApiProperty({ type: ContractInputDto })
+  @ApiPropertyOptional({
+    type: ContractInputDto,
+    description: 'Contrat signé (optionnel : il peut être rattaché plus tard).',
+  })
+  @IsOptional()
   @ValidateNested()
   @Type(() => ContractInputDto)
-  contract!: ContractInputDto;
+  contract?: ContractInputDto;
 
   @ApiPropertyOptional({
     default: true,

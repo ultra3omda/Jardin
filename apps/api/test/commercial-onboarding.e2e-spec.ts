@@ -245,6 +245,34 @@ describe('Commercial pipeline + onboarding (e2e)', () => {
     expect(allSlugs).toContain(`${SLUG_PREFIX}avenir`);
   });
 
+  it('creates an organization WITHOUT a contract; the commercial still sees it', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/commercial/organizations')
+      .set('Authorization', `Bearer ${commercialToken}`)
+      .send({
+        name: 'GTM École Sans Contrat',
+        slug: `${SLUG_PREFIX}sans-contrat`,
+        type: 'PRIMARY_SCHOOL',
+        adminEmail: `dir2@${DOMAIN}`,
+        adminFirstName: 'Nadia',
+        adminLastName: 'Sans',
+        sendInviteEmail: false,
+      })
+      .expect(201);
+    expect(res.body.contract).toBeNull();
+    expect(res.body.organization.contractsCount).toBe(0);
+    expect(res.body.organization.status).toBe('PENDING_ONBOARDING');
+
+    // No contract links the org to its creator → ownership comes from the audit
+    // trail, so the commercial must still see it in their list.
+    const mine = await request(app.getHttpServer())
+      .get('/api/commercial/organizations')
+      .set('Authorization', `Bearer ${commercialToken}`)
+      .expect(200);
+    const slugs = (mine.body as Array<{ slug: string }>).map((o) => o.slug);
+    expect(slugs).toContain(`${SLUG_PREFIX}sans-contrat`);
+  });
+
   it('GET a single organization returns its summary (commercial)', async () => {
     const res = await request(app.getHttpServer())
       .get(`/api/commercial/organizations/${orgId}`)

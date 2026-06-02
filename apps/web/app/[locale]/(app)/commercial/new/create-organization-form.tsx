@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api/http';
 import {
   createContractUploadUrl,
   createOrganization,
+  type CreateOrganizationInput,
   type CreateOrganizationResponse,
   type TenantType,
 } from '@/lib/api/commercial';
@@ -62,25 +63,40 @@ export function CreateOrganizationForm() {
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!accessToken) return;
-    if (!file) {
-      setError('Veuillez joindre le contrat signé (PDF).');
+    // The signed contract is optional — it can be attached later. When a PDF is
+    // provided, the signature & start dates become required so the record is
+    // complete.
+    if (file && (!form.signedAt || !form.startDate)) {
+      setError('Renseignez la date de signature et la date de début du contrat.');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      // 1) presigned upload → 2) PUT PDF to R2 → 3) create org with fileKey.
-      const { uploadUrl, fileKey } = await createContractUploadUrl(
-        accessToken,
-        file.name,
-        'application/pdf',
-      );
-      const put = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/pdf' },
-        body: file,
-      });
-      if (!put.ok) throw new Error('Échec du téléversement du contrat.');
+      let contract: CreateOrganizationInput['contract'];
+      if (file) {
+        // 1) presigned upload → 2) PUT PDF to R2 → 3) attach fileKey.
+        const { uploadUrl, fileKey } = await createContractUploadUrl(
+          accessToken,
+          file.name,
+          'application/pdf',
+        );
+        const put = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/pdf' },
+          body: file,
+        });
+        if (!put.ok) throw new Error('Échec du téléversement du contrat.');
+        contract = {
+          reference: form.reference.trim() || undefined,
+          fileKey,
+          fileName: file.name,
+          signedAt: form.signedAt,
+          startDate: form.startDate,
+          endDate: form.endDate || undefined,
+          notes: form.notes.trim() || undefined,
+        };
+      }
 
       const res = await createOrganization(accessToken, {
         name: form.name.trim(),
@@ -89,15 +105,7 @@ export function CreateOrganizationForm() {
         adminEmail: form.adminEmail.trim().toLowerCase(),
         adminFirstName: form.adminFirstName.trim(),
         adminLastName: form.adminLastName.trim(),
-        contract: {
-          reference: form.reference.trim() || undefined,
-          fileKey,
-          fileName: file.name,
-          signedAt: form.signedAt,
-          startDate: form.startDate,
-          endDate: form.endDate || undefined,
-          notes: form.notes.trim() || undefined,
-        },
+        ...(contract ? { contract } : {}),
       });
       setSuccess(res);
     } catch (err) {
@@ -186,23 +194,50 @@ export function CreateOrganizationForm() {
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold text-navy-900">Contrat signé</legend>
+        <legend className="text-sm font-semibold text-navy-900">Contrat signé (optionnel)</legend>
+        <p className="text-xs text-muted-foreground">
+          Vous pouvez créer l&apos;organisation sans contrat et le rattacher plus tard.
+        </p>
         <Field label="Référence (optionnel)">
           <input className={inputClass} value={form.reference} onChange={(e) => set('reference', e.target.value)} placeholder="KL-2026-0042" />
         </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Date de signature">
-            <input type="date" className={inputClass} value={form.signedAt} onChange={(e) => set('signedAt', e.target.value)} required />
+            <input type="date" className={inputClass} value={form.signedAt} onChange={(e) => set('signedAt', e.target.value)} />
           </Field>
           <Field label="Début">
-            <input type="date" className={inputClass} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required />
+            <input type="date" className={inputClass} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
           </Field>
           <Field label="Fin (optionnel)">
             <input type="date" className={inputClass} value={form.endDate} onChange={(e) => set('endDate', e.target.value)} />
           </Field>
         </div>
-        <Field label="Fichier du contrat (PDF)">
-          <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" required />
+        <Field label="Fichier du contrat (PDF, optionnel)">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="application/pdf"
+                className="sr-only"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              <Button asChild type="button" variant="outline">
+                <span>Choisir le fichier</span>
+              </Button>
+            </label>
+            <span className="text-sm text-muted-foreground">
+              {file ? file.name : 'Aucun fichier sélectionné'}
+            </span>
+            {file && (
+              <button
+                type="button"
+                onClick={() => setFile(null)}
+                className="text-sm font-medium text-rose-600 hover:underline"
+              >
+                Retirer
+              </button>
+            )}
+          </div>
         </Field>
         <Field label="Notes (optionnel)">
           <textarea className={inputClass} rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} />

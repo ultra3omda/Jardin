@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
-import { Contract, Locale, UserRole } from '@prisma/client';
+import { Contract, Locale, Prisma, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { DEMO_TENANT_SLUG_PREFIX } from '../admin/constants/demo-tenants';
@@ -98,20 +98,24 @@ export class CommercialService {
           // status defaults to PENDING_ONBOARDING — the admin must run the wizard.
         },
       });
-      const newContract = await tx.contract.create({
-        data: {
-          id: createId(),
-          tenantId: newTenant.id,
-          reference: dto.contract.reference?.trim() || null,
-          fileKey: dto.contract.fileKey,
-          fileName: dto.contract.fileName,
-          signedAt: new Date(dto.contract.signedAt),
-          startDate: new Date(dto.contract.startDate),
-          endDate: dto.contract.endDate ? new Date(dto.contract.endDate) : null,
-          notes: dto.contract.notes?.trim() || null,
-          createdById: actorId,
-        },
-      });
+      // The signed contract is optional — a commercial may register the org now
+      // and attach the PDF later.
+      const newContract = dto.contract
+        ? await tx.contract.create({
+            data: {
+              id: createId(),
+              tenantId: newTenant.id,
+              reference: dto.contract.reference?.trim() || null,
+              fileKey: dto.contract.fileKey,
+              fileName: dto.contract.fileName,
+              signedAt: new Date(dto.contract.signedAt),
+              startDate: new Date(dto.contract.startDate),
+              endDate: dto.contract.endDate ? new Date(dto.contract.endDate) : null,
+              notes: dto.contract.notes?.trim() || null,
+              createdById: actorId,
+            },
+          })
+        : null;
       return { tenant: newTenant, contract: newContract };
     });
 
@@ -131,7 +135,7 @@ export class CommercialService {
     await this.writeAudit(
       'commercial.organization.created',
       actorId,
-      { tenantId: tenant.id, slug, adminEmail, contractId: contract.id, inviteTokenId: invite.id },
+      { tenantId: tenant.id, slug, adminEmail, contractId: contract?.id ?? null, inviteTokenId: invite.id },
       meta,
     );
 
@@ -157,7 +161,7 @@ export class CommercialService {
 
     return {
       organization: await this.buildSummary(tenant.id),
-      contract: this.contractToDto(contract),
+      contract: contract ? this.contractToDto(contract) : null,
       invite: { id: invite.id, url: invite.url, expiresAt: invite.expiresAt } satisfies InviteSummaryDto,
       inviteEmailSent,
     };
@@ -170,10 +174,29 @@ export class CommercialService {
   async listOrganizations(actorId: string, role: UserRole): Promise<OrganizationSummaryDto[]> {
     // Exclude seeded demo schools (slug `demo-*`) from the commercial pipeline.
     const notDemo = { not: { startsWith: DEMO_TENANT_SLUG_PREFIX } };
-    const where =
-      role === UserRole.SUPER_ADMIN
-        ? { deletedAt: null, slug: notDemo }
-        : { deletedAt: null, slug: notDemo, contracts: { some: { createdById: actorId } } };
+    let where: Prisma.TenantWhereInput;
+    if (role === UserRole.SUPER_ADMIN) {
+      where = { deletedAt: null, slug: notDemo };
+    } else {
+      // A commercial owns the orgs they registered. The link is the contract
+      // they created — but contracts are now optional, so also resolve orgs
+      // from the `commercial.organization.created` audit trail.
+      const createdLogs = await this.prisma.auditLog.findMany({
+        where: { action: 'commercial.organization.created', userId: actorId },
+        select: { metadata: true },
+      });
+      const ownedIds = createdLogs
+        .map((l) => (l.metadata as { tenantId?: string } | null)?.tenantId)
+        .filter((id): id is string => typeof id === 'string');
+      where = {
+        deletedAt: null,
+        slug: notDemo,
+        OR: [
+          { contracts: { some: { createdById: actorId } } },
+          ...(ownedIds.length > 0 ? [{ id: { in: ownedIds } }] : []),
+        ],
+      };
+    }
     const tenants = await this.prisma.tenant.findMany({
       where,
       orderBy: { createdAt: 'desc' },
