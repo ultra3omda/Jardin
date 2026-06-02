@@ -279,6 +279,45 @@ export default function ClassesScreen() {
       </Text>
       <Text style={{ fontSize: 13, color: colors.ink[500], marginBottom: 20 }}>{subtitle}</Text>
 
+      {(isTeacher || isAdmin) && (
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+          <Pressable
+            onPress={() => router.push('/(app)/pedagogy/homework')}
+            accessibilityRole="button"
+            accessibilityLabel="Gérer les devoirs"
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 12,
+              borderRadius: radius.lg,
+              backgroundColor: colors.ink[900],
+            }}
+          >
+            <Text style={{ color: colors.white, fontWeight: '700', fontSize: 13 }}>📋 Devoirs</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(app)/pedagogy/evaluations')}
+            accessibilityRole="button"
+            accessibilityLabel="Gérer les évaluations"
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 12,
+              borderRadius: radius.lg,
+              backgroundColor: colors.ink[900],
+            }}
+          >
+            <Text style={{ color: colors.white, fontWeight: '700', fontSize: 13 }}>📝 Évaluations</Text>
+          </Pressable>
+        </View>
+      )}
+
       {(isTeacher || isAdmin) && <TeacherAdminContainer isAdmin={isAdmin} />}
       {isParent && <ParentContainer />}
       {!role && <ParentContainer />}

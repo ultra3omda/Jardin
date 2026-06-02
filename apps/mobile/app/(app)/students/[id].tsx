@@ -148,15 +148,18 @@ export default function StudentDetailScreen() {
       ) : null}
 
       <Link
-        href={{ pathname: '/(app)/bulletin/[id]', params: { id: s.id } }}
+        href={{
+          pathname: '/(app)/bulletin/[id]',
+          params: { id: s.id, name: `${s.firstName} ${s.lastName}` },
+        }}
         asChild
       >
         <Pressable
           className="mb-6 items-center rounded-xl bg-gray-900 py-4"
           accessibilityRole="button"
-          accessibilityLabel="Voir le bulletin scolaire"
+          accessibilityLabel="Voir le relevé de notes"
         >
-          <Text className="text-base font-bold text-white">Voir le bulletin</Text>
+          <Text className="text-base font-bold text-white">Voir le relevé de notes</Text>
         </Pressable>
       </Link>
 
