@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View, Text } from 'react-native';
+import { Image, Pressable, View, Text } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 
 import { useJournal, type DailyLogEntry, type ChildMood } from '@/lib/api/school-life';
@@ -58,6 +58,14 @@ function JournalCard({ entry }: { entry: DailyLogEntry }) {
       <Text style={{ fontSize: 12, color: colors.ink[300], marginTop: 2, textTransform: 'capitalize' }}>
         {formatDate(entry.date)}
       </Text>
+
+      {entry.photoUrl ? (
+        <Image
+          source={{ uri: entry.photoUrl }}
+          style={{ width: '100%', height: 180, borderRadius: radius.md, marginTop: 10, backgroundColor: colors.paper[100] }}
+          resizeMode="cover"
+        />
+      ) : null}
 
       {mood && <Row label="Humeur" value={mood.label} />}
       {entry.meals ? <Row label="Repas" value={entry.meals} /> : null}

@@ -3,7 +3,9 @@ import { UserRole } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
+import type { ConfigService } from '@nestjs/config';
 import type { PrismaService } from '../common/prisma/prisma.service';
+import type { R2Service } from '../common/r2/r2.service';
 import { JournalService } from './journal.service';
 
 const admin: AuthenticatedUser = {
@@ -38,7 +40,9 @@ describe('JournalService', () => {
   let service: JournalService;
   beforeEach(() => {
     prisma = makePrisma();
-    service = new JournalService(prisma as unknown as PrismaService);
+    const r2 = { signedPutUrl: vi.fn().mockResolvedValue('https://r2.put/x') } as unknown as R2Service;
+    const config = { get: vi.fn((k: string, d?: unknown) => d) } as unknown as ConfigService;
+    service = new JournalService(prisma as unknown as PrismaService, r2, config);
   });
 
   it('list as PARENT restricts studentId to owned children', async () => {

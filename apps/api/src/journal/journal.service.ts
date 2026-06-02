@@ -4,14 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { createId } from '@paralleldrive/cuid2';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { R2Service } from '../common/r2/r2.service';
 import type {
   CreateDailyLogDto,
   DailyLogResponseDto,
+  JournalPhotoUploadResponseDto,
   ListJournalQueryDto,
   ListJournalResponseDto,
   UpdateDailyLogDto,
@@ -19,9 +22,35 @@ import type {
 
 type Row = Prisma.DailyLogEntryGetPayload<{ include: { student: true } }>;
 
+const PHOTO_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+const PHOTO_TTL_S = 300;
+
 @Injectable()
 export class JournalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly r2: R2Service,
+    private readonly config: ConfigService,
+  ) {}
+
+  async getPhotoUploadUrl(
+    contentType: string,
+    user: AuthenticatedUser,
+  ): Promise<JournalPhotoUploadResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    const ext = PHOTO_EXT[contentType];
+    if (!ext) throw new BadRequestException({ code: 'PHOTO_CONTENT_TYPE_FORBIDDEN' });
+    const bucket = this.config.get<string>('r2.tenantAssetsBucket', 'ecole-saas-tenant-assets');
+    const publicUrl = this.config.get<string>('r2.publicUrl');
+    const key = `journal/${user.tenantId}/${createId()}.${ext}`;
+    const uploadUrl = await this.r2.signedPutUrl(key, contentType, PHOTO_TTL_S, bucket);
+    const finalUrl = publicUrl ? `${publicUrl}/${key}` : `r2://${bucket}/${key}`;
+    return { uploadUrl, finalUrl, expiresIn: PHOTO_TTL_S };
+  }
 
   private async parentStudentIds(tenantId: string, parentUserId: string): Promise<string[]> {
     const rows = await this.prisma.parentStudent.findMany({
@@ -72,6 +101,7 @@ export class JournalService {
           bathroom: dto.bathroom ?? null,
           activitiesNote: dto.activitiesNote ?? null,
           generalNote: dto.generalNote ?? null,
+          photoUrl: dto.photoUrl ?? null,
           authorId: user.id,
         },
         include: { student: true },
@@ -120,6 +150,7 @@ export class JournalService {
         ...(dto.bathroom !== undefined ? { bathroom: dto.bathroom } : {}),
         ...(dto.activitiesNote !== undefined ? { activitiesNote: dto.activitiesNote } : {}),
         ...(dto.generalNote !== undefined ? { generalNote: dto.generalNote } : {}),
+        ...(dto.photoUrl !== undefined ? { photoUrl: dto.photoUrl } : {}),
       },
       include: { student: true },
     });
@@ -147,6 +178,7 @@ export class JournalService {
       bathroom: r.bathroom,
       activitiesNote: r.activitiesNote,
       generalNote: r.generalNote,
+      photoUrl: r.photoUrl,
       authorId: r.authorId,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),

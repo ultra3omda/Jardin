@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ChildMood } from '@prisma/client';
-import { IsEnum, IsISO8601, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEnum, IsIn, IsISO8601, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateDailyLogDto {
   @ApiProperty() @IsString() @MinLength(1) studentId!: string;
@@ -11,6 +11,8 @@ export class CreateDailyLogDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) bathroom?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) activitiesNote?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) generalNote?: string;
+  @ApiPropertyOptional({ description: 'Photo du jour (URL publique R2)' })
+  @IsOptional() @IsString() @MaxLength(1000) photoUrl?: string;
 }
 
 export class UpdateDailyLogDto {
@@ -20,6 +22,7 @@ export class UpdateDailyLogDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) bathroom?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) activitiesNote?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) generalNote?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) photoUrl?: string;
 }
 
 export class ListJournalQueryDto {
@@ -38,6 +41,7 @@ export class DailyLogResponseDto {
   @ApiPropertyOptional() bathroom?: string | null;
   @ApiPropertyOptional() activitiesNote?: string | null;
   @ApiPropertyOptional() generalNote?: string | null;
+  @ApiPropertyOptional() photoUrl?: string | null;
   @ApiProperty() authorId!: string;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;
@@ -46,4 +50,19 @@ export class DailyLogResponseDto {
 export class ListJournalResponseDto {
   @ApiProperty({ type: [DailyLogResponseDto] }) items!: DailyLogResponseDto[];
   @ApiProperty() total!: number;
+}
+
+const JOURNAL_PHOTO_MIMES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+
+export class JournalPhotoUploadDto {
+  @ApiProperty({ enum: JOURNAL_PHOTO_MIMES })
+  @IsString()
+  @IsIn(JOURNAL_PHOTO_MIMES as unknown as string[])
+  contentType!: string;
+}
+
+export class JournalPhotoUploadResponseDto {
+  @ApiProperty() uploadUrl!: string;
+  @ApiProperty() finalUrl!: string;
+  @ApiProperty() expiresIn!: number;
 }

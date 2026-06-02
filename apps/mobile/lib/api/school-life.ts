@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Platform } from 'react-native';
 import { fetchApi } from './client';
 
 // ---------------------------------------------------------------------------
@@ -20,6 +21,7 @@ export interface DailyLogEntry {
   bathroom?: string | null;
   activitiesNote?: string | null;
   generalNote?: string | null;
+  photoUrl?: string | null;
   authorId: string;
   createdAt: string;
   updatedAt: string;
@@ -92,6 +94,7 @@ export interface CreateDailyLogInput {
   bathroom?: string;
   activitiesNote?: string;
   generalNote?: string;
+  photoUrl?: string;
 }
 
 export interface CreateActivityInput {
@@ -143,5 +146,51 @@ export function createCanteenMenu(input: CreateCanteenMenuInput): Promise<Cantee
   return fetchApi<CanteenMenu>('/api/canteen-menus', {
     method: 'POST',
     body: JSON.stringify(clean(input)),
+  });
+}
+
+interface JournalPhotoUploadResponse {
+  uploadUrl: string;
+  finalUrl: string;
+  expiresIn: number;
+}
+
+/**
+ * Web only : ouvre l'appareil photo / la galerie (input file `capture`), demande
+ * une URL signée R2, envoie l'image et renvoie l'URL publique finale.
+ * Sur natif (Vague 12) → null.
+ */
+export async function pickAndUploadJournalPhoto(): Promise<string | null> {
+  if (Platform.OS !== 'web') return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const doc: any = (globalThis as any).document;
+  if (!doc) return null;
+
+  return new Promise((resolve, reject) => {
+    const input = doc.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp';
+    // `capture` => propose directement la caméra sur mobile.
+    input.capture = 'environment';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return resolve(null);
+      try {
+        const signed = await fetchApi<JournalPhotoUploadResponse>('/api/journal/photo-upload-url', {
+          method: 'POST',
+          body: JSON.stringify({ contentType: file.type }),
+        });
+        const put = await fetch(signed.uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        });
+        if (!put.ok) throw new Error(`Upload échoué (${put.status})`);
+        resolve(signed.finalUrl);
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error('Upload échoué'));
+      }
+    };
+    input.click();
   });
 }

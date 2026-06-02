@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Image, Platform, Pressable, Text, View } from 'react-native';
 
-import { Button, FormField, FormSheet, Picker, colors, type PickerOption } from '@klasso/ui-mobile';
+import { Button, FormField, FormSheet, Picker, colors, radius, type PickerOption } from '@klasso/ui-mobile';
 import {
   createDailyLog,
+  pickAndUploadJournalPhoto,
   SCHOOL_LIFE_KEYS,
   type ChildMood,
   type CreateDailyLogInput,
@@ -34,6 +35,9 @@ export function JournalComposer({ visible, onClose }: { visible: boolean; onClos
   const [meals, setMeals] = useState('');
   const [nap, setNap] = useState('');
   const [generalNote, setGeneralNote] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | undefined>();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { data: studentsData } = useQuery({
@@ -67,7 +71,22 @@ export function JournalComposer({ visible, onClose }: { visible: boolean; onClos
     setMeals('');
     setNap('');
     setGeneralNote('');
+    setPhotoUrl('');
+    setUploadErr(undefined);
     setErrors({});
+  }
+
+  async function attachPhoto() {
+    setUploadErr(undefined);
+    setUploading(true);
+    try {
+      const url = await pickAndUploadJournalPhoto();
+      if (url) setPhotoUrl(url);
+    } catch (e) {
+      setUploadErr((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
   }
 
   function submit() {
@@ -83,6 +102,7 @@ export function JournalComposer({ visible, onClose }: { visible: boolean; onClos
       meals: meals || undefined,
       nap: nap || undefined,
       generalNote: generalNote || undefined,
+      photoUrl: photoUrl || undefined,
     });
   }
 
@@ -131,6 +151,48 @@ export function JournalComposer({ visible, onClose }: { visible: boolean; onClos
         multiline
         placeholder="Message pour les parents…"
       />
+
+      {/* Photo du jour */}
+      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink[700], marginBottom: 6 }}>
+        Photo du jour
+      </Text>
+      {photoUrl ? (
+        <View style={{ marginBottom: 14 }}>
+          <Image
+            source={{ uri: photoUrl }}
+            style={{ width: '100%', height: 160, borderRadius: radius.md, backgroundColor: colors.paper[100] }}
+            resizeMode="cover"
+          />
+          <Pressable onPress={() => setPhotoUrl('')} accessibilityRole="button" accessibilityLabel="Retirer la photo" style={{ marginTop: 6 }}>
+            <Text style={{ color: colors.status.danger500, fontWeight: '600', fontSize: 13 }}>Retirer la photo</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          onPress={attachPhoto}
+          disabled={uploading || Platform.OS !== 'web'}
+          accessibilityRole="button"
+          accessibilityLabel="Ajouter une photo"
+          style={{
+            paddingVertical: 12,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderStyle: 'dashed',
+            borderColor: colors.ink[300],
+            alignItems: 'center',
+            marginBottom: 6,
+            opacity: Platform.OS !== 'web' ? 0.5 : 1,
+          }}
+        >
+          <Text style={{ fontSize: 13, color: colors.ink[500], fontWeight: '600' }}>
+            {uploading ? 'Envoi…' : Platform.OS === 'web' ? '📷 Prendre / choisir une photo' : 'Disponible sur le web'}
+          </Text>
+        </Pressable>
+      )}
+      {uploadErr ? (
+        <Text style={{ fontSize: 12, color: colors.status.danger500, marginBottom: 8 }}>{uploadErr}</Text>
+      ) : null}
+
       {mutation.error ? (
         <Text style={{ fontSize: 13, color: colors.status.danger500 }}>
           Erreur : {(mutation.error as Error).message}

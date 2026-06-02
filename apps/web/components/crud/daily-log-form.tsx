@@ -1,10 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { StudentPicker } from '@/components/pickers/student-picker';
+import { uploadJournalPhoto } from '@/lib/api/journal';
+import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { createDailyLogSchema, MOODS, type CreateDailyLogValues } from '@/lib/validation/journal.schemas';
 
 const MOOD_LABELS: Record<(typeof MOODS)[number], string> = {
@@ -26,10 +30,30 @@ export interface DailyLogFormProps {
 }
 
 export function DailyLogForm({ submitLabel, pending, onSubmit, onCancel }: DailyLogFormProps) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const form = useForm<CreateDailyLogValues>({
     resolver: zodResolver(createDailyLogSchema),
     defaultValues: { studentId: '', date: '', meals: '', nap: '', generalNote: '' },
   });
+  const photoUrl = form.watch('photoUrl');
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !accessToken) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const url = await uploadJournalPhoto(accessToken, file);
+      form.setValue('photoUrl', url, { shouldDirty: true });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload échoué');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <Form {...form}>
@@ -39,9 +63,13 @@ export function DailyLogForm({ submitLabel, pending, onSubmit, onCancel }: Daily
           name="studentId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Identifiant de l&apos;élève</FormLabel>
+              <FormLabel>Élève</FormLabel>
               <FormControl>
-                <Input placeholder="ID élève" {...field} />
+                <StudentPicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Rechercher un élève…"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -119,6 +147,30 @@ export function DailyLogForm({ submitLabel, pending, onSubmit, onCancel }: Daily
             </FormItem>
           )}
         />
+        <FormItem>
+          <FormLabel>Photo du jour</FormLabel>
+          {photoUrl ? (
+            <div className="space-y-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoUrl} alt="Photo du jour" className="h-40 w-full rounded-md border object-cover" />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => form.setValue('photoUrl', undefined, { shouldDirty: true })}
+              >
+                Retirer la photo
+              </Button>
+            </div>
+          ) : (
+            <FormControl>
+              <Input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={handlePhoto} />
+            </FormControl>
+          )}
+          {uploading && <p className="text-xs text-muted-foreground">Envoi de la photo…</p>}
+          {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+        </FormItem>
+
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
             Annuler

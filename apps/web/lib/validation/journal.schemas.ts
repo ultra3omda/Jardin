@@ -11,5 +11,6 @@ export const createDailyLogSchema = z.object({
   bathroom: z.string().max(200).optional(),
   activitiesNote: z.string().max(2000).optional(),
   generalNote: z.string().max(2000).optional(),
+  photoUrl: z.string().max(1000).optional(),
 });
 export type CreateDailyLogValues = z.infer<typeof createDailyLogSchema>;
