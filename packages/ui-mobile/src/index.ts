@@ -13,3 +13,4 @@ export { Picker, type PickerOption } from './components/Picker';
 export { ConfirmDialog } from './components/ConfirmDialog';
 export { Fab } from './components/Fab';
 export { FormSheet } from './components/FormSheet';
+export { ScheduleGrid, type ScheduleSlot } from './components/ScheduleGrid';

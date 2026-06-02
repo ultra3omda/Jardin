@@ -16,6 +16,15 @@ export default function ClassesLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen
+        name="schedule"
+        options={{
+          headerShown: true,
+          title: 'Mon emploi du temps',
+          headerTintColor: colors.ink[900],
+          headerStyle: { backgroundColor: colors.surface },
+        }}
+      />
+      <Stack.Screen
         name="attendance/[id]"
         options={{
           headerShown: true,

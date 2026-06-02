@@ -318,6 +318,30 @@ export default function ClassesScreen() {
         </View>
       )}
 
+      {isTeacher && (
+        <Pressable
+          onPress={() => router.push('/(app)/classes/schedule')}
+          accessibilityRole="button"
+          accessibilityLabel="Voir mon emploi du temps"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            paddingVertical: 12,
+            marginBottom: 20,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.paper[100],
+            backgroundColor: colors.white,
+          }}
+        >
+          <Text style={{ color: colors.ink[900], fontWeight: '700', fontSize: 13 }}>
+            🗓️ Mon emploi du temps
+          </Text>
+        </Pressable>
+      )}
+
       {(isTeacher || isAdmin) && <TeacherAdminContainer isAdmin={isAdmin} />}
       {isParent && <ParentContainer />}
       {!role && <ParentContainer />}

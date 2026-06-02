@@ -38,6 +38,17 @@ export interface ClassDetail extends ClassSummary {
   timeSlots: TimeSlot[];
 }
 
+/** A slot from the current teacher's aggregated timetable (all their classes). */
+export interface MyScheduleSlot extends TimeSlot {
+  classId: string;
+  className: string;
+}
+
+interface MyScheduleResponse {
+  items: MyScheduleSlot[];
+  total: number;
+}
+
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -46,6 +57,7 @@ export const CLASSES_KEYS = {
   all: ['classes'] as const,
   myClasses: () => ['classes', 'mine'] as const,
   detail: (id: string) => ['classes', id] as const,
+  mySchedule: () => ['classes', 'my-schedule'] as const,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -65,6 +77,20 @@ export function useMyClasses(mine = false) {
       const res = await fetchApi<ClassListResponse>(
         `/api/classes${mine ? '?mine=true' : ''}`,
       );
+      return res.items ?? [];
+    },
+  });
+}
+
+/**
+ * Returns the current teacher/staff aggregated timetable across all their
+ * classes (GET /api/classes/my-schedule).
+ */
+export function useMySchedule() {
+  return useQuery({
+    queryKey: CLASSES_KEYS.mySchedule(),
+    queryFn: async () => {
+      const res = await fetchApi<MyScheduleResponse>('/api/classes/my-schedule');
       return res.items ?? [];
     },
   });
