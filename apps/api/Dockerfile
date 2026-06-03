@@ -21,16 +21,24 @@ RUN pnpm --filter @ecole-saas/shared build \
 # ---- runtime stage: minimal layout, workspace symlinks preserved ----
 FROM base AS runner
 ENV NODE_ENV=production
-# Hoisted workspace node_modules (incl. Prisma client + engine + CLI for migrate deploy).
+# Root .pnpm/ store + workspace tools (turbo, prettier, typescript, ...).
+# With pnpm node-linker=isolated (default since SDK 54 upgrade), the actual
+# package files live under node_modules/.pnpm/<hash>/node_modules/<pkg>, and
+# each workspace gets a node_modules/ of *symlinks* into that store. Both
+# layers must be copied for the symlinks to resolve at runtime.
 COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/package.json /repo/pnpm-workspace.yaml /repo/pnpm-lock.yaml ./
-# packages/shared is symlinked from node_modules → its dist must exist at the same path.
+# packages/shared is symlinked from node_modules → its dist + node_modules
+# (workspace symlinks like @ecole-saas/*) must exist at the same paths.
 COPY --from=build /repo/packages/shared/package.json ./packages/shared/package.json
 COPY --from=build /repo/packages/shared/dist ./packages/shared/dist
+COPY --from=build /repo/packages/shared/node_modules ./packages/shared/node_modules
 # api build output + prisma (schema + migrations needed for migrate deploy at boot).
 COPY --from=build /repo/apps/api/package.json ./apps/api/package.json
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY --from=build /repo/apps/api/prisma ./apps/api/prisma
+# Isolated linker: api's runtime deps are symlinks living in this directory.
+COPY --from=build /repo/apps/api/node_modules ./apps/api/node_modules
 
 WORKDIR /repo/apps/api
 EXPOSE 4000
