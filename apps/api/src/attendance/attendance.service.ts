@@ -10,8 +10,12 @@ import {
   AttendanceResponseDto,
   BulkAttendanceDto,
   ListAttendanceResponseDto,
+  MyChildrenAttendanceResponseDto,
   UpdateAttendanceDto,
 } from './dto/attendance.dto';
+
+/** How many recent attendance records a parent sees per request. */
+const MY_CHILDREN_ATTENDANCE_LIMIT = 60;
 
 @Injectable()
 export class AttendanceService {
@@ -43,6 +47,34 @@ export class AttendanceService {
       orderBy: { studentId: 'asc' },
     });
     return { items: rows.map((r) => this.toDto(r)), total: rows.length };
+  }
+
+  /** Read-only recent attendance for the connected parent's children. */
+  async myChildrenAttendance(user: AuthenticatedUser): Promise<MyChildrenAttendanceResponseDto> {
+    if (!user.tenantId) throw new ForbiddenException('TENANT_REQUIRED');
+    const links = await this.prisma.parentStudent.findMany({
+      where: { tenantId: user.tenantId, parentUserId: user.id },
+      select: { student: { select: { id: true, firstName: true, lastName: true } } },
+    });
+    if (links.length === 0) return { items: [], total: 0 };
+    const nameById = new Map(
+      links.map((l) => [l.student.id, `${l.student.firstName} ${l.student.lastName}`.trim()]),
+    );
+    const rows = await this.prisma.attendance.findMany({
+      where: { tenantId: user.tenantId, studentId: { in: [...nameById.keys()] } },
+      orderBy: { date: 'desc' },
+      take: MY_CHILDREN_ATTENDANCE_LIMIT,
+    });
+    return {
+      items: rows.map((r) => ({
+        studentId: r.studentId,
+        studentName: nameById.get(r.studentId) ?? '',
+        date: r.date.toISOString().split('T')[0],
+        status: r.status as MyChildrenAttendanceResponseDto['items'][number]['status'],
+        notes: r.notes,
+      })),
+      total: rows.length,
+    };
   }
 
   async bulkUpsert(dto: BulkAttendanceDto, user: AuthenticatedUser): Promise<AttendanceResponseDto[]> {

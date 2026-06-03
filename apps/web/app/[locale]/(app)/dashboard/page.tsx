@@ -137,6 +137,7 @@ export default function DashboardPage() {
             variant={kpi.variant}
             icon={kpi.icon}
             sub={kpiSub(kpi.sub)}
+            href={kpi.href}
           />
         ))}
       </section>
