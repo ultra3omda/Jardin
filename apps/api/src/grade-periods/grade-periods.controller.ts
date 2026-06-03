@@ -31,7 +31,8 @@ export class GradePeriodsController {
   constructor(private readonly service: GradePeriodsService) {}
 
   @Get()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF)
+  // Read-only for everyone (parents need it to download their child's bulletin).
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.PARENT)
   @ApiOperation({ summary: 'List grade periods (optional ?schoolYear=...)' })
   @ApiResponse({ status: 200, type: ListGradePeriodsResponseDto })
   list(
