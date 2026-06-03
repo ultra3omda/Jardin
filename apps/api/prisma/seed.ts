@@ -1000,8 +1000,12 @@ async function seedAcademicLife(
     where: { tenantId, role: UserRole.SCHOOL_ADMIN },
   });
   const subjects = await prisma.subject.findMany({ where: { tenantId } });
+  // Use the SAME period the parent "current grades" view resolves (latest open
+  // period) so seeded grades actually show up in /evaluations/my-grades and in
+  // the current-term bulletin — not an out-of-range past term.
   const period = await prisma.gradePeriod.findFirst({
-    where: { tenantId, schoolYear, name: 'T2' },
+    where: { tenantId, schoolYear, isClosed: false },
+    orderBy: { startDate: 'desc' },
   });
   if (teachers.length === 0 || subjects.length === 0 || !admin) return;
 
@@ -1050,7 +1054,7 @@ async function seedAcademicLife(
       }
     }
 
-    // 3. One evaluation in T2 (Maths) + grades for every student (idempotent).
+    // 3. One evaluation in the current period (Maths) + grades per student.
     if (period) {
       let evaluation = await prisma.evaluation.findFirst({
         where: { tenantId, classId: cls.id, gradePeriodId: period.id, subjectId: subjMath.id },
