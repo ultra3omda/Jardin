@@ -57,7 +57,9 @@ export default function BulletinsPage() {
       const pItems = pData.status === 'fulfilled' ? (pData.value?.items ?? []) : [];
       setStudents(sItems);
       setPeriods(pItems);
-      if (pItems.length > 0) setSelectedPeriodId(pItems[0].id);
+      // Default to the most recent period (grade-periods come sorted by
+      // startDate asc) → the current term, where grades actually live.
+      if (pItems.length > 0) setSelectedPeriodId(pItems[pItems.length - 1].id);
     } catch (_) {
       setStudents([]);
       setPeriods([]);
