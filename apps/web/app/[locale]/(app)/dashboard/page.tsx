@@ -3,7 +3,7 @@
 import { Sparkles } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 
-import { useRouter } from '@/i18n/routing';
+import { useRouter, Link } from '@/i18n/routing';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { NotesPanel } from '@/components/dashboard/notes-panel';
 import { QuickAction } from '@/components/dashboard/quick-action';
@@ -137,7 +137,12 @@ export default function DashboardPage() {
             variant={kpi.variant}
             icon={kpi.icon}
             sub={kpiSub(kpi.sub)}
-            href={kpi.href}
+            href={
+              // "Mes enfants" → the child's own detail page (first child).
+              kpi.selectorKey === 'childrenCount' && children && children.length > 0
+                ? `/children/${children[0].id}`
+                : kpi.href
+            }
           />
         ))}
       </section>
@@ -147,22 +152,24 @@ export default function DashboardPage() {
           <h2 className="mb-3 text-sm font-bold text-ink-900">Mes enfants</h2>
           <ul className="flex flex-wrap gap-3">
             {children!.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-2"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-100 text-sm font-semibold text-pink-700">
-                  {(c.firstName[0] ?? '').toUpperCase()}
-                  {(c.lastName[0] ?? '').toUpperCase()}
-                </span>
-                <span>
-                  <span className="block text-sm font-medium text-ink-900">
-                    {c.firstName} {c.lastName}
+              <li key={c.id}>
+                <Link
+                  href={`/children/${c.id}` as never}
+                  className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-2 transition hover:border-pink-200 hover:shadow-sm"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-100 text-sm font-semibold text-pink-700">
+                    {(c.firstName[0] ?? '').toUpperCase()}
+                    {(c.lastName[0] ?? '').toUpperCase()}
                   </span>
-                  <span className="block text-xs text-ink-400">
-                    {c.className ?? 'Classe non assignée'}
+                  <span>
+                    <span className="block text-sm font-medium text-ink-900">
+                      {c.firstName} {c.lastName}
+                    </span>
+                    <span className="block text-xs text-ink-400">
+                      {c.className ?? 'Classe non assignée'}
+                    </span>
                   </span>
-                </span>
+                </Link>
               </li>
             ))}
           </ul>

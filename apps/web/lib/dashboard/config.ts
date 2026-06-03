@@ -121,7 +121,7 @@ const PARENT_PRIMARY: DashboardConfig = {
   heading: 'Bonjour, {firstName}.',
   subtitleKey: 'childrenCount',
   kpis: [
-    { label: 'Mes enfants',  variant: 'pink',   icon: Users,       selectorKey: 'childrenCount', href: '/bulletins' },
+    { label: 'Mes enfants',  variant: 'pink',   icon: Users,       selectorKey: 'childrenCount' },
     { label: 'Nouv. notes',  variant: 'amber',  icon: BookOpen,    selectorKey: 'newGrades', href: '/notes' },
     { label: 'Solde à payer', variant: 'orange', icon: CreditCard, selectorKey: 'amountDue', sub: 'TND', href: '/payments' },
   ],
