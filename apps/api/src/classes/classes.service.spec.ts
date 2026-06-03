@@ -120,6 +120,9 @@ describe('ClassesService', () => {
       user: {
         findFirst: vi.fn().mockResolvedValue(makeTeacherRow()),
       },
+      parentStudent: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       $transaction: vi.fn((calls: any[]) => Promise.all(calls)),
     };
 
@@ -208,6 +211,21 @@ describe('ClassesService', () => {
       await expect(service.list({ ...schoolAdmin, tenantId: null })).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('PARENT + mine=true → scopes to the children classes, no teacher filter', async () => {
+      prisma.parentStudent.findMany.mockResolvedValueOnce([
+        { student: { classId: 'cls_1' } },
+        { student: { classId: 'cls_2' } },
+        { student: { classId: 'cls_1' } },
+      ]);
+      const parent: AuthenticatedUser = {
+        id: 'u_par', email: 'p@demo.fr', tenantId: 't1', role: UserRole.PARENT,
+      };
+      await service.list(parent, undefined, true);
+      const where = prisma.class.findMany.mock.calls[0][0].where;
+      expect(where.id).toEqual({ in: ['cls_1', 'cls_2'] });
+      expect(where.teachers).toBeUndefined();
     });
   });
 

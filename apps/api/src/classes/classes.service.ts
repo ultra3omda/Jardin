@@ -67,13 +67,28 @@ export class ClassesService {
     mine?: boolean,
   ): Promise<ListClassesResponseDto> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    // `mine=true` for a PARENT → only the classes where their children are
+    // enrolled, so a parent never sees the whole school's class list.
+    let parentClassIds: string[] | null = null;
+    if (mine && user.role === UserRole.PARENT) {
+      const links = await this.prisma.parentStudent.findMany({
+        where: { tenantId: user.tenantId, parentUserId: user.id },
+        select: { student: { select: { classId: true } } },
+      });
+      parentClassIds = [
+        ...new Set(links.map((l) => l.student.classId).filter((id): id is string => !!id)),
+      ];
+    }
     const where: Prisma.ClassWhereInput = {
       tenantId: user.tenantId,
       deletedAt: null,
       ...(schoolYear ? { schoolYear } : {}),
       // `mine=true` (used by teachers) → only classes where the caller is
       // assigned as a ClassTeacher.
-      ...(mine ? { teachers: { some: { teacherUserId: user.id } } } : {}),
+      ...(mine && user.role === UserRole.TEACHER
+        ? { teachers: { some: { teacherUserId: user.id } } }
+        : {}),
+      ...(parentClassIds ? { id: { in: parentClassIds } } : {}),
     };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.class.findMany({

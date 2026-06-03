@@ -29,6 +29,73 @@ async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Pro
 }
 
 export default function AbsencesPage() {
+  const isParent = useAuthStore((s) => s.user?.role) === 'PARENT';
+  return isParent ? <ParentAbsencesView /> : <StaffAbsencesView />;
+}
+
+interface MyChildAttendance { studentId: string; studentName: string; date: string; status: AttendanceStatus; notes: string | null }
+
+/** Read-only view for parents: their children's recent attendance. */
+function ParentAbsencesView() {
+  const token = useAuthStore((s) => s.accessToken);
+  const [rows, setRows] = useState<MyChildAttendance[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) return;
+    setLoading(true);
+    apiFetch<{ items: MyChildAttendance[] }>('/api/attendance/my-children', token)
+      .then((d) => setRows(d?.items ?? []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Présences de mes enfants</h1>
+        <p className="text-sm text-muted-foreground">Suivez les présences et absences de vos enfants.</p>
+      </header>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Chargement…</p>
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+          Aucun relevé de présence pour le moment.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-navy-700">
+                <th className="px-4 py-3">Enfant</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-b last:border-0 hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium">{r.studentName}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {new Date(r.date).toLocaleDateString('fr-FR')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[r.status]}`}>
+                      {STATUS_LABELS[r.status]}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StaffAbsencesView() {
   const token = useAuthStore((s) => s.accessToken);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

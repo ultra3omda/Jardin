@@ -36,3 +36,17 @@ export class ListAttendanceResponseDto {
   @ApiProperty({ type: [AttendanceResponseDto] }) items!: AttendanceResponseDto[];
   @ApiProperty() total!: number;
 }
+
+/** Read-only attendance record for a parent's child (with the child's name). */
+export class MyChildAttendanceDto {
+  @ApiProperty() studentId!: string;
+  @ApiProperty() studentName!: string;
+  @ApiProperty() date!: string;
+  @ApiProperty({ enum: AttendanceStatus }) status!: AttendanceStatus;
+  @ApiPropertyOptional({ nullable: true }) notes!: string | null;
+}
+
+export class MyChildrenAttendanceResponseDto {
+  @ApiProperty({ type: [MyChildAttendanceDto] }) items!: MyChildAttendanceDto[];
+  @ApiProperty() total!: number;
+}

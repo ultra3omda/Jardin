@@ -16,6 +16,8 @@ export interface KpiConfig {
   icon: LucideIcon;
   selectorKey: string;
   sub?: string;
+  /** Optional route — when set the KPI card becomes clickable. */
+  href?: string;
 }
 
 export interface ActionConfig {
@@ -119,9 +121,9 @@ const PARENT_PRIMARY: DashboardConfig = {
   heading: 'Bonjour, {firstName}.',
   subtitleKey: 'childrenCount',
   kpis: [
-    { label: 'Mes enfants',  variant: 'pink',   icon: Users,       selectorKey: 'childrenCount' },
-    { label: 'Nouv. notes',  variant: 'amber',  icon: BookOpen,    selectorKey: 'newGrades' },
-    { label: 'Solde à payer', variant: 'orange', icon: CreditCard, selectorKey: 'amountDue', sub: 'TND' },
+    { label: 'Mes enfants',  variant: 'pink',   icon: Users,       selectorKey: 'childrenCount', href: '/bulletins' },
+    { label: 'Nouv. notes',  variant: 'amber',  icon: BookOpen,    selectorKey: 'newGrades', href: '/notes' },
+    { label: 'Solde à payer', variant: 'orange', icon: CreditCard, selectorKey: 'amountDue', sub: 'TND', href: '/payments' },
   ],
   actions: [
     { label: 'Bulletins',   href: '/bulletins',  icon: FileText },
@@ -136,9 +138,9 @@ const PARENT_KG: DashboardConfig = {
   heading: '{childFirstName} aujourd\'hui',
   subtitleKey: 'today',
   kpis: [
-    { label: 'Photos du jour', variant: 'pink',  icon: Camera,   selectorKey: 'photosToday' },
-    { label: 'Activités',      variant: 'green', icon: Sparkles, selectorKey: 'activitiesToday' },
-    { label: 'Présence',       variant: 'amber', icon: ClipboardList, selectorKey: 'presenceToday' },
+    { label: 'Photos du jour', variant: 'pink',  icon: Camera,   selectorKey: 'photosToday', href: '/journal' },
+    { label: 'Activités',      variant: 'green', icon: Sparkles, selectorKey: 'activitiesToday', href: '/activities' },
+    { label: 'Présence',       variant: 'amber', icon: ClipboardList, selectorKey: 'presenceToday', href: '/absences' },
   ],
   actions: [
     { label: 'Voir photos',         href: '/journal',  icon: Camera },

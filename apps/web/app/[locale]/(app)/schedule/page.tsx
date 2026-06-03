@@ -70,7 +70,9 @@ export default function SchedulePage() {
   useEffect(() => {
     if (!token || isOwnView) return;
     setLoading(true);
-    fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
+    // A parent only picks among their own children's classes (`mine=true`).
+    const classesUrl = role === 'PARENT' ? '/api/classes?mine=true' : '/api/classes';
+    fetch(classesUrl, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))) as Promise<{ items: ClassOption[] }>)
       .then((d) => {
         const items = d.items ?? [];
@@ -79,7 +81,7 @@ export default function SchedulePage() {
       })
       .catch(() => setClasses([]))
       .finally(() => setLoading(false));
-  }, [token, isOwnView]);
+  }, [token, isOwnView, role]);
 
   const loadDetail = useCallback(async () => {
     if (!token || isOwnView || !selectedClass) { setDetail(null); return; }
