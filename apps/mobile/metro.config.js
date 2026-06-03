@@ -21,7 +21,10 @@ config.resolver.nodeModulesPaths = [
 // 3. Désactiver la recherche hiérarchique pour éviter les doublons React
 config.resolver.disableHierarchicalLookup = true;
 
-// 4. Transpiler @ecole-saas/shared (paquet workspace TS)
+// 4. Activer package exports (SDK 54 + pnpm isolated linker)
+config.resolver.unstable_enablePackageExports = true;
+
+// 5. Transpiler @ecole-saas/shared (paquet workspace TS)
 config.resolver.sourceExts = [...(config.resolver.sourceExts ?? []), 'mjs'];
 
 module.exports = withNativeWind(config, {
