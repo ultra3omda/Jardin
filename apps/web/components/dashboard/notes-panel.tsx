@@ -37,7 +37,8 @@ export function NotesPanel({ notes }: Props) {
                   {n.scaledScore.toFixed(2)}/20
                 </span>
               </div>
-              <div className="text-xs text-ink-500">{new Date(n.date).toLocaleDateString('fr-FR')}</div>
+              {/* `date` is already formatted by the API — re-parsing breaks on Safari. */}
+              <div className="text-xs text-ink-500">{n.date}</div>
             </div>
           ))}
         </>

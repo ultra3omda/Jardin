@@ -1,8 +1,10 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { AnnouncementsService } from './announcements.service';
 import {
   AnnouncementResponseDto,
@@ -24,6 +26,8 @@ export class AnnouncementsController {
   }
 
   @Post()
+  // Read for everyone (incl. PARENT); managing is staff-only.
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)
   @ApiOperation({ summary: 'Create announcement (V9)' })
   create(
     @Body() dto: CreateAnnouncementDto,
@@ -33,6 +37,7 @@ export class AnnouncementsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)
   @ApiOperation({ summary: 'Update announcement (V9)' })
   update(
     @Param('id') id: string,
@@ -44,6 +49,7 @@ export class AnnouncementsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STAFF)
   @ApiOperation({ summary: 'Delete announcement (soft, V9)' })
   remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
     return this.service.remove(id, user);
