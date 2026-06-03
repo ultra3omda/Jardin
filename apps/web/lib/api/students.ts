@@ -117,6 +117,21 @@ export async function getStudent(token: string, id: string): Promise<StudentSumm
   return jsonRequest(`${BASE}/${id}`, { method: 'GET', auth: token });
 }
 
+/** The connected parent's children (with their class). */
+export interface MyChild {
+  id: string;
+  firstName: string;
+  lastName: string;
+  classId: string | null;
+  className: string | null;
+  classLevel: string | null;
+  photoUrl: string | null;
+}
+
+export async function getMyChildren(token: string): Promise<MyChild[]> {
+  return jsonRequest(`${BASE}/my-children`, { method: 'GET', auth: token });
+}
+
 export async function createStudent(
   token: string,
   values: CreateStudentFormValues,

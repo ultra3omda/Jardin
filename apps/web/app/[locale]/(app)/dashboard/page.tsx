@@ -12,6 +12,7 @@ import { getDashboardConfig } from '@/lib/dashboard/config';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { useResource } from '@/lib/hooks/use-resource';
 import { getDashboardOverview } from '@/lib/api/dashboard';
+import { getMyChildren } from '@/lib/api/students';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,12 @@ export default function DashboardPage() {
 
   const { data, isLoading } = useResource(['dashboard', 'overview'], getDashboardOverview, {
     enabled: !isSuperAdmin,
+  });
+
+  // A parent should see WHO their children are (names + class), not just counts.
+  const isParent = user?.role === 'PARENT';
+  const { data: children } = useResource(['students', 'my-children'], getMyChildren, {
+    enabled: isParent,
   });
 
   if (!user || !config || isSuperAdmin) return null;
@@ -134,6 +141,33 @@ export default function DashboardPage() {
         ))}
       </section>
 
+      {isParent && (children?.length ?? 0) > 0 && (
+        <section className="rounded-2xl bg-surface p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-bold text-ink-900">Mes enfants</h2>
+          <ul className="flex flex-wrap gap-3">
+            {children!.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-2"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-100 text-sm font-semibold text-pink-700">
+                  {(c.firstName[0] ?? '').toUpperCase()}
+                  {(c.lastName[0] ?? '').toUpperCase()}
+                </span>
+                <span>
+                  <span className="block text-sm font-medium text-ink-900">
+                    {c.firstName} {c.lastName}
+                  </span>
+                  <span className="block text-xs text-ink-400">
+                    {c.className ?? 'Classe non assignée'}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {config.actions.map((a, i) => (
           <QuickAction key={i} label={a.label} href={a.href} icon={a.icon} />
@@ -202,6 +236,7 @@ export default function DashboardPage() {
 
         {config.panels.includes('announcements') && (
           <AnnouncementsPanel
+            canManage={!isParent}
             announcements={(data?.announcements ?? []).map((a, i) => ({
               id: `a${i}`,
               title: a.title,
