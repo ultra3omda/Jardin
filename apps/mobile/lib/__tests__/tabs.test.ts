@@ -16,13 +16,13 @@ describe('getTabsForRole', () => {
 
   it('returns teacher tabs for TEACHER', () => {
     expect(getTabsForRole('TEACHER').map((t) => t.name)).toEqual([
-      'dashboard', 'classes', 'messages', 'notifications', 'profile',
+      'dashboard', 'classes', 'life', 'messages', 'notifications', 'profile',
     ]);
   });
 
   it('returns parent tabs for PARENT', () => {
     expect(getTabsForRole('PARENT').map((t) => t.name)).toEqual([
-      'dashboard', 'students', 'messages', 'notifications', 'profile',
+      'dashboard', 'students', 'life', 'messages', 'notifications', 'profile',
     ]);
   });
 
@@ -32,9 +32,9 @@ describe('getTabsForRole', () => {
     ]);
   });
 
-  it('returns minimal tabs for SUPER_ADMIN', () => {
+  it('returns minimal tabs for SUPER_ADMIN (no tenant → no messaging)', () => {
     expect(getTabsForRole('SUPER_ADMIN').map((t) => t.name)).toEqual([
-      'dashboard', 'messages', 'notifications', 'profile',
+      'dashboard', 'notifications', 'profile',
     ]);
   });
 
