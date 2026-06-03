@@ -2,10 +2,22 @@
   "extends": "@ecole-saas/typescript-config/react-native.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "lib": ["ES2020", "DOM"],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.d.ts", "nativewind-env.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.d.ts",
+    "nativewind-env.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

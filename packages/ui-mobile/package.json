@@ -8,12 +8,12 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "18.2.0",
-    "react-native": "0.74.5"
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   },
   "devDependencies": {
     "@ecole-saas/typescript-config": "workspace:*",
-    "@types/react": "~18.2.45",
+    "@types/react": "~19.1.0",
     "typescript": "~5.3.3"
   },
   "peerDependencies": {

@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { isAllowedOrigin } from './cors-origin';
 
 describe('isAllowedOrigin', () => {

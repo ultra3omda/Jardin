@@ -1,4 +1,4 @@
-import type { ConfigContext, ExpoConfig } from '@expo/config';
+import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 /**
  * Extends app.json. Injects the EAS projectId + runtime API URL from env so no

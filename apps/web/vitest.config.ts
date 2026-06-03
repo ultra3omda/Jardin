@@ -2,6 +2,14 @@ import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 
 export default defineConfig({
+  // Automatic JSX runtime (React 17+): allows .tsx tests to use JSX without
+  // requiring `import React`. Without this, esbuild defaults to classic
+  // React.createElement and tests using JSX without the import fail with
+  // "React is not defined".
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'react',
+  },
   test: {
     globals: true,
     root: '.',
