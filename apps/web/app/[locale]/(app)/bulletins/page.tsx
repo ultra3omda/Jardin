@@ -94,6 +94,25 @@ export default function BulletinsPage() {
     });
   }
 
+  // Parent: read-only download (generates the PDF on demand, scoped to own child).
+  async function handleDownload(studentId: string) {
+    if (!token || !selectedPeriodId) return;
+    setErrorMsg(null);
+    setGenerating((prev) => new Set(prev).add(studentId));
+    try {
+      const res = await fetch(`/api/bulletins/${studentId}/${selectedPeriodId}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      window.open(URL.createObjectURL(blob), '_blank');
+    } catch {
+      setErrorMsg('Le téléchargement du bulletin a échoué. Réessayez.');
+    } finally {
+      clearGenerating(studentId);
+    }
+  }
+
   async function handleGenerate(studentId: string) {
     if (!token || !selectedPeriodId) return;
     setErrorMsg(null);
@@ -194,22 +213,32 @@ export default function BulletinsPage() {
                     <td className="px-4 py-3 font-medium">{s.lastName} {s.firstName}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.classroom || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${b ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                        {b ? 'Généré ✓' : 'Non généré'}
-                      </span>
+                      {isParent ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                          Disponible
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${b ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                          {b ? 'Généré ✓' : 'Non généré'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {b ? new Date(b.generatedAt).toLocaleDateString('fr-FR') : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        {b?.pdfUrl && <a href={b.pdfUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Télécharger PDF</a>}
                         {isParent ? (
-                          !b && <span className="text-xs text-muted-foreground">Non disponible</span>
-                        ) : (
-                          <button disabled={isGenerating} onClick={() => void handleGenerate(s.id)} className="text-xs text-ambre-600 hover:underline disabled:opacity-50">
-                            {isGenerating ? 'Génération…' : 'Générer'}
+                          <button disabled={isGenerating} onClick={() => void handleDownload(s.id)} className="text-xs text-blue-600 hover:underline disabled:opacity-50">
+                            {isGenerating ? 'Préparation…' : 'Télécharger le bulletin'}
                           </button>
+                        ) : (
+                          <>
+                            {b?.pdfUrl && <a href={b.pdfUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Télécharger PDF</a>}
+                            <button disabled={isGenerating} onClick={() => void handleGenerate(s.id)} className="text-xs text-ambre-600 hover:underline disabled:opacity-50">
+                              {isGenerating ? 'Génération…' : 'Générer'}
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

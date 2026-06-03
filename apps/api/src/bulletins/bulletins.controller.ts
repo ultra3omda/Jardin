@@ -48,6 +48,22 @@ export class BulletinsController {
     res.send(pdf);
   }
 
+  @Get(':studentId/:gradePeriodId/pdf')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.PARENT)
+  @ApiOperation({ summary: 'Download the bulletin PDF (read-only; parents → own children only)' })
+  @ApiResponse({ status: 200, description: 'application/pdf' })
+  async pdf(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('studentId') studentId: string,
+    @Param('gradePeriodId') gradePeriodId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const pdf = await this.service.getPdf({ studentId, gradePeriodId }, user);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="bulletin_${studentId}_${gradePeriodId}.pdf"`);
+    res.send(pdf);
+  }
+
   @Get(':studentId/:gradePeriodId/latest')
   @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STAFF, UserRole.PARENT)
   @ApiOperation({ summary: 'Get latest bulletin metadata for (student, period) — null if not generated yet' })

@@ -42,69 +42,21 @@ export class BulletinsService {
   ): Promise<{ bulletin: BulletinResponseDto; snapshot: BulletinSnapshotDto; pdf: Buffer }> {
     if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
 
-    const student = await this.prisma.student.findFirst({
-      where: { id: dto.studentId, tenantId: user.tenantId, deletedAt: null },
-      select: { id: true, firstName: true, lastName: true, classroom: true },
-    });
-    if (!student) throw new NotFoundException({ code: 'STUDENT_NOT_FOUND' });
-
-    const period = await this.prisma.gradePeriod.findFirst({
-      where: { id: dto.gradePeriodId, tenantId: user.tenantId },
-      select: { id: true, name: true, schoolYear: true },
-    });
-    if (!period) throw new NotFoundException({ code: 'PERIOD_NOT_FOUND' });
-
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: user.tenantId },
-      select: { name: true },
-    });
-
-    const evaluations = (await this.prisma.evaluation.findMany({
-      where: {
-        tenantId: user.tenantId,
-        gradePeriodId: period.id,
-      },
-      include: {
-        subject: { select: { id: true, name: true } },
-        grades: {
-          where: { studentId: student.id },
-          select: { id: true, studentId: true, score: true },
-        },
-      },
-      orderBy: [{ subject: { name: 'asc' } }, { date: 'asc' }],
-    })) as unknown as EvaluationWithSubjectAndGrade[];
-
-    const snapshot = this.buildSnapshot({
-      student,
-      period,
-      schoolName: tenant?.name ?? 'École',
-      evaluations,
-    });
-
-    const pdfBuffer = await this.pdf.render({
-      schoolName: snapshot.schoolName,
-      studentFirstName: snapshot.student.firstName,
-      studentLastName: snapshot.student.lastName,
-      studentClassroom: snapshot.student.classroom,
-      periodName: snapshot.period.name,
-      schoolYear: snapshot.period.schoolYear,
-      subjects: snapshot.subjects,
-      overallAverage: snapshot.overallAverage,
-      generatedAt: snapshot.generatedAt,
-    });
+    const snapshot = await this.buildStudentSnapshot(dto.studentId, dto.gradePeriodId, user.tenantId);
+    const pdfBuffer = await this.renderSnapshot(snapshot);
 
     const bulletin = await this.prisma.bulletin.upsert({
       where: {
         unique_bulletin_per_student_period: {
-          studentId: student.id,
-          gradePeriodId: period.id,
+          studentId: dto.studentId,
+          gradePeriodId: dto.gradePeriodId,
         },
       },
       create: {
         id: createId(),
         tenantId: user.tenantId,
-        studentId: student.id,
-        gradePeriodId: period.id,
+        studentId: dto.studentId,
+        gradePeriodId: dto.gradePeriodId,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data: snapshot as any,
         generatedById: user.id,
@@ -129,6 +81,81 @@ export class BulletinsService {
       snapshot,
       pdf: pdfBuffer,
     };
+  }
+
+  /**
+   * Read-only PDF for a (student, period). Used by parents to download their
+   * own child's bulletin without the SCHOOL_ADMIN-only `generate` write.
+   */
+  async getPdf(dto: GenerateBulletinDto, user: AuthenticatedUser): Promise<Buffer> {
+    if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+    if (user.role === UserRole.PARENT) {
+      const link = await this.prisma.parentStudent.findFirst({
+        where: { tenantId: user.tenantId, parentUserId: user.id, studentId: dto.studentId },
+        select: { id: true },
+      });
+      if (!link) throw new ForbiddenException({ code: 'NOT_YOUR_CHILD' });
+    }
+    const snapshot = await this.buildStudentSnapshot(dto.studentId, dto.gradePeriodId, user.tenantId);
+    return this.renderSnapshot(snapshot);
+  }
+
+  /** Fetch the student/period/grades and build the bulletin snapshot. */
+  private async buildStudentSnapshot(
+    studentId: string,
+    gradePeriodId: string,
+    tenantId: string,
+  ): Promise<BulletinSnapshotDto> {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, tenantId, deletedAt: null },
+      select: { id: true, firstName: true, lastName: true, classroom: true },
+    });
+    if (!student) throw new NotFoundException({ code: 'STUDENT_NOT_FOUND' });
+
+    const period = await this.prisma.gradePeriod.findFirst({
+      where: { id: gradePeriodId, tenantId },
+      select: { id: true, name: true, schoolYear: true },
+    });
+    if (!period) throw new NotFoundException({ code: 'PERIOD_NOT_FOUND' });
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    const evaluations = (await this.prisma.evaluation.findMany({
+      where: { tenantId, gradePeriodId: period.id },
+      include: {
+        subject: { select: { id: true, name: true } },
+        grades: {
+          where: { studentId: student.id },
+          select: { id: true, studentId: true, score: true },
+        },
+      },
+      orderBy: [{ subject: { name: 'asc' } }, { date: 'asc' }],
+    })) as unknown as EvaluationWithSubjectAndGrade[];
+
+    return this.buildSnapshot({
+      student,
+      period,
+      schoolName: tenant?.name ?? 'École',
+      evaluations,
+    });
+  }
+
+  /** Render a bulletin snapshot to a PDF buffer. */
+  private renderSnapshot(snapshot: BulletinSnapshotDto): Promise<Buffer> {
+    return this.pdf.render({
+      schoolName: snapshot.schoolName,
+      studentFirstName: snapshot.student.firstName,
+      studentLastName: snapshot.student.lastName,
+      studentClassroom: snapshot.student.classroom,
+      periodName: snapshot.period.name,
+      schoolYear: snapshot.period.schoolYear,
+      subjects: snapshot.subjects,
+      overallAverage: snapshot.overallAverage,
+      generatedAt: snapshot.generatedAt,
+    });
   }
 
   async getLatest(

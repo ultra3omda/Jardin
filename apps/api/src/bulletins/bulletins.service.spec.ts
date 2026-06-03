@@ -164,4 +164,25 @@ describe('BulletinsService', () => {
       .rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.bulletin.findFirst).not.toHaveBeenCalled();
   });
+
+  it('getPdf: a parent downloads their own child PDF (renders, no DB write)', async () => {
+    prisma.parentStudent.findFirst.mockResolvedValue({ id: 'ps1' });
+    prisma.student.findFirst.mockResolvedValue({ id: 'st1', firstName: 'Lina', lastName: 'B', classroom: 'CP-A' });
+    prisma.gradePeriod.findFirst.mockResolvedValue({ id: 'p1', name: 'T2', schoolYear: '2025-2026' });
+    prisma.tenant.findUnique.mockResolvedValue({ id: 't_demo', name: 'École Demo' });
+    prisma.evaluation.findMany.mockResolvedValue([]);
+
+    const pdf = await service.getPdf({ studentId: 'st1', gradePeriodId: 'p1' }, parentUser);
+    expect(pdf).toBeInstanceOf(Buffer);
+    expect(pdf!.toString()).toContain('%PDF');
+    // Read-only: a parent download must NOT upsert a Bulletin row.
+    expect(prisma.bulletin.upsert).not.toHaveBeenCalled();
+  });
+
+  it('getPdf: a parent cannot download a PDF for a child that is not theirs', async () => {
+    prisma.parentStudent.findFirst.mockResolvedValue(null);
+    await expect(service.getPdf({ studentId: 'st_other', gradePeriodId: 'p1' }, parentUser))
+      .rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.student.findFirst).not.toHaveBeenCalled();
+  });
 });
