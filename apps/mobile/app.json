@@ -13,7 +13,10 @@
     },
     "ios": {
       "bundleIdentifier": "tn.klasso.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -40,6 +43,14 @@
       "typedRoutes": true
     },
     "newArchEnabled": true,
-    "scheme": "klasso"
+    "scheme": "klasso",
+    "extra": {
+      "apiUrl": "http://localhost:4000",
+      "eas": {
+        "projectId": "c9e16698-8fa5-4369-b445-3ebb2c1fe111"
+      },
+      "router": {}
+    },
+    "owner": "ultra3omda"
   }
 }
