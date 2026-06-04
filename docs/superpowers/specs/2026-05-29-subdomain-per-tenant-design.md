@@ -17,7 +17,7 @@ Chaque école créée doit « avoir » son application web à `<slug>.klasso.tn`
 
 - Le **web** a déjà un résolveur de sous-domaine **construit mais dormant** (gated par `ENABLE_SUBDOMAIN_RESOLVER` + `NEXT_PUBLIC_BASE_DOMAIN`, tous deux non définis en prod), et ce résolveur **réécrit TOUTES les routes** (y compris `/dashboard`) vers `/t/{slug}/...` → **404 sur les pages authentifiées** s'il est activé tel quel.
 - Le **mobile** est **une seule app** Expo (`tn.klasso.app`) ; les onglets sont choisis au **build** via `EXPO_PUBLIC_PERSONA`, ce qui peut **contredire** le rôle réellement connecté.
-- Le **CORS** API ne connaît pas `*.klasso.tn` (liste statique), et le **CSP** web pointe encore vers un host API **périmé** (`api-klasso.railway.app` au lieu de `ecole-saasapi-production.up.railway.app`).
+- Le **CORS** API ne connaît pas `*.klasso.tn` (liste statique), et le **CSP** web pointe encore vers un host API **périmé** (`api-klasso.railway.app` au lieu de `api.klasso.tn`).
 
 **Correction** : rendre le sous-domaine *cosmétique* (branding pré-auth + redirection), sans jamais en faire une source d'isolation ; corriger le middleware pour qu'il ne réécrive **que** les pages pré-auth brandées ; remplacer la sélection d'onglets mobile *build-time* par une sélection *runtime* basée sur `user.role` ; ouvrir le CORS à `*.klasso.tn` et réparer le CSP. **Aucune migration Prisma.** L'activation finale est **gated par le DNS** (`.tn`, 24-72h, dépendance migration email — voir ADR 0007).
 
@@ -27,7 +27,7 @@ Chaque école créée doit « avoir » son application web à `<slug>.klasso.tn`
 
 ### 1.1 Topologie prod actuelle
 - **Web** : `klasso.tn` (Vercel — déploiement `ecole-saas-weld.vercel.app`, projet `prj_DsqPNx90qY3R98l71Pr92DHPoE7R`).
-- **API** : `https://ecole-saasapi-production.up.railway.app` (Railway). ⚠️ `api-klasso.railway.app` est **périmé/faux**.
+- **API** : `https://api.klasso.tn` (Railway). ⚠️ `api-klasso.railway.app` est **périmé/faux**.
 - **Mobile** : 1 binaire Expo `tn.klasso.app`, pas de `eas.json`, pas de build par tenant.
 
 ### 1.2 Résolution de tenant (mécanisme réel)
@@ -100,7 +100,7 @@ apps/web/middleware.ts (résolveur sélectif)
 Page /t/[slug]/login → getTenantBrand(slug) → thème injecté
    │  login (email + password [+ tenantSlug])
    ▼
-API ecole-saasapi-production.up.railway.app/auth/login
+API api.klasso.tn/auth/login
    │  CORS: origin ecole.klasso.tn accepté via callback ^https://[a-z0-9-]+\.klasso\.tn$
    ▼
 JWT { tenantId, role, … }  ← SEULE source d'isolation
@@ -182,7 +182,7 @@ Branché dans `app.enableCors({ origin: (o, cb) => cb(null, isAllowedOrigin(o, c
 ### 5.5 Fix CSP (`apps/web/next.config.mjs`)
 `connect-src` :
 - **Retirer** `https://api-klasso.railway.app` (périmé).
-- **Ajouter** `https://ecole-saasapi-production.up.railway.app` **et** `wss://ecole-saasapi-production.up.railway.app` (Socket.IO messagerie).
+- **Ajouter** `https://api.klasso.tn` **et** `wss://api.klasso.tn` (Socket.IO messagerie).
 - Conserver Sentry ; ajouter `https://*.klasso.tn` si des appels same-host sont introduits.
 
 ### 5.6 Mobile — onglets par rôle (`apps/mobile/lib/tabs.ts`)

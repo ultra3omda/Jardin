@@ -214,7 +214,7 @@ Replace this exact line (line 24):
 with:
 
 ```js
-      "connect-src 'self' https://ecole-saasapi-production.up.railway.app wss://ecole-saasapi-production.up.railway.app https://*.klasso.tn wss://*.klasso.tn https://*.vercel.app https://o4505000000000000.ingest.sentry.io",
+      "connect-src 'self' https://api.klasso.tn wss://api.klasso.tn https://*.klasso.tn wss://*.klasso.tn https://*.vercel.app https://o4505000000000000.ingest.sentry.io",
 ```
 
 - [ ] **Step 2: Local validation**
@@ -244,7 +244,7 @@ gh pr create --title "feat: CORS *.klasso.tn + fix web CSP API host/wss (Track 1
 ## Summary
 - Add `isAllowedOrigin` matcher accepting the static allowlist OR `https://<slug>.klasso.tn` (narrow regex: https-only, single label).
 - Wire it into `app.enableCors` as a callback (`credentials: true` preserved).
-- Fix web CSP `connect-src`: point at the real Railway host `ecole-saasapi-production.up.railway.app` (+ `wss://` for Socket.IO) and allow `*.klasso.tn`; drop the stale `api-klasso.railway.app`.
+- Fix web CSP `connect-src`: point at the real Railway host `api.klasso.tn` (+ `wss://` for Socket.IO) and allow `*.klasso.tn`; drop the stale `api-klasso.railway.app`.
 
 Dormant-safe: no behavior change for the apex `klasso.tn` (still in the static allowlist). Also fixes the production WebSocket messaging CSP block today.
 

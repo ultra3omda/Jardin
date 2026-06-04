@@ -204,7 +204,7 @@ Aller sur https://vercel.com/ultra3omda-6664s-projects/ecole-saas → **Settings
 Ajouter (pour les 3 environnements : Production, Preview, Development) :
 
 ```
-NEXT_PUBLIC_API_URL=https://ecole-saasapi-production.up.railway.app
+NEXT_PUBLIC_API_URL=https://api.klasso.tn
 ```
 
 (Déjà présent depuis V1.5 normalement — vérifier.)
