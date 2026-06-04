@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter=@ecole-saas/shared build && pnpm --filter=@klasso/mobile build:web",
+  "outputDirectory": "apps/mobile/dist",
+  "framework": null
+}
