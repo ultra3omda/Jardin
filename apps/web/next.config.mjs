@@ -20,8 +20,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' https://fonts.gstatic.com",
-      // API (Railway prod) + Vercel preview URLs + Sentry tunnel.
-      "connect-src 'self' https://ecole-saasapi-production.up.railway.app wss://ecole-saasapi-production.up.railway.app https://*.klasso.tn wss://*.klasso.tn https://*.vercel.app https://o4505000000000000.ingest.sentry.io",
+      // API (custom domain api.klasso.tn, covered by *.klasso.tn) + Vercel preview URLs + Sentry tunnel.
+      "connect-src 'self' https://*.klasso.tn wss://*.klasso.tn https://*.vercel.app https://o4505000000000000.ingest.sentry.io",
       "frame-src 'none'",
       "object-src 'none'",
     ].join('; '),
