@@ -2,7 +2,7 @@
   "name": "@klasso/mobile",
   "version": "0.1.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -18,8 +18,8 @@
   },
   "dependencies": {
     "@ecole-saas/shared": "workspace:*",
-    "@klasso/ui-mobile": "workspace:*",
     "@expo/vector-icons": "^15.0.3",
+    "@klasso/ui-mobile": "workspace:*",
     "@tanstack/react-query": "^5.56.2",
     "expo": "~54.0.0",
     "expo-constants": "~18.0.13",
@@ -38,10 +38,12 @@
     "react-i18next": "^15.0.2",
     "react-native": "0.81.5",
     "react-native-css-interop": "0.2.4",
-    "semver": "^7.8.0",
+    "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.5.1",
+    "semver": "^7.8.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

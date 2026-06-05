@@ -27,6 +27,18 @@ config.resolver.unstable_enablePackageExports = true;
 // 5. Transpiler @ecole-saas/shared (paquet workspace TS)
 config.resolver.sourceExts = [...(config.resolver.sourceExts ?? []), 'mjs'];
 
+// 6. Polyfill SharedArrayBuffer AVANT le module system.
+//    react-native-worklets (tiré via nativewind -> reanimated 4) lit
+//    `global.SharedArrayBuffer` dès l'init, avant l'exécution de l'entry.
+//    Un `import` dans index.js s'exécute trop tard : le plugin Babel worklets
+//    injecte son code d'init en tête de bundle. Les polyfills Metro, eux,
+//    tournent avant le module system → garantis en premier.
+const baseGetPolyfills = config.serializer.getPolyfills;
+config.serializer.getPolyfills = (options) => [
+  ...(baseGetPolyfills ? baseGetPolyfills(options) : []),
+  path.resolve(projectRoot, 'global-polyfills.js'),
+];
+
 module.exports = withNativeWind(config, {
   input: './global.css',
 });
