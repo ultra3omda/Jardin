@@ -1,33 +1,55 @@
 #!/usr/bin/env node
 // Post-export fix for Vercel static deploys of the Expo web bundle.
 //
-// Vercel silently drops any file living under a directory segment named
-// `node_modules` when uploading a static deployment. Expo renames the ROOT
-// node_modules to `__node_modules` (safe), but @expo/vector-icons fonts are
-// emitted under an INNER, un-renamed `node_modules` segment:
+// Vercel drops two kinds of paths when uploading a static deployment:
+//   1. anything under a directory segment named `node_modules`, and
+//   2. anything under a directory whose name starts with a dot (`.git`,
+//      `.vercel`, ... and crucially `.pnpm`).
+//
+// In a pnpm monorepo, @expo/vector-icons fonts are emitted under BOTH:
 //
 //   dist/assets/__node_modules/.pnpm/@expo+vector-icons@.../node_modules/
 //       @expo/vector-icons/build/vendor/.../Fonts/Ionicons.<hash>.ttf
-//                          ^^^^^^^^^^^^^ stripped by Vercel
+//                          ^^^^^      ^^^^^^^^^^^^^ both stripped by Vercel
 //
-// So every icon font 404s -> the SPA rewrite serves index.html -> the browser
-// gets HTML for a .ttf -> "OTS parsing error: invalid sfntVersion" -> icons
-// render as blank squares.
+// `__node_modules` (double underscore) is fine — only the LEADING-DOT `.pnpm`
+// and the inner `node_modules` segments get dropped. The result: every icon
+// font 404s -> the SPA rewrite returns index.html -> the browser receives HTML
+// for a .ttf -> "OTS parsing error: invalid sfntVersion" -> icons render blank.
 //
-// Fix: rewrite the inner `/node_modules/` segment to `/nm/` both on disk (move
-// the files) and inside the JS/CSS/HTML asset references. `__node_modules`
-// (double underscore) is left untouched — the substring `/node_modules/` never
-// matches `/__node_modules/`, so only the inner segment is rewritten.
-//
-// Idempotent: re-running on an already-flattened dist is a no-op.
+// Fix: sanitize directory segments so no path component is `node_modules` or
+// starts with a dot, both on disk (move the files) and inside the JS/CSS/HTML
+// asset references. Filenames (last path segment) are never touched, so hashes
+// and extensions are preserved. Idempotent.
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 const TEXT_EXTS = new Set(['.js', '.css', '.html', '.json', '.map']);
-// Only rewrite `/node_modules/` that lives inside an Expo asset token, so we can
-// never corrupt an unrelated runtime string that happens to contain the path.
-const ASSET_TOKEN_RE = /__node_modules\/\.pnpm\/[^"'`)\s]*/g;
+// Match an Expo asset token so we only rewrite path strings, never unrelated
+// runtime strings. Tokens start at the renamed root and run to a delimiter.
+const ASSET_TOKEN_RE = /__node_modules\/[^"'`)\s]*/g;
+
+// Map a single DIRECTORY segment to a Vercel-safe name. Filenames are excluded
+// by the callers (they only pass directory segments).
+function safeDirSegment(seg) {
+  if (seg === 'node_modules') return 'nm';
+  if (seg.startsWith('.')) return `_${seg.slice(1)}`; // .pnpm -> _pnpm
+  return seg;
+}
+
+// Rewrite every directory segment of a "/"-joined path, leaving the final
+// segment (the filename) untouched.
+function sanitizePath(p, sep = '/') {
+  const parts = p.split(sep);
+  const last = parts.length - 1;
+  return parts.map((seg, i) => (i === last ? seg : safeDirSegment(seg))).join(sep);
+}
+
+function needsRewrite(relPath) {
+  const dirs = relPath.split(path.sep).slice(0, -1);
+  return dirs.some((seg) => seg === 'node_modules' || seg.startsWith('.'));
+}
 
 async function walk(dir) {
   const out = [];
@@ -54,15 +76,13 @@ async function removeEmptyDirs(dir) {
 
 async function main() {
   const distDir = path.resolve(process.argv[2] ?? 'dist');
-  const files = await walk(distDir);
 
-  // Phase 1 — move files out of inner `node_modules` segments.
+  // Phase 1 — move files out of node_modules / dot-directory segments.
   let moved = 0;
-  for (const file of files) {
+  for (const file of await walk(distDir)) {
     const rel = path.relative(distDir, file);
-    if (!rel.includes(`${path.sep}node_modules${path.sep}`)) continue;
-    const newRel = rel.split(path.sep).map((seg) => (seg === 'node_modules' ? 'nm' : seg)).join(path.sep);
-    const dest = path.join(distDir, newRel);
+    if (!needsRewrite(rel)) continue;
+    const dest = path.join(distDir, sanitizePath(rel, path.sep));
     await fs.mkdir(path.dirname(dest), { recursive: true });
     await fs.rename(file, dest);
     moved++;
@@ -76,7 +96,7 @@ async function main() {
     const content = await fs.readFile(file, 'utf8');
     let fileRefs = 0;
     const next = content.replace(ASSET_TOKEN_RE, (token) => {
-      const fixed = token.replaceAll('/node_modules/', '/nm/');
+      const fixed = sanitizePath(token, '/');
       if (fixed !== token) fileRefs++;
       return fixed;
     });
@@ -90,7 +110,7 @@ async function main() {
   await removeEmptyDirs(distDir);
 
   console.log(
-    `[flatten-vercel-assets] moved ${moved} file(s) out of node_modules; ` +
+    `[flatten-vercel-assets] moved ${moved} file(s) out of node_modules/dot-dirs; ` +
       `patched ${patchedRefs} ref(s) across ${patchedFiles} bundle(s).`,
   );
   if (moved === 0 && patchedRefs === 0) {
