@@ -2,361 +2,227 @@
 
 > **Ce fichier est lu automatiquement par Claude Code au démarrage de chaque session dans ce repo.**
 > Il contient le contexte projet, les standards de qualité et la méthode de travail. Ne pas le supprimer.
+> **Dernière mise à jour : 2026-06-10** (synchronisé avec l'état réel du repo, PR #138 mergée).
 
 ---
 
 ## 🎯 Mission du projet
 
-**École SaaS** — Plateforme SaaS multi-tenant de gestion complète pour écoles primaires et jardins d'enfants.
+**Klasso** (`klasso.tn`) — SaaS multi-tenant de gestion complète pour écoles primaires et jardins d'enfants.
 
-**Cible** : marché international (FR, EN, AR, ES), modèle B2B avec abonnement mensuel/annuel par établissement.
+- **Positionnement** : « Le SaaS qui rassemble Direction, Enseignants et Parents — déployable en 24h, sans IT. »
+- **Cible** : Tunisie/MENA prioritaire + FR. B2B, abonnement par établissement (tiers en TND, paiement ClicToPay).
+- **Branding** : le produit s'appelle **Klasso** (locked 2026-05-24). Le code et les packages gardent le naming historique `ecole-saas` (`@ecole-saas/*`) — pas de rebranding code prévu. Exceptions : `@klasso/mobile`, `@klasso/ui-mobile`, bundle IDs `tn.klasso.app`.
 
-**Produits livrables** :
-1. **Application Web** (back-office direction/admin) — Next.js 14
-2. **Application Mobile iOS/Android** (3 apps : Parent / Enseignant / Direction) — Expo
-3. **API Backend** multi-tenant — NestJS + PostgreSQL
-
-**Modules fonctionnels couverts** (sur la roadmap complète) :
-Élèves · Parents · Enseignants · Personnel · RH/Paie · Pédagogie/Évaluations/Bulletins · Communication · Finance/Facturation · Stock/Maintenance · Cantine · Transport · Santé · Sécurité · Notifications multi-canal · Reporting · Admin SaaS multi-tenant.
+**Produits livrés** :
+1. **Web** (back-office tous rôles + landing publique FR/AR) — Next.js 14 — `https://ecole-saas.vercel.app` + `klasso.tn`
+2. **Mobile** iOS/Android (1 app Expo, personas parent/enseignant/admin) — `klasso-mobile.vercel.app` (build web) + EAS pour les stores
+3. **API** multi-tenant — NestJS — `https://api.klasso.tn` (Railway)
 
 ---
 
-## 🏗️ Architecture & Stack technique
+## 🏗️ Architecture & Stack technique (état réel)
 
 ### Monorepo
-- **Turborepo** + **pnpm workspaces**
-- Structure :
+- **Turborepo 2** + **pnpm 9.12.0** (Node ≥ 20)
+- Structure réelle :
   ```
-  apps/web      → Next.js 14 (App Router) — back-office
-  apps/mobile   → Expo SDK 51 / React Native — 3 apps fusionnées
-  apps/api      → NestJS 10 — REST + WebSocket
-  packages/shared           → types & utils partagés (single source of truth)
-  packages/typescript-config → tsconfig partagés
-  packages/eslint-config    → configs lint partagées (à créer)
-  packages/ui-web           → composants shadcn/ui custom (Vague 1+)
-  packages/ui-mobile        → composants React Native partagés (Vague 2+)
+  apps/web      → Next.js 14.2 (App Router) · React 18 — back-office + landing
+  apps/mobile   → Expo SDK 54 · React Native 0.81 · React 19 — 1 app, 3 personas
+  apps/api      → NestJS 10 · Prisma 5.20 — REST + Socket.IO
+  packages/shared            → @ecole-saas/shared — types & locales partagés
+  packages/typescript-config → tsconfigs partagés
+  packages/ui-mobile         → @klasso/ui-mobile — composants RN + design tokens
   ```
+- ⚠️ **Versions React isolées** : web/api restent sur React 18, mobile est sur React 19 (Expo 54). Ne pas "harmoniser".
 
 ### Stack
-- **Frontend Web** : Next.js 14 App Router · TypeScript strict · Tailwind CSS · shadcn/ui · TanStack Query · Zustand · next-intl
-- **Mobile** : Expo SDK 51 · React Native · Expo Router · NativeWind · Zustand · TanStack Query · Expo Notifications
-- **Backend** : NestJS 10 · Prisma ORM · PostgreSQL 16 · Redis (cache+queues) · BullMQ · Socket.IO · class-validator
-- **Auth** : JWT access (15min) + refresh tokens (30j) · bcrypt · RBAC granulaire par tenant
-- **Multi-tenant** : Row-Level Security PostgreSQL + tenant_id obligatoire sur tous les modèles · middleware NestJS d'isolation
-- **i18n** : next-intl (web) · i18next + expo-localization (mobile) · fichiers JSON par locale
-- **Observability** : Sentry · Pino logs · OpenTelemetry traces
-- **Email** : Resend
-- **SMS** : Twilio (avec fallback local par pays)
-- **Storage fichiers** : Cloudflare R2 (S3-compatible)
-- **Paiements** : Stripe (international) + Konnect/Paymee (Tunisie/MENA)
+- **Web** : Next.js 14 App Router · TS strict · Tailwind · shadcn/Radix · TanStack Query · Zustand · react-hook-form + Zod · next-intl v4 (`[locale]` sub-paths, fr/en/ar/es + RTL)
+- **Mobile** : Expo SDK 54 · Expo Router 6 · NativeWind 4 · Zustand + TanStack Query · expo-secure-store · i18next · New Architecture + Hermes (worklets/reanimated 4 — ne PAS repasser en JSC)
+- **API** : NestJS 10 · Prisma 5 · PostgreSQL 16 · class-validator · Pino (redaction PII) · Helmet + Throttler · Swagger `/api/docs` · Socket.IO (`/messaging`, handshake JWT)
+- **Auth** : JWT HS256 access 15min + refresh 30j (rotation en DB, détection de réutilisation) · bcrypt 12 · Rôles : `SUPER_ADMIN, COMMERCIAL, SCHOOL_ADMIN, TEACHER, PARENT, STAFF`
+- **Multi-tenant** : `tenantId` sur tous les modèles scoped + `TenantContextService` (AsyncLocalStorage) + extension Prisma qui injecte le filtre automatiquement. Test d'isolation e2e obligatoire pour CHAQUE nouvelle table tenant-scoped (risque R10).
+- **White-label** : `Tenant.brand` JSON (logo R2, couleurs) injecté en CSS vars post-auth + routes pré-auth `/t/[slug]/*`. Middleware subdomain `*.klasso.tn` écrit mais gated (`ENABLE_SUBDOMAIN_RESOLVER`).
+- **Services** : Resend (email) · Cloudflare R2 (photos, exports, assets tenants) · Expo Push · **Orange Tunisie SMS** (pas Twilio) · **ClicToPay** (paiements TND — Stripe/Konnect non intégrés à ce jour) · Cloudflare Turnstile (anti-bot landing) · Sentry
 
-### Hébergement
-- **Web** : Vercel (projet `jardin`, team `ultra3omda-6664s-projects`)
-- **API** : Railway ou Render
-- **PostgreSQL** : Neon (avec branching pour preview deploys)
-- **Redis** : Upstash
-- **CI/CD** : GitHub Actions
-- **Monitoring** : Sentry + Better Stack (Logtail + Uptime)
+### Hébergement & déploiement
+- **Web** : Vercel projet `ecole-saas` → déployé par `.github/workflows/deploy-web.yml` (Vercel CLI **pinné 54.6.1**, deploy `--archive=tgz` pour la limite Hobby)
+- **Mobile web** : Vercel projet `klasso-mobile` (`expo export --platform web`) → `deploy-mobile.yml`
+- **API** : Railway (auto-deploy sur push main, `prisma migrate deploy` au boot) → `api.klasso.tn`
+- **DB** : Neon PostgreSQL · **Stores** : EAS Build/Submit (profils dans `eas.json`, API URL = `api.klasso.tn`)
+- Workflows annexes : `seed-prod.yml` (re-seed démo manuel), `reset-super-admin.yml`, `purge-demo-fixtures.yml`
+- **Règle cloud-first (D22)** : toute fonctionnalité doit être visible via une URL cloud sans setup local. Avant d'ajouter un Dockerfile/config deploy, vérifier l'existant (`curl https://api.klasso.tn/health` + roadmap).
 
 ---
 
-## 📍 État actuel du projet
+## 📍 État actuel du projet (2026-06-10)
 
-### ✅ Vague 0 — Fondations (LIVRÉE)
-- Monorepo Turborepo configuré
-- App web Next.js 14 "Hello World" avec Tailwind
-- Package `@ecole-saas/shared` avec types Tenant, User, Locale, ApiResponse
-- GitHub Actions CI (lint + type-check + build)
-- GitHub Actions Deploy → Vercel
-- Endpoint `/api/health`
-- Documentation : `README.md` + `SETUP.md`
-- Projet Vercel `jardin` lié (projectId `prj_0HusykA4lbXZR9nSRIUFhCrxtbU6`)
+Le projet est en **phase GTM/consolidation** — bien au-delà de la roadmap initiale. Livré en prod :
 
-### 🚧 Vague 1 — En cours (à exécuter)
-Voir section **"Travail à effectuer"** ci-dessous.
+### Modules livrés (API + web, la plupart aussi sur mobile)
+- **Socle** : auth complète (login, register invite-only, reset password, verif email), multi-tenant + isolation testée, white-label, RGPD export
+- **Scolarité** : Élèves (CRUD + photo R2 + import CSV/Excel générique) · Classes + affectations enseignants + EDT (grille hebdo, vue par enseignant) · Matières/coefficients · Périodes · Évaluations/Notes (saisie auto-save) · Bulletins PDF (@react-pdf) · Devoirs/TAF + rendus · Présences/Absences
+- **Vie scolaire** : Journal quotidien (repas, sieste, humeur, photo du jour) · Ateliers/Activités · Discipline · Santé (carnet, infirmerie, vaccins) · Cantine (menus, régimes) · Transport (lignes, arrêts, affectations) · Sécurité (incidents, visiteurs, exercices)
+- **Relations & communication** : Parents↔Élèves N-N · Messagerie 1:1 Socket.IO · Annonces · Notifications (push Expo + email + SMS Orange)
+- **RH/Finance** : Contrats, congés, paie (fiches TND) · Facturation parents · Abonnements SaaS + checkout ClicToPay
+- **Plateforme** : Console super-admin (tenants, invites, audit, analytics MRR/ARR réels, purge démo) · Pipeline commercial + onboarding organisation · Demo-login 1-clic self-healing + seeds démo tunisiens (cf. `docs/DEMO_CREDENTIALS.md`, `docs/demo-scenarios.md`)
+- **Design** : système V7 "Médina" (navy/terracotta/cream, Fraunces + Public Sans + Markazi Text), landing bilingue FR/AR, responsive mobile, accent corail partagé web/mobile
 
-### 📋 Vagues 2-8 — Backlog (ne PAS commencer sans validation utilisateur)
-Voir section **"Roadmap des vagues suivantes"**.
+### Travaux les plus récents (juin 2026)
+- Vue **PARENT** complète et scopée à ses enfants (dashboard, EDT, notes, bulletins téléchargeables, paiements, absences) — PR #128-134
+- **Préparation publication stores** : icônes, app.json, guide (PR #135) puis **upgrade Expo SDK 51 → 54** (PR #137-138)
+- Derniers commits sur main : fixes du build mobile web sur Vercel (assets `.pnpm`, autolinking reanimated/worklets)
+
+### Prochaines étapes probables (à confirmer avec l'utilisateur)
+- Soumission stores réelle (EAS Submit — credentials Apple/Google à fournir)
+- Activation subdomain wildcard `*.klasso.tn` (V1.7-B, bloquée par DNS/OVH — voir D25)
+- Hardening (Postgres RLS, CSP, Better Stack, backups), branches en attente (`feat/billing-ui-clictopay`, `claude/super-admin-access-workflow`, …)
+
+### Sources de vérité
+- **`docs/roadmap.md`** — roadmap master + décisions lockées D1-D27. ⚠️ Historique tenu à jour jusqu'au 2026-05-27 seulement ; pour l'état réel après cette date, faire foi à `gh pr list --state merged` (PR #79 → #138 : tracks T2a-T2d, GTM, parent app, SDK 54).
+- **`docs/adr/`** — 16 ADRs (auth, white-label, mobile, messaging, EDT, bulletins, design system, admin SaaS, onboarding commercial…)
+- **`docs/architecture.md`**, **`docs/GUIDE_UTILISATION.md`**, **`docs/MOBILE_WEB_DEPLOY.md`**, **`docs/deploy/`**, **`docs/payments/clictopay-recette.md`**, **`docs/notifications/orange-sms.md`**
 
 ---
 
 ## ⭐ Standards de qualité (NON NÉGOCIABLES)
 
-Le code livré doit être **production-ready**, pas un prototype. Cela signifie :
+Le code livré doit être **production-ready**, pas un prototype.
 
 ### Qualité du code
 - ✅ TypeScript **strict** (pas de `any`, pas de `// @ts-ignore`)
-- ✅ ESLint sans warnings (sauf justification dans le PR)
-- ✅ Prettier appliqué partout
-- ✅ Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`)
-- ✅ Pas de console.log en prod — utiliser le logger structuré (Pino côté API, console côté web/mobile mais avec un wrapper)
-- ✅ Pas de magic numbers / strings — constantes nommées dans `@ecole-saas/shared`
-- ✅ Fichiers < 300 lignes (split sinon)
-- ✅ Fonctions < 50 lignes
-- ✅ Naming en anglais (code) — UI/contenu en FR par défaut
+- ✅ ESLint sans warnings · Prettier partout · Conventional Commits
+- ✅ Pas de console.log en prod (Pino côté API, wrapper côté web/mobile)
+- ✅ Pas de magic numbers/strings — constantes nommées (`@ecole-saas/shared` si partagé)
+- ✅ Fichiers < 300 lignes, fonctions < 50 lignes
+- ✅ Naming en anglais (code) — UI/contenu en FR par défaut (i18n fr/en/ar/es)
 
-### Tests (obligatoires pour chaque vague)
-- ✅ Tests unitaires sur la logique métier (Vitest pour web/api/shared, Jest pour mobile)
-- ✅ Tests d'intégration sur les endpoints API critiques (auth, multi-tenant isolation)
-- ✅ Tests E2E sur les parcours critiques (Playwright pour web, Maestro pour mobile)
-- ✅ Coverage minimum **70%** sur le code applicatif (hors UI pure)
+### Tests (obligatoires pour chaque livraison)
+- ✅ Unit : Vitest (web/api/shared), Jest (mobile) — l'API a ~46 specs, le harnais existe partout
+- ✅ Intégration/e2e API : Vitest `.e2e-spec.ts` dans `apps/api/test/` (~25 specs) — tout nouveau module métier ajoute la sienne
+- ✅ E2E web : Playwright · E2E mobile : Maestro (prévu, pas encore configuré)
+- ✅ Coverage ≥ **70%** sur le code applicatif (hors UI pure)
+- ✅ **Test d'isolation multi-tenant pour chaque nouvelle table tenant-scoped** (`multi-tenant-isolation.e2e-spec.ts`) — critique, risque R10
 
-### Sécurité (obligatoire)
-- ✅ Tous les secrets en variables d'environnement (jamais commités)
-- ✅ Validation d'entrée sur **tous** les endpoints API (Zod ou class-validator)
-- ✅ Rate limiting global + par endpoint sensible
-- ✅ CORS configuré strictement (whitelist domaines)
-- ✅ CSP headers sur web
-- ✅ Helmet sur API
-- ✅ bcrypt rounds ≥ 12
-- ✅ JWT secret ≥ 256 bits, rotation possible
-- ✅ Pas de PII dans les logs
-- ✅ HTTPS only en production
-- ✅ Sessions invalidables côté serveur (refresh token rotation)
-- ✅ Isolation multi-tenant **vérifiée par test automatique** (un tenant ne peut JAMAIS lire les données d'un autre)
-- ✅ RGPD-ready : endpoint d'export et de suppression de données par utilisateur
+### Sécurité
+- ✅ Secrets en env vars uniquement (jamais commités) · validation d'entrée sur TOUS les endpoints (class-validator API, Zod web)
+- ✅ Rate limiting (Throttler global + endpoints sensibles) · CORS whitelist · Helmet · CSP web
+- ✅ bcrypt ≥ 12 · JWT secrets ≥ 32 chars (vérifiés au boot) · refresh rotation + invalidation serveur
+- ✅ Pas de PII dans les logs (redaction Pino) · RGPD : export/suppression par utilisateur
+- ✅ Ne JAMAIS contourner l'isolation multi-tenant, même « temporairement pour tester »
 
 ### Accessibilité & UX
-- ✅ Conformité **WCAG 2.1 niveau AA** sur web
-- ✅ Labels ARIA sur tous les composants interactifs
-- ✅ Navigation clavier complète sur web
-- ✅ Contraste ≥ 4.5:1 sur le texte
-- ✅ Support du mode sombre
-- ✅ États de chargement explicites (skeletons, pas juste spinners)
-- ✅ États d'erreur avec retry possible
-- ✅ États vides informatifs (pas juste "Aucune donnée")
+- ✅ WCAG 2.1 AA web · ARIA sur tout l'interactif · navigation clavier · contraste ≥ 4.5:1
+- ✅ États de chargement (skeletons), erreur (avec retry), vide (informatif)
 
 ### Documentation
-- ✅ README dans chaque package
-- ✅ JSDoc sur les fonctions publiques exportées
-- ✅ Swagger/OpenAPI auto-généré côté API
-- ✅ ADR (Architecture Decision Records) dans `docs/adr/` pour décisions structurantes
-- ✅ Schéma de BDD documenté (auto via Prisma)
-- ✅ Diagramme d'architecture mis à jour (`docs/architecture.md`)
+- ✅ Swagger auto-généré (`/api/docs`) · ADR dans `docs/adr/` pour toute décision structurante · `docs/roadmap.md` mis à jour en fin de vague
 
 ### Performance
-- ✅ Lighthouse mobile ≥ 90 sur la home et le login
-- ✅ Time to Interactive < 3s sur 3G
-- ✅ Bundle size monitoré (alerte si +20%)
-- ✅ Index sur toutes les colonnes filtrables côté DB
-- ✅ Pagination obligatoire sur toutes les listes (cursor-based de préférence)
-- ✅ Cache Redis sur les queries chères (TTL réfléchi)
+- ✅ Pagination sur toutes les listes · index sur les colonnes filtrables · Lighthouse mobile ≥ 90 (home/login)
 
 ---
 
 ## 🛠️ Méthode de travail
 
-### Principes fondamentaux
-1. **Vagues incrémentales** — chaque vague = livrable de 1-3 jours, testable et déployable
-2. **Trunk-based light** — branche `main` (prod) + feature branches courtes (< 2j) + PRs
-3. **TDD quand pertinent** — pour la logique métier critique (auth, multi-tenant, paie)
-4. **Pas de spéculation** — ne pas anticiper des besoins non confirmés
-5. **Préférer la simplicité** — pas d'over-engineering, YAGNI
+### Principes
+1. **Vagues incrémentales** — chaque vague = livrable 1-3j, testable et déployable, avec spec/plan dans `docs/superpowers/`
+2. **Trunk-based light** — `main` (prod, auto-deploy) + feature branches courtes + PRs
+3. **TDD quand pertinent** (auth, multi-tenant, paie) · **YAGNI** · pas de spéculation
 
 ### Workflow par vague
 ```
 1. Lire CLAUDE.md (toujours)
-2. Confirmer la vague en cours et son scope avec l'utilisateur
-3. Proposer un plan détaillé (fichiers à créer/modifier, ordre, tests)
+2. Confirmer le scope avec l'utilisateur
+3. Proposer un plan détaillé (fichiers, ordre, tests)
 4. Attendre validation explicite avant de coder
-5. Coder par sous-tâche avec commits atomiques (Conventional Commits)
-6. Tester localement à chaque étape (pnpm dev, pnpm test, pnpm build)
-7. À la fin : récap des changements + ouvrir une PR vers main
-8. Attendre que toute la CI passe verte (lint + type + build + tests + e2e)
-9. CI verte → MERGE AUTOMATIQUE de la PR (`gh pr merge <N> --merge`)
-   — ne PAS attendre d'OK explicite pour le merge tant que la CI est verte.
-   Stratégie : merge commit (préserve l'historique granulaire des feature branches).
+5. Coder par sous-tâche avec commits atomiques
+6. Tester localement (pnpm test, pnpm build) — push = deploy prod après merge !
+7. Récap + ouvrir une PR vers main
+8. Attendre la CI verte (lint + type + build + tests + e2e)
+9. CI verte → MERGE AUTOMATIQUE (`gh pr merge <N> --merge`)
+   — ne PAS attendre d'OK explicite tant que la CI est verte (politique locked 2026-05-22).
 10. STOP — ne JAMAIS commencer la vague suivante sans validation utilisateur
-    (le merge auto ferme la vague, mais le scope de la suivante reste à l'utilisateur)
 ```
 
-> **Note (politique locked 2026-05-22)** : la règle 9 (merge auto sur CI verte)
-> remplace l'ancien "attendre l'OK utilisateur pour merger". Exceptions qui
-> nécessitent toujours validation explicite : `git push --force` ou réécriture
-> d'historique public, modif `.github/workflows/`, ajout de dep >100 KB gzipped
-> ou avec poids sécurité, coût récurrent >$50/mois, conflit avec CLAUDE.md.
+> Exceptions à la règle 9 (validation explicite TOUJOURS requise) : `git push --force` /
+> réécriture d'historique, modif `.github/workflows/`, dep >100 KB gzipped ou sensible
+> sécurité, coût récurrent >$50/mois, conflit avec CLAUDE.md.
 
 ### Checkpoints obligatoires (s'ARRÊTER et demander)
-- 🛑 Avant tout `git push --force` ou modification de l'historique
-- 🛑 Avant de supprimer un fichier > 100 lignes
-- 🛑 Avant d'ajouter une nouvelle dépendance majeure (> 100kb gzipped ou critique sécurité)
-- 🛑 Avant de modifier le schéma Prisma (migration)
-- 🛑 Avant de modifier `.github/workflows/`
-- 🛑 Avant de modifier `package.json` racine
-- 🛑 Avant tout changement qui impacte la facturation/paiement
-- 🛑 Avant de toucher au code multi-tenant (isolation)
-- 🛑 Avant de finir une vague (récap obligatoire)
+- 🛑 `git push --force` / réécriture d'historique
+- 🛑 Suppression d'un fichier > 100 lignes
+- 🛑 Nouvelle dépendance majeure (> 100kb gzipped ou critique sécurité)
+- 🛑 Modification du schéma Prisma (migration) — toujours backward-compat, soft-delete plutôt que drop
+- 🛑 Modification `.github/workflows/` ou `package.json` racine
+- 🛑 Tout ce qui touche facturation/paiement ou au code d'isolation multi-tenant
+- 🛑 Fin de vague (récap obligatoire)
 
 ### Commandes essentielles
 ```bash
-pnpm install              # install monorepo
-pnpm dev                  # lance tous les dev servers
-pnpm dev --filter=web     # juste le web
-pnpm build                # build complet
-pnpm lint                 # lint tout
-pnpm type-check           # type-check tout
-pnpm test                 # tests tout
-pnpm test --filter=api    # tests API seulement
-pnpm format               # prettier sur tout
+pnpm install                    # install monorepo
+pnpm dev                        # tous les dev servers
+pnpm dev --filter=@ecole-saas/web
+pnpm build / lint / type-check / test / format
+pnpm --filter=@ecole-saas/api test          # tests API
+docker compose up -d                        # Postgres local
+pnpm --filter=@ecole-saas/api prisma migrate dev
+gh workflow run seed-prod.yml               # re-seed démo prod (manuel)
 ```
 
-### Utilisation des skills (très important)
-
-Claude Code a accès aux skills suivants — **les utiliser quand pertinent** :
-
-| Skill | Quand l'utiliser |
+### Skills
+| Skill | Quand |
 |---|---|
-| `frontend-design` | **OBLIGATOIRE** dès qu'on touche à de l'UI/UX (web ou mobile). Lire ce skill avant toute création de composant. |
-| `product-self-knowledge` | Pour toute question sur Claude/Anthropic produits (rare ici) |
-| `docx`/`pptx`/`xlsx`/`pdf` | Si l'utilisateur demande des livrables documentaires |
-| `skill-creator` | Si on identifie un pattern récurrent à factoriser en skill projet |
-
-**Ne pas réinventer ce qui est dans un skill.** Toujours faire `view /mnt/skills/public/<skill>/SKILL.md` avant d'attaquer un sujet couvert.
+| `frontend-design` | **OBLIGATOIRE** avant toute création/refonte UI (web ou mobile) — respecter le design system V7 (`docs/design-system.md`, ADR 0013/0014) |
+| `superpowers:*` (brainstorming, writing-plans, executing-plans…) | Le pattern specs/plans dans `docs/superpowers/` vient de là |
+| `docx`/`pptx`/`xlsx`/`pdf` | Livrables documentaires |
 
 ---
 
-## 🌊 Vague en cours : Vague 1 — Backend Auth + Multi-tenant
+## ⚠️ Gotchas connus (acquis à la dure — ne pas re-découvrir)
 
-### Objectif
-Mettre en place l'API NestJS avec authentification JWT, isolation multi-tenant stricte, et brancher le web sur une page de login fonctionnelle.
-
-### Scope précis
-1. **Setup `apps/api`** (NestJS 10 + Prisma + PostgreSQL)
-   - Dockerfile pour Postgres local
-   - Schema Prisma avec modèles : `Tenant`, `User`, `RefreshToken`, `AuditLog`
-   - Migrations Prisma initiales
-   - Seeds avec 2 tenants de demo + admins
-2. **Module Auth**
-   - `POST /auth/register` (inscription d'un tenant + admin initial)
-   - `POST /auth/login` (email + password → access + refresh tokens)
-   - `POST /auth/refresh` (rotation des refresh tokens)
-   - `POST /auth/logout` (invalidation)
-   - `GET /auth/me` (user courant)
-   - Guards JWT + RBAC
-3. **Middleware multi-tenant**
-   - Extraction du `tenantId` depuis le JWT
-   - Injection automatique dans toutes les queries Prisma (middleware Prisma)
-   - Test d'isolation : un user du tenant A ne DOIT JAMAIS pouvoir lire les données du tenant B
-4. **Web : pages d'auth**
-   - `/login` — formulaire email/password
-   - `/register` — création d'un nouvel établissement
-   - Layout `(auth)` dédié
-   - Hook `useAuth` avec stockage refresh token sécurisé
-   - Redirection `/dashboard` (placeholder) après login
-   - Page `/dashboard` minimale qui affiche les infos du tenant connecté
-5. **Tests obligatoires**
-   - Tests unitaires sur la logique d'auth
-   - Tests d'intégration sur `/auth/*`
-   - Test E2E Playwright : register → login → dashboard
-   - **Test d'isolation multi-tenant** (test critique)
-6. **Documentation**
-   - `apps/api/README.md` (setup local, env vars, migrations)
-   - Swagger auto-généré accessible sur `/api/docs`
-   - ADR `docs/adr/0001-auth-strategy.md`
-
-### Critères d'acceptation Vague 1
-- [ ] `pnpm dev` lance web + api en parallèle sans erreur
-- [ ] `docker compose up -d` démarre Postgres
-- [ ] `pnpm --filter=api prisma migrate dev` passe
-- [ ] `pnpm --filter=api prisma db seed` crée les tenants de demo
-- [ ] Curl `POST /auth/login` avec un user de demo retourne des tokens valides
-- [ ] Le web peut faire un login complet et afficher le dashboard
-- [ ] **Test d'isolation multi-tenant passe** (test critique)
-- [ ] `pnpm test` passe (coverage ≥ 70% sur api/src/auth et api/src/tenant)
-- [ ] `pnpm lint && pnpm type-check && pnpm build` passe
-- [ ] CI GitHub Actions verte
-- [ ] Deploy preview Vercel fonctionne
-- [ ] Swagger docs accessibles
-- [ ] README API à jour
-- [ ] Commits propres (Conventional Commits)
-
-### Variables d'environnement à ajouter
-À ajouter dans `.env.example` (sans valeurs réelles) :
-```env
-# API
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ecole_saas"
-JWT_ACCESS_SECRET="<256-bit-random>"
-JWT_REFRESH_SECRET="<256-bit-random>"
-JWT_ACCESS_EXPIRES_IN="15m"
-JWT_REFRESH_EXPIRES_IN="30d"
-BCRYPT_ROUNDS="12"
-API_PORT="4000"
-CORS_ORIGIN="http://localhost:3000"
-
-# Web
-NEXT_PUBLIC_API_URL="http://localhost:4000"
-```
-
-### Choix techniques imposés pour cette vague
-- **ORM** : Prisma (pas TypeORM)
-- **Validation** : class-validator + class-transformer (côté API), Zod (côté web)
-- **Tokens** : JWT signed avec RS256 ou HS256 (HS256 OK pour MVP)
-- **Mot de passe** : bcrypt rounds 12 minimum
-- **Refresh token storage** : table `RefreshToken` en DB (rotation à chaque usage)
-- **Format ID** : `cuid2` (pas UUID, pas auto-increment)
-
-### Ce qu'on NE FAIT PAS dans cette vague
-- ❌ Pas d'OAuth/SSO (Vague ultérieure)
-- ❌ Pas de 2FA (Vague 4+)
-- ❌ Pas de récupération de mot de passe par email (Vague 1.5)
-- ❌ Pas de page "Profil utilisateur" complète (Vague 2)
-- ❌ Pas de gestion d'élèves (Vague 2)
-- ❌ Pas de design system complet (juste les composants nécessaires)
-
----
-
-## 📋 Roadmap des vagues suivantes (NE PAS COMMENCER SANS VALIDATION)
-
-| Vague | Scope | Durée estimée |
-|---|---|---|
-| **1.5** | Récupération mot de passe + Vérification email + Page profil | 1j |
-| **2** | App Mobile Expo (setup + login) + Module Élèves (CRUD complet web+mobile) | 3j |
-| **3** | Module Parents + Relations parent-élève + Communication 1:1 | 2j |
-| **4** | Module Enseignants + Classes + Emploi du temps | 3j |
-| **5** | RH (contrats, congés, présence) + Paie (calcul de base) | 3j |
-| **6** | Pédagogie : Notes, Évaluations, Bulletins, Rapports | 3j |
-| **7** | Finance : Facturation parents, paiements en ligne (Stripe + local) | 3j |
-| **8** | Stock, Cantine, Transport, Santé, Sécurité | 3j |
-| **9** | Notifications multi-canal (push, email, SMS, WhatsApp) | 2j |
-| **10** | Admin SaaS : super-admin, billing tenants, analytics plateforme | 2j |
-| **11** | Hardening : observability, performance, sécurité avancée, audit | 2j |
-| **12** | Mobile : finalisation 3 apps + build EAS + soumission stores | 3j |
+- **Git sous Cursor (Windows)** : l'env injecte un `GIT_ASKPASS` cassé → les push/pull échouent (« unable to read askpass response »). Contournement : `Remove-Item Env:GIT_ASKPASS` dans le même appel shell, et si besoin auth via token `gh` en header (`git -c http.extraheader="AUTHORIZATION: basic <b64(x-access-token:TOKEN)>"`). `gh` est authentifié (compte `ultra3omda`).
+- **Vercel CLI pinné 54.6.1** dans `deploy-web.yml` (54.7.0 casse le build) + deploy `--archive=tgz` (limite upload Hobby).
+- **Vercel et les dot-directories** : Vercel ne sert pas les dossiers `.pnpm`/dot-dirs — les assets du build Expo web sont « de-dottés » (cf. commits `0a8b197`, `033f861`).
+- **Mobile = Hermes + New Architecture obligatoires** (reanimated 4/worklets ont besoin de SharedArrayBuffer). `react-native-reanimated` et `react-native-worklets` doivent rester en deps directes (autolinking iOS).
+- **pnpm + Metro** : `node-linker` + `public-hoist-pattern` réglés dans `.npmrc` pour que Metro résolve en monorepo. Ne pas toucher sans tester `expo export`.
+- **React 18 (web/api) vs React 19 (mobile)** : isolation volontaire depuis le passage SDK 54 (PR #137).
+- **Next 14 + refresh rotation** : le layout `(app)` est volontairement Client Component (la rotation V1.5 est incompatible RSC — fix boucle infinie, PR #13). Ne pas « optimiser » en Server Component.
+- **Démo** : comptes et données dans `docs/DEMO_CREDENTIALS.md` ; le demo-login backend est self-healing (re-seed auto au premier appel). `DEMO_PASSWORD` stable via env.
+- **Wildcard `*.klasso.tn`** : non activable tant que le DNS reste chez OVH (validation wildcard Vercel + mail OVH) — voir D25. Path-based `/t/<slug>/` reste l'URL tenant effective.
 
 ---
 
 ## 📞 Informations utilisateur
 
-- **OS local** : Windows (PowerShell)
-- **Chemin projet** : `C:\Users\ultra\Desktop\Projets\ecole-saas`
-- **Repo GitHub** : à confirmer
-- **Vercel project** : `jardin` (team `ultra3omda-6664s-projects`)
-- **Vercel projectId** : `prj_0HusykA4lbXZR9nSRIUFhCrxtbU6`
-- **Vercel orgId** : `team_yG29YmhWprcc7vjtWOuLN4BN`
-- **Préférence** : code complet généré (workflow copier-coller), pas d'apprentissage step-by-step
-- **Langue de communication** : français
-- **Langue du code** : anglais
+- **OS local** : Windows 11 (PowerShell) · **Chemin** : `C:\Users\ultra\Desktop\Projets\ecole-saas`
+- **Repo GitHub** : `https://github.com/ultra3omda/Jardin` (`gh` CLI authentifié)
+- **Vercel** : team `ultra3omda-6664s-projects` — projets `ecole-saas` (web) et `klasso-mobile` (id `prj_rS0q3PqBBh90fJYTdMvxsv6rmOwM`)
+- **Railway** : projet `ecole-saasapi-production` → `api.klasso.tn`
+- **Expo/EAS** : owner `ultra3omda`, project id `c9e16698-8fa5-4369-b445-3ebb2c1fe111`
+- **Domaine** : `klasso.tn` (OVH) · **Email démo** : `ultra3omda@gmail.com` · support : `support@klasso.tn`
+- **Préférence** : code complet généré, pas d'apprentissage step-by-step · **Communication en français**, code en anglais
 
 ---
 
 ## ⚠️ Choses à NE JAMAIS faire
 
-- ❌ Ne JAMAIS commiter de secrets (`.env`, tokens, clés API)
-- ❌ Ne JAMAIS désactiver TypeScript strict ou un règle ESLint sans justification écrite
-- ❌ Ne JAMAIS modifier l'historique git public (`push --force` sur `main`)
-- ❌ Ne JAMAIS contourner l'isolation multi-tenant (même "temporairement pour tester")
-- ❌ Ne JAMAIS livrer une vague sans tests
-- ❌ Ne JAMAIS commencer une vague sans validation explicite de l'utilisateur
-- ❌ Ne JAMAIS ajouter une dépendance pour un besoin qui peut être codé en 20 lignes
-- ❌ Ne JAMAIS introduire un breaking change dans `@ecole-saas/shared` sans mettre à jour tous les consumers
-- ❌ Ne JAMAIS faire de "petite refacto opportuniste" non liée à la vague en cours
-- ❌ Ne JAMAIS supposer le contexte — demander si doute
+- ❌ Commiter des secrets (`.env`, tokens, clés API)
+- ❌ Désactiver TypeScript strict ou une règle ESLint sans justification écrite
+- ❌ `push --force` sur `main` / réécrire l'historique public
+- ❌ Contourner l'isolation multi-tenant (même « temporairement »)
+- ❌ Livrer une vague sans tests (dont test d'isolation pour toute nouvelle table tenant-scoped)
+- ❌ Commencer une vague sans validation explicite de l'utilisateur
+- ❌ Ajouter une dépendance pour un besoin codable en 20 lignes
+- ❌ Breaking change dans `@ecole-saas/shared` sans mettre à jour tous les consumers
+- ❌ Refacto opportuniste hors scope de la vague en cours
+- ❌ Supposer le contexte — demander si doute
 
 ---
 
 ## ✅ Comment démarrer chaque session Claude Code
 
-À chaque nouvelle session, commencer par :
-1. Lire ce `CLAUDE.md` en entier (auto)
-2. Faire `git status` et `git log --oneline -10` pour comprendre l'état
-3. Demander à l'utilisateur : *"Je vois qu'on est sur la Vague X. Tu veux qu'on continue où on en était (faire `git status`) ou qu'on attaque la suite ?"*
+1. Lire ce `CLAUDE.md` (auto)
+2. `git status` + `git log --oneline -10` + `gh pr list` pour l'état réel (la roadmap peut être en retard sur les PRs)
+3. Demander : *« Voici où en est le projet (résumé). On continue le travail en cours ou on attaque autre chose ? »*
 4. Attendre la confirmation avant d'agir
