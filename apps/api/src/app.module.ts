@@ -68,9 +68,17 @@ import { UsersModule } from './users/users.module';
     PushModule, // V10
     SmsModule, // GTM — SMS (Twilio)
     R2Module,
-    ThrottlerModule.forRoot([
-      { name: 'global', ttl: 60_000, limit: 100 },
-    ]),
+    // The throttler is named 'default' so that per-route `@Throttle({ default:
+    // {...} })` overrides (login, register, demo-login, payments, …) actually
+    // bind to it. A mismatched name makes those overrides silent no-ops, which
+    // would leave sensitive endpoints on the lenient global limit.
+    // skipIf disables throttling under NODE_ENV=test so the e2e suites (which
+    // log in many times per minute from one IP) aren't rate-limited; the
+    // limits still fully apply in dev and production.
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
+      skipIf: () => process.env.NODE_ENV === 'test',
+    }),
     AuthModule,
     AdminModule,
     CommercialModule, // GTM — commercial back-office (contrats + création d'org)
