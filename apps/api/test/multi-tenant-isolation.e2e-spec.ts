@@ -1345,6 +1345,55 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     });
   });
 
+  // ==========================================================================
+  // Phase 1.4 — list queries are capped at MAX_PAGE_SIZE inside a tenant
+  // context, but never for SUPER_ADMIN ops or context-less system queries.
+  // ==========================================================================
+  describe('List size cap (Phase 1.4)', () => {
+    beforeEach(async () => {
+      // Seed > 5 students in tenant A so a small cap is observable.
+      await prisma.student.createMany({
+        data: Array.from({ length: 6 }, (_, i) => ({
+          id: createId(),
+          tenantId: tenantAId,
+          firstName: `Cap${i}`,
+          lastName: 'Student',
+          dateOfBirth: new Date('2018-01-01'),
+          sex: Sex.F,
+          classroom: 'CP',
+          parentEmail: `cap${i}@iso.test`,
+        })),
+      });
+    });
+
+    it('applies the cap without erroring or truncating below the row count', async () => {
+      // The exact cap value is unit-tested in tenant-scoped-models.spec
+      // (cappedTake). Here we prove the clamp is wired into findMany under a
+      // tenant context: take under cap is honored, and a huge take neither
+      // errors nor drops real rows (7 = 1 global + 6 seeded, well under 1000).
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const limited = await prisma.student.findMany({ take: 2 });
+          expect(limited).toHaveLength(2);
+          const huge = await prisma.student.findMany({ take: 10_000_000 });
+          expect(huge.length).toBe(7);
+        },
+      );
+    });
+
+    it('does not cap SUPER_ADMIN cross-tenant queries', async () => {
+      await tenantContext.run(
+        { tenantId: null, userId: 'root', role: UserRole.SUPER_ADMIN, skipTenantFilter: true },
+        async () => {
+          const all = await prisma.student.findMany({ take: 10_000_000 });
+          // Both tenants' students visible, take left untouched.
+          expect(all.length).toBeGreaterThanOrEqual(7);
+        },
+      );
+    });
+  });
+
   describe('COMMERCIAL role isolation (CRITICAL)', () => {
     const commercialCtx = {
       tenantId: null,

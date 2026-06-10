@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import {
+  cappedTake,
+  MAX_PAGE_SIZE,
   PLATFORM_SHARED_MODELS,
   TENANT_SCOPED_EXCEPTIONS,
   TENANT_SCOPED_MODELS,
@@ -50,5 +52,19 @@ describe('TENANT_SCOPED_MODELS guard (R10)', () => {
       (name) => !(TENANT_SCOPED_MODELS as readonly string[]).includes(name),
     );
     expect(notScoped).toEqual([]);
+  });
+});
+
+describe('cappedTake (Phase 1.4 list cap)', () => {
+  it('leaves a take at or below the cap untouched', () => {
+    expect(cappedTake(1)).toBe(1);
+    expect(cappedTake(100)).toBe(100);
+    expect(cappedTake(MAX_PAGE_SIZE)).toBe(MAX_PAGE_SIZE);
+  });
+
+  it('clamps an oversized take down to the cap', () => {
+    expect(cappedTake(MAX_PAGE_SIZE + 1)).toBe(MAX_PAGE_SIZE);
+    expect(cappedTake(100_000)).toBe(MAX_PAGE_SIZE);
+    expect(cappedTake(Number.MAX_SAFE_INTEGER)).toBe(MAX_PAGE_SIZE);
   });
 });
