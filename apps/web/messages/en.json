@@ -166,6 +166,13 @@
           { "label": "Chapter IV — Finance", "status": "Autumn 2026" }
         ]
       },
+      "legalLinks": {
+        "title": "Legal",
+        "privacy": "Privacy",
+        "terms": "Terms",
+        "legalNotice": "Legal notice",
+        "cookies": "Cookies"
+      },
       "links": {
         "product": "Product",
         "pricing": "Pricing",

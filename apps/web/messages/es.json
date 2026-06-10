@@ -166,6 +166,13 @@
           { "label": "Capítulo IV — Finanzas", "status": "Otoño 2026" }
         ]
       },
+      "legalLinks": {
+        "title": "Legal",
+        "privacy": "Privacidad",
+        "terms": "CGU / CGV",
+        "legalNotice": "Aviso legal",
+        "cookies": "Cookies"
+      },
       "links": {
         "product": "Producto",
         "pricing": "Precios",

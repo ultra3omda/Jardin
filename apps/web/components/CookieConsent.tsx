@@ -1,9 +1,11 @@
 'use client';
 
 import { X } from 'lucide-react';
+import type { Route } from 'next';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Link } from '@/i18n/routing';
 
 const STORAGE_KEY = 'ecole-saas-cookie-ack';
 
@@ -48,9 +50,13 @@ export function CookieConsent() {
     >
       <div className="container flex flex-col gap-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted-foreground">
-          École SaaS n&apos;utilise qu&apos;un cookie strictement nécessaire à votre
+          Klasso n&apos;utilise qu&apos;un cookie strictement nécessaire à votre
           session d&apos;authentification. Aucun cookie publicitaire ou analytique
-          n&apos;est posé.
+          n&apos;est posé.{' '}
+          <Link href={'/legal/cookies' as Route} className="underline hover:text-foreground">
+            En savoir plus
+          </Link>
+          .
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <Button size="sm" variant="outline" onClick={dismiss}>
