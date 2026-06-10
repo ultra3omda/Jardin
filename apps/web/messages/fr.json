@@ -166,6 +166,13 @@
           { "label": "Chapitre IV — Finance", "status": "Automne 2026" }
         ]
       },
+      "legalLinks": {
+        "title": "Légal",
+        "privacy": "Confidentialité",
+        "terms": "CGU / CGV",
+        "legalNotice": "Mentions légales",
+        "cookies": "Cookies"
+      },
       "links": {
         "product": "Produit",
         "pricing": "Tarifs",
