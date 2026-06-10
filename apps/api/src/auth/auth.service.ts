@@ -44,6 +44,21 @@ export class AuthService {
    */
   private static readonly REFRESH_GRACE_WINDOW_MS = 30_000;
 
+  /**
+   * Account lockout (brute-force defense). After {@link LOCKOUT_THRESHOLD}
+   * failed password attempts within {@link LOCKOUT_WINDOW_MS}, a known account
+   * is temporarily locked. This complements the per-IP login throttle: the
+   * throttle stops one IP hammering many accounts; the lockout stops a
+   * distributed attack hammering ONE account from many IPs.
+   *
+   * State is derived from existing `auth.login.failed` / `auth.login.success`
+   * audit rows (no schema migration): we count failures since the more recent
+   * of (now − window) and the account's last successful login, so a successful
+   * login clears the lock and the window slides naturally.
+   */
+  private static readonly LOCKOUT_THRESHOLD = 10;
+  private static readonly LOCKOUT_WINDOW_MS = 15 * 60_000;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -195,6 +210,22 @@ export class AuthService {
     }
 
     const user = candidates[0]!;
+
+    // Brute-force lockout: block (without burning a bcrypt compare) when this
+    // account has accumulated too many recent failures across all IPs.
+    if (await this.isAccountLocked(user.id)) {
+      await this.logAudit('auth.login.locked', {
+        userId: user.id,
+        tenantId: user.tenantId,
+        metadata: { email },
+        ...meta,
+      });
+      throw new ForbiddenException({
+        code: 'ACCOUNT_TEMPORARILY_LOCKED',
+        message:
+          'Trop de tentatives de connexion. Réessayez dans quelques minutes ou réinitialisez votre mot de passe.',
+      });
+    }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
@@ -469,6 +500,32 @@ export class AuthService {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+  }
+
+  /**
+   * Returns true when the account has ≥ LOCKOUT_THRESHOLD failed login attempts
+   * since the more recent of (now − window) and its last successful login.
+   * Derived from audit rows — no dedicated lockout column. Fails open (returns
+   * false) on any error so an audit/DB hiccup never locks everyone out.
+   */
+  private async isAccountLocked(userId: string): Promise<boolean> {
+    try {
+      const windowStart = new Date(Date.now() - AuthService.LOCKOUT_WINDOW_MS);
+      const lastSuccess = await this.prisma.auditLog.findFirst({
+        where: { userId, action: 'auth.login.success' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      const since =
+        lastSuccess && lastSuccess.createdAt > windowStart ? lastSuccess.createdAt : windowStart;
+      const failures = await this.prisma.auditLog.count({
+        where: { userId, action: 'auth.login.failed', createdAt: { gte: since } },
+      });
+      return failures >= AuthService.LOCKOUT_THRESHOLD;
+    } catch (err) {
+      this.logger.error(`Lockout check failed for user=${userId}: ${String(err)}`);
+      return false;
+    }
   }
 
   private async logAudit(
