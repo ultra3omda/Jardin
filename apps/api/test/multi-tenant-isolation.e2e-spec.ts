@@ -9,6 +9,13 @@
  * context is set. It also verifies the SUPER_ADMIN bypass for cross-tenant
  * platform operations.
  *
+ * Phase 1 hardening: the extension is now wired globally into PrismaService
+ * itself (constructor proxy) — the client injected by every domain service is
+ * the guarded one. This spec asserts that wiring directly, covers the 16
+ * pedagogy/communication/finance models added to TENANT_SCOPED_MODELS, and
+ * the COMMERCIAL platform-shared semantics (User/RefreshToken/AuditLog reads
+ * pinned to tenantId NULL).
+ *
  * Requires a running Postgres (docker compose up -d) and a clean DB.
  */
 import { ConfigModule } from '@nestjs/config';
@@ -104,6 +111,27 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     // T2c V3 — payroll (components → payslips → before user delete).
     await prisma.payslipComponent.deleteMany({});
     await prisma.payslip.deleteMany({});
+    // Phase 1 — pedagogy / communication / finance tables (children first;
+    // several carry RESTRICT FKs to User/Subject/GradePeriod, so they must
+    // be cleared before the user/tenant deletes below).
+    await prisma.grade.deleteMany({});
+    await prisma.bulletin.deleteMany({});
+    await prisma.evaluation.deleteMany({});
+    await prisma.homeworkSubmission.deleteMany({});
+    await prisma.homework.deleteMany({});
+    await prisma.attendance.deleteMany({});
+    await prisma.timeSlot.deleteMany({});
+    await prisma.classTeacher.deleteMany({});
+    await prisma.teacherSubject.deleteMany({});
+    await prisma.subject.deleteMany({});
+    await prisma.gradePeriod.deleteMany({});
+    await prisma.class.deleteMany({});
+    await prisma.message.deleteMany({});
+    await prisma.conversationParticipant.deleteMany({});
+    await prisma.conversation.deleteMany({});
+    await prisma.notification.deleteMany({});
+    await prisma.announcement.deleteMany({});
+    await prisma.invoice.deleteMany({}); // items/payments cascade
     await prisma.refreshToken.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.student.deleteMany({});
@@ -1072,6 +1100,251 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
   });
 
   // ── GTM — COMMERCIAL platform role is hard-blocked from tenant data ────────
+  // ==========================================================================
+  // Phase 1 — Pedagogy, communication & finance isolation
+  // These 16 models were added to TENANT_SCOPED_MODELS in the Phase 1
+  // hardening; this block proves the extension scopes each of them.
+  // ==========================================================================
+  describe('Pedagogy, communication & finance isolation (Phase 1)', () => {
+    const ids = {} as Record<string, { a: string; b: string }>;
+    const MODELS = [
+      'class',
+      'classTeacher',
+      'timeSlot',
+      'subject',
+      'gradePeriod',
+      'evaluation',
+      'grade',
+      'homework',
+      'homeworkSubmission',
+      'bulletin',
+      'conversation',
+      'message',
+      'notification',
+      'announcement',
+      'attendance',
+      'invoice',
+    ] as const;
+
+    beforeEach(async () => {
+      for (const model of MODELS) {
+        ids[model] = { a: createId(), b: createId() };
+      }
+      // Seed the full per-tenant graph (A then B), respecting FK order.
+      for (const t of [
+        { key: 'a' as const, tenantId: () => tenantAId, userId: () => userAId, studentId: () => studentAId },
+        { key: 'b' as const, tenantId: () => tenantBId, userId: () => userBId, studentId: () => studentBId },
+      ]) {
+        const tenantId = t.tenantId();
+        const userId = t.userId();
+        const studentId = t.studentId();
+        const id = (model: (typeof MODELS)[number]) => ids[model]![t.key];
+
+        await prisma.class.create({
+          data: { id: id('class'), tenantId, name: `CP-${t.key}`, level: 'CP', schoolYear: '2025-2026' },
+        });
+        await prisma.classTeacher.create({
+          data: {
+            id: id('classTeacher'),
+            tenantId,
+            classId: id('class'),
+            teacherUserId: userId,
+            subject: 'Maths',
+          },
+        });
+        await prisma.timeSlot.create({
+          data: {
+            id: id('timeSlot'),
+            tenantId,
+            classId: id('class'),
+            dayOfWeek: 1,
+            periodStart: '08:00',
+            periodEnd: '09:00',
+            subject: 'Maths',
+          },
+        });
+        await prisma.subject.create({
+          data: { id: id('subject'), tenantId, name: `Maths-${t.key}` },
+        });
+        await prisma.gradePeriod.create({
+          data: {
+            id: id('gradePeriod'),
+            tenantId,
+            name: 'T1',
+            schoolYear: '2025-2026',
+            startDate: new Date('2025-09-01'),
+            endDate: new Date('2025-12-20'),
+          },
+        });
+        await prisma.evaluation.create({
+          data: {
+            id: id('evaluation'),
+            tenantId,
+            classId: id('class'),
+            subjectId: id('subject'),
+            gradePeriodId: id('gradePeriod'),
+            title: 'Contrôle 1',
+            date: new Date('2025-10-10'),
+            maxScore: 20,
+            createdById: userId,
+          },
+        });
+        await prisma.grade.create({
+          data: { id: id('grade'), tenantId, evaluationId: id('evaluation'), studentId, score: 15 },
+        });
+        await prisma.homework.create({
+          data: {
+            id: id('homework'),
+            tenantId,
+            classId: id('class'),
+            createdById: userId,
+            title: 'Exercices p.12',
+            instructions: 'Faire les exercices 1 à 5',
+            dueDate: new Date('2025-10-15'),
+          },
+        });
+        await prisma.homeworkSubmission.create({
+          data: { id: id('homeworkSubmission'), tenantId, homeworkId: id('homework'), studentId },
+        });
+        await prisma.bulletin.create({
+          data: {
+            id: id('bulletin'),
+            tenantId,
+            studentId,
+            gradePeriodId: id('gradePeriod'),
+            data: { overall: 15 },
+            generatedById: userId,
+          },
+        });
+        await prisma.conversation.create({ data: { id: id('conversation'), tenantId } });
+        await prisma.message.create({
+          data: {
+            id: id('message'),
+            tenantId,
+            conversationId: id('conversation'),
+            senderId: userId,
+            body: 'Bonjour',
+          },
+        });
+        await prisma.notification.create({
+          data: {
+            id: id('notification'),
+            tenantId,
+            userId,
+            type: 'SYSTEM',
+            title: 'Info',
+            body: 'Notification de test',
+          },
+        });
+        await prisma.announcement.create({
+          data: {
+            id: id('announcement'),
+            tenantId,
+            title: 'Rentrée',
+            body: 'Annonce de test',
+            authorId: userId,
+          },
+        });
+        await prisma.attendance.create({
+          data: {
+            id: id('attendance'),
+            tenantId,
+            studentId,
+            date: new Date('2025-10-10'),
+            recordedById: userId,
+          },
+        });
+        await prisma.invoice.create({
+          data: {
+            id: id('invoice'),
+            tenantId,
+            title: 'Frais de scolarité T1',
+            amount: 100,
+            dueDate: new Date('2025-10-31'),
+          },
+        });
+      }
+    });
+
+    const ctxA = () =>
+      ({
+        tenantId: tenantAId,
+        userId: userAId,
+        role: UserRole.SCHOOL_ADMIN,
+        skipTenantFilter: false,
+      }) as const;
+
+    for (const model of [
+      'class',
+      'classTeacher',
+      'timeSlot',
+      'subject',
+      'gradePeriod',
+      'evaluation',
+      'grade',
+      'homework',
+      'homeworkSubmission',
+      'bulletin',
+      'conversation',
+      'message',
+      'notification',
+      'announcement',
+      'attendance',
+      'invoice',
+    ] as const) {
+      it(`${model}.findMany returns only tenant A rows from tenant A context`, async () => {
+        await tenantContext.run(ctxA(), async () => {
+          const delegate = tenantPrisma.client[model] as unknown as {
+            findMany: () => Promise<Array<{ id: string; tenantId: string }>>;
+          };
+          const rows = await delegate.findMany();
+          expect(rows).toHaveLength(1);
+          expect(rows[0]!.id).toBe(ids[model]!.a);
+          expect(rows[0]!.tenantId).toBe(tenantAId);
+        });
+      });
+
+      it(`${model}.findFirst by tenant B id from tenant A context returns null`, async () => {
+        await tenantContext.run(ctxA(), async () => {
+          const delegate = tenantPrisma.client[model] as unknown as {
+            findFirst: (args: { where: { id: string } }) => Promise<{ id: string } | null>;
+          };
+          const leaked = await delegate.findFirst({ where: { id: ids[model]!.b } });
+          expect(leaked).toBeNull();
+        });
+      });
+    }
+  });
+
+  // ==========================================================================
+  // Phase 1 — Global wiring: the PrismaService that every domain service
+  // injects IS the guarded client (extension applied in its constructor).
+  // ==========================================================================
+  describe('Global PrismaService wiring (Phase 1)', () => {
+    it('PrismaService queries are tenant-scoped inside a context', async () => {
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const users = await prisma.user.findMany();
+          expect(users).toHaveLength(1);
+          expect(users[0]!.tenantId).toBe(tenantAId);
+          const students = await prisma.student.findMany();
+          expect(students).toHaveLength(1);
+          expect(students[0]!.id).toBe(studentAId);
+        },
+      );
+    });
+
+    it('PrismaService stays unscoped outside a context (auth lookups, seeds)', async () => {
+      const users = await prisma.user.findMany();
+      expect(users).toHaveLength(2);
+    });
+
+    it('TenantPrismaService.client aliases the same guarded client', () => {
+      expect(tenantPrisma.client).toBe(prisma);
+    });
+  });
+
   describe('COMMERCIAL role isolation (CRITICAL)', () => {
     const commercialCtx = {
       tenantId: null,
@@ -1088,9 +1361,70 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
       });
     });
 
-    it('cannot read any other tenant-scoped model (User.count throws)', async () => {
+    it('cannot read other school-data models (Invoice.count throws)', async () => {
       await tenantContext.run(commercialCtx, async () => {
-        await expect(tenantPrisma.client.user.count()).rejects.toThrow(/platform-only|isolation/i);
+        await expect(tenantPrisma.client.invoice.count()).rejects.toThrow(
+          /platform-only|isolation/i,
+        );
+      });
+    });
+
+    // Phase 1 — platform-shared models (User/RefreshToken/AuditLog): the
+    // COMMERCIAL hard-block is replaced by pinning reads to tenantId NULL.
+    // A commercial manages platform rows but can never see a school's users,
+    // sessions or audit trail.
+    it('User reads are pinned to platform rows (tenantId null), never school users', async () => {
+      const platformUserId = createId();
+      await prisma.user.create({
+        data: {
+          id: platformUserId,
+          tenantId: null,
+          email: 'agent@platform.test',
+          passwordHash: 'irrelevant',
+          firstName: 'Agent',
+          lastName: 'Platform',
+          role: UserRole.COMMERCIAL,
+          locale: Locale.fr,
+        },
+      });
+      await tenantContext.run(commercialCtx, async () => {
+        const users = await tenantPrisma.client.user.findMany();
+        expect(users.map((u) => u.id)).toEqual([platformUserId]);
+        expect(await tenantPrisma.client.user.count()).toBe(1);
+      });
+    });
+
+    it('AuditLog reads are pinned to platform rows (tenantId null)', async () => {
+      const platformLogId = createId();
+      await prisma.auditLog.createMany({
+        data: [
+          {
+            id: createId(),
+            tenantId: tenantAId,
+            userId: userAId,
+            action: 'school.secret.action',
+            resource: 'students',
+          },
+          {
+            id: platformLogId,
+            tenantId: null,
+            action: 'commercial.organization.created',
+            resource: 'tenants',
+          },
+        ],
+      });
+      await tenantContext.run(commercialCtx, async () => {
+        const logs = await tenantPrisma.client.auditLog.findMany();
+        expect(logs.map((l) => l.id)).toEqual([platformLogId]);
+        expect(logs[0]!.tenantId).toBeNull();
+      });
+    });
+
+    it('a COMMERCIAL query explicitly asking for a school tenantId throws', async () => {
+      await tenantContext.run(commercialCtx, async () => {
+        await expect(
+          tenantPrisma.client.user.findMany({ where: { tenantId: tenantAId } }),
+        ).rejects.toThrow(/isolation/i);
       });
     });
 

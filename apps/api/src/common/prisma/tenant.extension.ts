@@ -4,6 +4,9 @@ import { Prisma, UserRole } from '@prisma/client';
  * Models whose every row carries a `tenantId` and must be tenant-scoped
  * on read by the multi-tenant extension. Keep this list in sync with the
  * Prisma schema — adding a new tenant-scoped model requires adding it here.
+ * The `tenant-scoped-models.spec.ts` guard test fails CI if a schema model
+ * with a `tenantId` column is neither listed here nor in
+ * {@link TENANT_SCOPED_EXCEPTIONS}.
  */
 export const TENANT_SCOPED_MODELS = [
   'User',
@@ -11,6 +14,22 @@ export const TENANT_SCOPED_MODELS = [
   'AuditLog',
   'Student',
   'ParentStudent', // V3-A
+  'Conversation', // V3-B
+  'Message', // V3-B
+  'Class', // V4
+  'ClassTeacher', // V4
+  'TimeSlot', // V4
+  'Subject', // V6
+  'GradePeriod', // V6
+  'Evaluation', // V6
+  'Grade', // V6
+  'Bulletin', // V6
+  'Homework', // TAF
+  'HomeworkSubmission', // TAF
+  'Invoice', // V8
+  'Notification', // V8
+  'Announcement', // V9
+  'Attendance', // V9
   'DailyLogEntry', // T2b
   'Activity', // T2b
   'ActivityParticipation', // T2b
@@ -35,6 +54,35 @@ export const TENANT_SCOPED_MODELS = [
   'TeacherSubject', // affectations: matières enseignées
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
+
+/**
+ * Models that DO carry a `tenantId` column but are deliberately NOT in
+ * {@link TENANT_SCOPED_MODELS}. Each entry must have a written reason —
+ * the guard test (`tenant-scoped-models.spec.ts`) only tolerates these.
+ *
+ * - `Contract`: platform/commercial domain. COMMERCIAL agents create and read
+ *   contracts across the organizations they own; auto-injection (and the
+ *   COMMERCIAL hard-block) would break that flow. School roles never query
+ *   contracts — access is gated by SUPER_ADMIN/COMMERCIAL guards + explicit
+ *   `tenantId` filters in `commercial.service.ts`.
+ * - `InviteToken`: nullable tenantId, consumed by unauthenticated register
+ *   flows (no tenant context) and created by platform roles for any tenant.
+ */
+export const TENANT_SCOPED_EXCEPTIONS = ['Contract', 'InviteToken'] as const;
+
+/**
+ * Tenant-scoped models that ALSO hold platform-level rows (`tenantId = null`):
+ * COMMERCIAL agents are Users with no tenant, their sessions are RefreshTokens
+ * with no tenant, and platform actions write AuditLogs. For these models the
+ * COMMERCIAL hard-block is replaced by pinning reads to `tenantId: null`, so a
+ * COMMERCIAL can manage platform rows but can never see a school's users,
+ * sessions or audit trail.
+ */
+export const PLATFORM_SHARED_MODELS = ['User', 'RefreshToken', 'AuditLog'] as const;
+
+function isPlatformShared(model: string | undefined): boolean {
+  return !!model && (PLATFORM_SHARED_MODELS as readonly string[]).includes(model);
+}
 
 export function isTenantScoped(model: string | undefined): model is TenantScopedModel {
   return !!model && (TENANT_SCOPED_MODELS as readonly string[]).includes(model);
@@ -70,7 +118,7 @@ const TENANT_DATA_FORBIDDEN_ROLES: readonly UserRole[] = [UserRole.COMMERCIAL];
  */
 function injectTenantWhere(
   args: { where?: Record<string, unknown> } | undefined,
-  tenantId: string,
+  tenantId: string | null,
 ): { where: Record<string, unknown> } {
   const current = args?.where;
   if (!current || Object.keys(current).length === 0) {
@@ -107,13 +155,23 @@ function injectTenantWhere(
  * The COMMERCIAL hard-block applies to ALL of the above (reads + writes).
  */
 export function createTenantExtension(opts: TenantExtensionOptions) {
-  /** Throws if a platform-only role tries to touch tenant-scoped data. */
+  /** True when the current role is platform-only (COMMERCIAL). */
+  const isForbiddenRole = (): boolean => {
+    const role = opts.getRole?.() ?? null;
+    return role !== null && TENANT_DATA_FORBIDDEN_ROLES.includes(role);
+  };
+
+  /**
+   * Throws if a platform-only role tries to touch tenant-scoped data.
+   * Platform-shared models (User/RefreshToken/AuditLog) are exempt from the
+   * hard-block — their reads get pinned to `tenantId: null` in scopeRead.
+   */
   const assertRoleAllowed = (model: string | undefined): void => {
     if (opts.shouldSkip() || !isTenantScoped(model)) return;
-    const role = opts.getRole?.() ?? null;
-    if (role !== null && TENANT_DATA_FORBIDDEN_ROLES.includes(role)) {
+    if (isForbiddenRole() && !isPlatformShared(model)) {
+      const role = opts.getRole?.() ?? null;
       throw new Error(
-        `Tenant isolation breach: role ${role} is platform-only and cannot access ` +
+        `Tenant isolation breach: role ${String(role)} is platform-only and cannot access ` +
           `tenant-scoped model "${String(model)}".`,
       );
     }
@@ -125,11 +183,16 @@ export function createTenantExtension(opts: TenantExtensionOptions) {
     model: string | undefined,
   ): void => {
     assertRoleAllowed(model);
-    if (!opts.shouldSkip() && isTenantScoped(model)) {
-      const tid = opts.getTenantId();
-      if (tid !== null && args) {
-        args.where = injectTenantWhere(args, tid).where;
-      }
+    if (opts.shouldSkip() || !isTenantScoped(model) || !args) return;
+    if (isForbiddenRole() && isPlatformShared(model)) {
+      // COMMERCIAL reads on platform-shared models only ever see platform
+      // rows (tenantId IS NULL) — never a school's users/sessions/audit.
+      args.where = injectTenantWhere(args, null).where;
+      return;
+    }
+    const tid = opts.getTenantId();
+    if (tid !== null) {
+      args.where = injectTenantWhere(args, tid).where;
     }
   };
 
