@@ -112,6 +112,18 @@ export interface TenantExtensionOptions {
 const TENANT_DATA_FORBIDDEN_ROLES: readonly UserRole[] = [UserRole.COMMERCIAL];
 
 /**
+ * Maximum number of rows a single list query may return when issued inside a
+ * regular tenant request context. Internal/system queries (no tenant context)
+ * and SUPER_ADMIN platform ops are exempt — see `clampTake`.
+ */
+export const MAX_PAGE_SIZE = 1000;
+
+/** Caps a requested page size to {@link MAX_PAGE_SIZE}. Pure, unit-tested. */
+export function cappedTake(take: number): number {
+  return take > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : take;
+}
+
+/**
  * Merges `tenantId` into an existing Prisma `where` clause without losing
  * unique-by-id semantics. We wrap both clauses in an explicit AND so that
  * Prisma keeps using its query planner correctly on simple cases.
@@ -177,6 +189,20 @@ export function createTenantExtension(opts: TenantExtensionOptions) {
     }
   };
 
+  /**
+   * Hard ceiling on `take` for list queries made inside a regular tenant
+   * request context. Stops a user-controlled page size (e.g. ?pageSize=100000
+   * threaded into `take`) from pulling unbounded result sets and exhausting
+   * memory. Trusted paths are exempt: SUPER_ADMIN platform ops (shouldSkip)
+   * and context-less system queries (seeds, exports, fan-out) — those set
+   * their own explicit caps where needed.
+   */
+  const clampTake = (args: { take?: unknown } | undefined): void => {
+    if (opts.shouldSkip() || !args || typeof args.take !== 'number') return;
+    if (opts.getTenantId() === null) return; // no tenant context → system query
+    args.take = cappedTake(args.take);
+  };
+
   /** Read/bulk-write ops: block forbidden roles, then inject tenantId. */
   const scopeRead = (
     args: { where?: Record<string, unknown> } | undefined,
@@ -202,6 +228,7 @@ export function createTenantExtension(opts: TenantExtensionOptions) {
       $allModels: {
         async findMany({ args, query, model }) {
           scopeRead(args, model);
+          clampTake(args);
           return query(args);
         },
         async findFirst({ args, query, model }) {

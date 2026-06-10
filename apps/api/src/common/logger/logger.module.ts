@@ -26,12 +26,34 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
                 'req.body.newPassword',
                 'req.body.passwordHash',
                 'req.body.refreshToken',
+                'req.body.token',
                 'res.headers["set-cookie"]',
+                // Credentials / tokens anywhere in the tree.
                 '*.password',
                 '*.passwordHash',
                 '*.refreshToken',
+                '*.accessToken',
+                '*.token',
+                '*.tokenHash',
+                // Sensitive domain PII — never belongs in logs (RGPD + santé).
+                // Health: medical free-text, allergies, conditions, treatments.
+                '*.medicalNotes',
+                '*.allergies',
+                '*.medicalConditions',
+                '*.medications',
+                '*.treatment',
+                '*.diagnosis',
+                // Payroll / finance amounts tied to a person.
+                '*.baseSalary',
+                '*.salary',
+                '*.netSalary',
+                '*.grossSalary',
+                // Notification payloads can carry any of the above.
+                '*.data',
               ],
               censor: '***REDACTED***',
+              // Don't crash logging if a redact path doesn't resolve.
+              remove: false,
             },
             transport: isProduction
               ? undefined
