@@ -13,6 +13,11 @@ export class CheckoutResponseDto {
   @ApiProperty() orderNumber!: string;
   @ApiProperty({ description: 'Hosted payment page URL — redirect the customer here' })
   redirectUrl!: string;
+  @ApiProperty({ description: 'Active students billed (price is per student)' })
+  studentCount!: number;
+  @ApiProperty({ description: 'Total charged = plan price × studentCount (TND)' })
+  amount!: string;
+  @ApiProperty() currency!: string;
 }
 
 export class PaymentReturnResponseDto {

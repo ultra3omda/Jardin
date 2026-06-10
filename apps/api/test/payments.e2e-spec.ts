@@ -21,6 +21,9 @@ const TENANT_SLUG = 'gtm-pay-a';
 const EMAIL_DOMAIN = 'gtm-pay-test.fr';
 const PASSWORD = 'GtmPayTest1234!';
 const PLAN_CODE = 'gtm-pay-std-monthly';
+const CAPPED_PLAN_CODE = 'gtm-pay-starter-monthly';
+const STUDENT_COUNT = 3;
+const PER_STUDENT_PRICE = 6; // matches PLAN_CODE price above
 
 interface Actor {
   id: string;
@@ -62,9 +65,35 @@ describe('Payments (e2e)', () => {
         code: PLAN_CODE,
         name: 'Standard mensuel',
         interval: 'MONTHLY',
-        price: new Prisma.Decimal('49.000'),
+        price: new Prisma.Decimal('6.000'), // per student
         currency: 'TND',
+        maxStudents: 200,
       },
+    });
+    // A tiny tier-capped plan to exercise PLAN_STUDENT_LIMIT_EXCEEDED.
+    await prisma.subscriptionPlan.create({
+      data: {
+        id: createId(),
+        code: CAPPED_PLAN_CODE,
+        name: 'Starter mensuel',
+        interval: 'MONTHLY',
+        price: new Prisma.Decimal('7.000'),
+        currency: 'TND',
+        maxStudents: 2,
+      },
+    });
+    // Seed STUDENT_COUNT active students so per-student billing has a base.
+    await prisma.student.createMany({
+      data: Array.from({ length: STUDENT_COUNT }, (_, i) => ({
+        id: createId(),
+        tenantId,
+        firstName: `Pay${i}`,
+        lastName: 'Student',
+        dateOfBirth: new Date('2018-01-01'),
+        sex: i % 2 === 0 ? 'F' : 'M',
+        classroom: 'CP',
+        parentEmail: `pay${i}@${EMAIL_DOMAIN}`,
+      })),
     });
 
     const pw = await bcrypt.hash(PASSWORD, 4);
@@ -93,6 +122,9 @@ describe('Payments (e2e)', () => {
       .expect(201);
     expect(checkout.body.orderNumber).toMatch(/^SUB/);
     expect(checkout.body.redirectUrl).toContain('mock=1');
+    // Per-student billing: total = price × active student count.
+    expect(checkout.body.studentCount).toBe(STUDENT_COUNT);
+    expect(Number(checkout.body.amount)).toBeCloseTo(PER_STUDENT_PRICE * STUDENT_COUNT, 3);
     const orderNumber = checkout.body.orderNumber as string;
 
     // ClicToPay S2S callback — must 200; server re-verifies via getStatus.
@@ -118,6 +150,16 @@ describe('Payments (e2e)', () => {
       .expect(200);
     const tx2 = await prisma.paymentTransaction.findUnique({ where: { orderNumber } });
     expect(tx2?.status).toBe('PAID');
+  });
+
+  it('rejects checkout when the tier student cap is exceeded (400)', async () => {
+    // CAPPED_PLAN_CODE allows max 2 students; the tenant has STUDENT_COUNT (3).
+    const res = await request(app.getHttpServer())
+      .post('/api/payments/checkout')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ planCode: CAPPED_PLAN_CODE })
+      .expect(400);
+    expect(res.body.code).toBe('PLAN_STUDENT_LIMIT_EXCEEDED');
   });
 
   it('return rejects a malformed orderNumber (400, no gateway round-trip)', async () => {
@@ -177,7 +219,12 @@ async function cleanup(prisma: PrismaService): Promise<void> {
   await prisma.tenantSubscription
     .deleteMany({ where: { tenant: { slug: TENANT_SLUG } } })
     .catch(() => undefined);
-  await prisma.subscriptionPlan.deleteMany({ where: { code: PLAN_CODE } }).catch(() => undefined);
+  await prisma.subscriptionPlan
+    .deleteMany({ where: { code: { in: [PLAN_CODE, CAPPED_PLAN_CODE] } } })
+    .catch(() => undefined);
+  await prisma.student
+    .deleteMany({ where: { tenant: { slug: TENANT_SLUG } } })
+    .catch(() => undefined);
   await prisma.refreshToken
     .deleteMany({ where: { user: { email: { endsWith: `@${EMAIL_DOMAIN}` } } } })
     .catch(() => undefined);

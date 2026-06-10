@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
+import { Prisma } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -45,7 +46,14 @@ export class PaymentsService {
   /** SCHOOL_ADMIN/SUPER_ADMIN starts a subscription payment for their tenant. */
   /** Active subscription plans offered to schools. */
   async listPlans(): Promise<
-    Array<{ code: string; name: string; interval: string; price: string; currency: string }>
+    Array<{
+      code: string;
+      name: string;
+      interval: string;
+      price: string;
+      currency: string;
+      maxStudents: number | null;
+    }>
   > {
     const plans = await this.prisma.subscriptionPlan.findMany({
       where: { active: true },
@@ -55,8 +63,9 @@ export class PaymentsService {
       code: p.code,
       name: p.name,
       interval: p.interval,
-      price: p.price.toString(),
+      price: p.price.toString(), // per-student TND
       currency: p.currency,
+      maxStudents: p.maxStudents,
     }));
   }
 
@@ -67,8 +76,24 @@ export class PaymentsService {
     });
     if (!plan) throw new NotFoundException({ code: 'PLAN_NOT_FOUND' });
 
+    // Per-student billing: total = plan price × the tenant's active students.
+    // student.count() is tenant-scoped automatically (the caller is a
+    // SCHOOL_ADMIN inside their tenant context).
+    const studentCount = await this.prisma.student.count({ where: { deletedAt: null } });
+    if (studentCount < 1) {
+      throw new BadRequestException({ code: 'NO_STUDENTS_TO_BILL' });
+    }
+    // Enforce the tier's student cap (maxStudents null = unlimited / Pro).
+    if (plan.maxStudents !== null && studentCount > plan.maxStudents) {
+      throw new BadRequestException({
+        code: 'PLAN_STUDENT_LIMIT_EXCEEDED',
+        message: `Ce palier est limité à ${plan.maxStudents} élèves (vous en avez ${studentCount}). Choisissez un palier supérieur.`,
+      });
+    }
+
     const orderNumber = `SUB${createId().slice(0, 24)}`; // ≤ 32 chars, unique
-    const amountMillimes = Math.round(Number(plan.price) * 1000);
+    const totalPrice = new Prisma.Decimal(plan.price).mul(studentCount);
+    const amountMillimes = Math.round(Number(totalPrice) * 1000);
     if (amountMillimes < 1) throw new BadRequestException({ code: 'INVALID_AMOUNT' });
 
     const tx = await this.prisma.paymentTransaction.create({
@@ -76,7 +101,7 @@ export class PaymentsService {
         id: createId(),
         tenantId: user.tenantId,
         orderNumber,
-        amount: plan.price,
+        amount: totalPrice,
         currency: plan.currency,
         status: 'PENDING',
       },
@@ -107,7 +132,13 @@ export class PaymentsService {
       data: { gatewayOrderId: result.gatewayOrderId },
     });
 
-    return { orderNumber, redirectUrl: result.redirectUrl };
+    return {
+      orderNumber,
+      redirectUrl: result.redirectUrl,
+      studentCount,
+      amount: totalPrice.toString(),
+      currency: plan.currency,
+    };
   }
 
   /** Browser return — re-verifies server-side (never trusts the redirect alone). */

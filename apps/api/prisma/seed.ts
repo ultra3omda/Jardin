@@ -1169,9 +1169,62 @@ async function seedAcademicLife(
   }
 }
 
+/**
+ * Public subscription catalogue (global, not tenant-scoped). Prices are
+ * PER STUDENT, charged at checkout as price × the tenant's active student
+ * count. Seeded in every environment (incl. production) so the billing flow
+ * is never empty. Idempotent (upsert by code). Keep in sync with the landing
+ * pricing in apps/web/messages/*.json.
+ */
+const SUBSCRIPTION_PLANS: Array<{
+  code: string;
+  name: string;
+  interval: 'MONTHLY' | 'YEARLY';
+  price: string; // TND per student, Decimal(10,3)
+  maxStudents: number | null;
+}> = [
+  { code: 'starter-monthly', name: 'Starter (mensuel)', interval: 'MONTHLY', price: '7.000', maxStudents: 50 },
+  { code: 'standard-monthly', name: 'Standard (mensuel)', interval: 'MONTHLY', price: '6.000', maxStudents: 200 },
+  { code: 'pro-monthly', name: 'Pro (mensuel)', interval: 'MONTHLY', price: '5.000', maxStudents: null },
+  { code: 'starter-annual', name: 'Starter (annuel)', interval: 'YEARLY', price: '59.000', maxStudents: 50 },
+  { code: 'standard-annual', name: 'Standard (annuel)', interval: 'YEARLY', price: '49.000', maxStudents: 200 },
+  { code: 'pro-annual', name: 'Pro (annuel)', interval: 'YEARLY', price: '39.000', maxStudents: null },
+];
+
+async function seedSubscriptionPlans(): Promise<void> {
+  for (const plan of SUBSCRIPTION_PLANS) {
+    await prisma.subscriptionPlan.upsert({
+      where: { code: plan.code },
+      update: {
+        name: plan.name,
+        interval: plan.interval,
+        price: new Prisma.Decimal(plan.price),
+        currency: 'TND',
+        maxStudents: plan.maxStudents,
+        active: true,
+      },
+      create: {
+        id: createId(),
+        code: plan.code,
+        name: plan.name,
+        interval: plan.interval,
+        price: new Prisma.Decimal(plan.price),
+        currency: 'TND',
+        maxStudents: plan.maxStudents,
+        active: true,
+      },
+    });
+  }
+  console.log(`  Seeded ${SUBSCRIPTION_PLANS.length} subscription plans (per-student TND).`);
+}
+
 async function main(): Promise<void> {
   const password = generateSeedPassword();
   const passwordHash = await bcrypt.hash(password, 12);
+
+  // Global subscription catalogue — needed in every environment so checkout
+  // never sees an empty plan list. Independent of demo content.
+  await seedSubscriptionPlans();
 
   // Sales/marketing demo fixtures (commercial agent, signed contract, demo
   // requests) are opt-in. They are NEVER created in production so the
