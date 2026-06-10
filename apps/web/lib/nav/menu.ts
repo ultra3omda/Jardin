@@ -262,7 +262,7 @@ function platformNav(): NavSection[] {
       { id: 'analytics', label: 'Analytics',  href: '/admin/analytics', icon: ICONS.audit },
     ]},
     { id: 'compte', label: 'Compte', items: [
-      { id: 'branding', label: 'Apparence globale', href: '/admin/branding', icon: ICONS.branding },
+      { id: 'profile', label: 'Profil', href: '/profile', icon: ICONS.branding },
     ]},
   ];
 }
