@@ -24,6 +24,14 @@ import type {
 
 const CURRENCY_TND = '788';
 
+/**
+ * Order numbers we mint look like `SUB` + a 24-char cuid2 slice (lowercase
+ * alphanumeric). The return + callback endpoints are public and take this as
+ * an untrusted query param, so we validate the shape before any DB lookup or
+ * gateway round-trip — this cheaply rejects probing/enumeration garbage.
+ */
+const ORDER_NUMBER_RE = /^SUB[0-9a-z]{24}$/;
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -104,16 +112,23 @@ export class PaymentsService {
 
   /** Browser return — re-verifies server-side (never trusts the redirect alone). */
   async handleReturn(orderNumber: string): Promise<PaymentReturnResponseDto> {
+    if (!ORDER_NUMBER_RE.test(orderNumber ?? '')) {
+      throw new BadRequestException({ code: 'INVALID_ORDER_NUMBER' });
+    }
     const status = await this.verifyAndApply(orderNumber);
     return { orderNumber, status };
   }
 
   /**
    * ClicToPay S2S callback. Caller must 200 quickly; we verify via getStatus
-   * (callback is a signal, not proof) and apply idempotently.
+   * (callback is a signal, not proof) and apply idempotently. ClicToPay's REST
+   * callback carries no HMAC — the security boundary is the server-side
+   * getStatus re-check below, which is why a forged callback cannot mark a
+   * transaction PAID. We still validate the orderNumber shape and swallow the
+   * outcome so probing never leaks state via the response.
    */
   async handleCallback(orderNumber: string | undefined): Promise<void> {
-    if (!orderNumber) return;
+    if (!orderNumber || !ORDER_NUMBER_RE.test(orderNumber)) return;
     await this.verifyAndApply(orderNumber).catch((e) =>
       this.logger.error(`callback verify failed for ${orderNumber}: ${String(e)}`),
     );

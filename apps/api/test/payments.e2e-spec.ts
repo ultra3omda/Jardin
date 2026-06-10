@@ -119,6 +119,27 @@ describe('Payments (e2e)', () => {
     const tx2 = await prisma.paymentTransaction.findUnique({ where: { orderNumber } });
     expect(tx2?.status).toBe('PAID');
   });
+
+  it('return rejects a malformed orderNumber (400, no gateway round-trip)', async () => {
+    await request(app.getHttpServer())
+      .get('/api/payments/return?orderNumber=not-a-real-order')
+      .expect(400);
+  });
+
+  it('callback with a malformed orderNumber is a silent 200 (no state leak)', async () => {
+    await request(app.getHttpServer())
+      .get('/api/payments/callback?orderNumber=%27%20OR%201=1--&status=1')
+      .expect(200);
+  });
+
+  it('callback for an unknown but well-formed orderNumber stays 200 (probe-safe)', async () => {
+    const probe = `SUB${createId().slice(0, 24)}`;
+    await request(app.getHttpServer())
+      .get(`/api/payments/callback?orderNumber=${probe}&status=1`)
+      .expect(200);
+    const leaked = await prisma.paymentTransaction.findUnique({ where: { orderNumber: probe } });
+    expect(leaked).toBeNull();
+  });
 });
 
 async function seedUser(
