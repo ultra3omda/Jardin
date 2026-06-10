@@ -5,6 +5,7 @@ import {
   deleteRefreshToken,
   deleteTenantSlug,
 } from '@/lib/auth/secure-storage';
+import { deletePushTokenFromServer } from '@/lib/notifications/push';
 import type { AuthSessionResponse } from '@/lib/auth/types';
 
 export interface LoginInput {
@@ -56,6 +57,9 @@ export async function refreshSession(): Promise<AuthSessionResponse | null> {
 
 export async function logout(): Promise<void> {
   const refreshToken = await getRefreshToken();
+  // Stop pushing to this device. Must run while the access token is still set
+  // (it authenticates the DELETE). Best-effort — never blocks logout.
+  await deletePushTokenFromServer();
   try {
     // L'API exige le refreshToken dans le body pour le révoquer
     if (refreshToken) {
