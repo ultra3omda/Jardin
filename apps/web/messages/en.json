@@ -94,12 +94,12 @@
     },
     "pricing": {
       "title": "Simple, per-student pricing",
-      "subtitle": "Prices excl. tax in TND. Annual commitment. 30-day trial, no credit card.",
+      "subtitle": "Prices excl. tax in TND, per student. Billed monthly or annually (up to 2 months free). 30-day trial, no credit card.",
       "popular": "Most popular",
       "tiers": {
-        "starter": { "name": "Starter", "price": "5", "unit": "TND / student / month", "limit": "Up to 50 students", "features": ["Full student CRUD", "Basic communication", "Email support"] },
-        "standard": { "name": "Standard", "price": "4", "unit": "TND / student / month", "limit": "Up to 200 students", "features": ["Everything in Starter", "Bulk CSV import", "Student photos", "Multi-role (teachers, staff, parents)", "Priority support"] },
-        "pro": { "name": "Pro", "price": "3", "unit": "TND / student / month", "limit": "Unlimited students", "features": ["Everything in Standard", "Personalised onboarding", "99.9% SLA", "API access"] }
+        "starter": { "name": "Starter", "price": "7", "unit": "TND / student / month", "annualNote": "or 59 TND / student / year", "limit": "Up to 50 students", "features": ["Full student CRUD", "Basic communication", "Email support"] },
+        "standard": { "name": "Standard", "price": "6", "unit": "TND / student / month", "annualNote": "or 49 TND / student / year", "limit": "Up to 200 students", "features": ["Everything in Starter", "Bulk CSV import", "Student photos", "Multi-role (teachers, staff, parents)", "Priority support"] },
+        "pro": { "name": "Pro", "price": "5", "unit": "TND / student / month", "annualNote": "or 39 TND / student / year", "limit": "Unlimited students", "features": ["Everything in Standard", "Personalised onboarding", "99.9% SLA", "API access"] }
       },
       "cta": "Request a demo"
     },
@@ -139,7 +139,7 @@
       "title": "Frequently asked questions",
       "subtitle": "Everything principals ask us during demos.",
       "items": [
-        { "q": "How much does Klasso cost for my school?", "a": "Pricing is per student per month (5/4/3 TND excl. tax by tier). Annual commitment, 30-day free trial with no card." },
+        { "q": "How much does Klasso cost for my school?", "a": "Pricing is per student (7/6/5 TND excl. tax / month by tier, or 59/49/39 TND / year on annual billing). Billed monthly or annually, 30-day free trial with no card." },
         { "q": "How do I migrate from my current Excel files?", "a": "Klasso includes bulk CSV import (V2 — already delivered). You download a template, fill it in, and upload it: all your students are created in seconds." },
         { "q": "Can parents access Klasso?", "a": "A dedicated parent app is coming in summer 2026 (roadmap V3). In the meantime, you can export per-student PDF records." },
         { "q": "Does my data stay in Tunisia?", "a": "Primary hosting in the EU (Neon Postgres + Vercel) + edge CDN with a local TN point of presence. Encrypted daily backups." },

@@ -94,12 +94,12 @@
     },
     "pricing": {
       "title": "Precios simples, por alumno",
-      "subtitle": "Precios sin impuestos en TND. Compromiso anual. Prueba de 30 días sin tarjeta.",
+      "subtitle": "Precios sin impuestos en TND, por alumno. Facturación mensual o anual (hasta 2 meses gratis). Prueba de 30 días sin tarjeta.",
       "popular": "El más popular",
       "tiers": {
-        "starter": { "name": "Starter", "price": "5", "unit": "TND / alumno / mes", "limit": "Hasta 50 alumnos", "features": ["CRUD completo de alumnos", "Comunicación básica", "Soporte por email"] },
-        "standard": { "name": "Standard", "price": "4", "unit": "TND / alumno / mes", "limit": "Hasta 200 alumnos", "features": ["Todo lo de Starter", "Importación masiva por CSV", "Fotos de alumnos", "Multirrol (profesores, personal, padres)", "Soporte prioritario"] },
-        "pro": { "name": "Pro", "price": "3", "unit": "TND / alumno / mes", "limit": "Alumnos ilimitados", "features": ["Todo lo de Standard", "Onboarding personalizado", "SLA 99,9%", "Acceso a la API"] }
+        "starter": { "name": "Starter", "price": "7", "unit": "TND / alumno / mes", "annualNote": "o 59 TND / alumno / año", "limit": "Hasta 50 alumnos", "features": ["CRUD completo de alumnos", "Comunicación básica", "Soporte por email"] },
+        "standard": { "name": "Standard", "price": "6", "unit": "TND / alumno / mes", "annualNote": "o 49 TND / alumno / año", "limit": "Hasta 200 alumnos", "features": ["Todo lo de Starter", "Importación masiva por CSV", "Fotos de alumnos", "Multirrol (profesores, personal, padres)", "Soporte prioritario"] },
+        "pro": { "name": "Pro", "price": "5", "unit": "TND / alumno / mes", "annualNote": "o 39 TND / alumno / año", "limit": "Alumnos ilimitados", "features": ["Todo lo de Standard", "Onboarding personalizado", "SLA 99,9%", "Acceso a la API"] }
       },
       "cta": "Solicitar una demo"
     },
@@ -139,7 +139,7 @@
       "title": "Preguntas frecuentes",
       "subtitle": "Todo lo que los directores nos preguntan en las demos.",
       "items": [
-        { "q": "¿Cuánto cuesta Klasso para mi escuela?", "a": "El precio es por alumno y mes (5/4/3 TND sin impuestos según el nivel). Compromiso anual, 30 días de prueba gratis sin tarjeta." },
+        { "q": "¿Cuánto cuesta Klasso para mi escuela?", "a": "El precio es por alumno (7/6/5 TND sin impuestos / mes según el nivel, o 59/49/39 TND / año con facturación anual). Facturación mensual o anual, 30 días de prueba gratis sin tarjeta." },
         { "q": "¿Cómo migro desde mis archivos de Excel actuales?", "a": "Klasso incluye importación masiva por CSV (V2 — ya entregada). Descargas una plantilla, la rellenas y la subes: todos tus alumnos se crean en segundos." },
         { "q": "¿Pueden los padres acceder a Klasso?", "a": "Una app dedicada para padres llega en el verano de 2026 (V3 de la hoja de ruta). Mientras tanto, puedes exportar fichas PDF por alumno." },
         { "q": "¿Mis datos permanecen en Túnez?", "a": "Alojamiento primario en la UE (Neon Postgres + Vercel) + CDN edge con punto de presencia local en TN. Copias de seguridad diarias cifradas." },

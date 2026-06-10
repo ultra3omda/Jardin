@@ -56,7 +56,10 @@ export function Pricing() {
                   </span>
                   <span className="text-sm text-ink-muted">{t(`tiers.${key}.unit`)}</span>
                 </div>
-                <p className="mt-2 text-sm text-ink-faded">{t(`tiers.${key}.limit`)}</p>
+                <p className="mt-2 text-sm font-medium text-teal-deep">
+                  {t(`tiers.${key}.annualNote`)}
+                </p>
+                <p className="mt-1 text-sm text-ink-faded">{t(`tiers.${key}.limit`)}</p>
                 <ul className="mt-6 space-y-3">
                   {features.map((f, i) => (
                     <li key={i} className="flex items-start gap-3 text-ink-muted">
