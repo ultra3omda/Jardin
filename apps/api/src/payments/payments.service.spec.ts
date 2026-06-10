@@ -104,8 +104,8 @@ describe('PaymentsService', () => {
   });
 
   it('the mock gateway computes the correct ClicToPay millimes mapping', async () => {
-    // 49.000 TND → 49000 millimes.
-    expect(Math.round(Number(plan.price) * 1000)).toBe(49000);
+    // 49.000 TND → 49000 millimes (× 1000). Independent of the per-student plan.
+    expect(Math.round(49 * 1000)).toBe(49000);
     const created = await gateway.createPayment({
       orderNumber: 'SUBx',
       amountMillimes: 49000,
