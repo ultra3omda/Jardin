@@ -9,9 +9,11 @@ import {
   Patch,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
+import type { Response } from 'express';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
@@ -84,6 +86,23 @@ export class BillingController {
     @Param('id') id: string,
   ): Promise<InvoiceResponseDto> {
     return this.service.findOne(user.tenantId!, id);
+  }
+
+  @Get('invoices/:id/pdf')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PARENT)
+  @ApiOperation({
+    summary: 'Download the invoice PDF (parents → own children only)',
+  })
+  @ApiResponse({ status: 200, description: 'application/pdf' })
+  async pdf(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const pdf = await this.service.getInvoicePdf(user.tenantId!, id, user);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="facture_${id}.pdf"`);
+    res.send(pdf);
   }
 
   @Patch('invoices/:id')

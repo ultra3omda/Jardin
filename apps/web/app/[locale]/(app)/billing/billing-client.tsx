@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   getBillingStats,
   listInvoices,
+  downloadInvoicePdf,
   formatAmount,
   formatDate,
   invoiceNumber,
@@ -14,6 +15,7 @@ import {
   INVOICE_STATUS_LABELS,
 } from '@/lib/api/billing';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { useToast } from '@/lib/ui/use-toast';
 import { InvoiceStatusBadge } from './_components/invoice-status-badge';
 import { CreateInvoiceModal } from './_components/create-invoice-modal';
 import { RecordPaymentModal } from './_components/record-payment-modal';
@@ -79,6 +81,20 @@ export function BillingClient({ initialCreateOpen = false }: Props) {
   const [debounced, setDebounced] = useState('');
   const [createOpen, setCreateOpen] = useState(initialCreateOpen);
   const [paymentTarget, setPaymentTarget] = useState<Invoice | null>(null);
+  const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
+  const toast = useToast();
+
+  async function handleDownloadPdf(invoiceId: string): Promise<void> {
+    if (!accessToken) return;
+    setPdfBusyId(invoiceId);
+    try {
+      await downloadInvoicePdf(accessToken, invoiceId);
+    } catch {
+      toast.error('Téléchargement du PDF impossible.');
+    } finally {
+      setPdfBusyId(null);
+    }
+  }
 
   // Debounce search
   useEffect(() => {
@@ -257,6 +273,16 @@ export function BillingClient({ initialCreateOpen = false }: Props) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          aria-label={`Télécharger le PDF de la facture ${rowNum}`}
+                          title="Télécharger le PDF"
+                          onClick={() => void handleDownloadPdf(inv.id)}
+                          disabled={pdfBusyId === inv.id}
+                          className="rounded p-1 text-base hover:bg-muted disabled:opacity-50"
+                        >
+                          {pdfBusyId === inv.id ? '⏳' : '📄'}
+                        </button>
                         <button
                           type="button"
                           aria-label={`Voir la facture ${rowNum}`}

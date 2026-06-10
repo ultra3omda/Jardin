@@ -52,11 +52,20 @@ async function passthrough(
   const body: BodyInit | undefined = hasBody ? await req.text() : undefined;
 
   const upstream = await fetch(target, { method, headers, body });
+  const upstreamCt = upstream.headers.get('content-type') ?? 'application/json';
+
+  // Binary PDF passthrough (invoice download) — never text-decode it.
+  if (upstreamCt.startsWith('application/pdf')) {
+    const buf = await upstream.arrayBuffer();
+    const respHeaders: Record<string, string> = { 'Content-Type': upstreamCt };
+    const disposition = upstream.headers.get('content-disposition');
+    if (disposition) respHeaders['Content-Disposition'] = disposition;
+    return new NextResponse(buf, { status: upstream.status, headers: respHeaders });
+  }
+
   const text = await upstream.text();
   return new NextResponse(text || null, {
     status: upstream.status,
-    headers: {
-      'Content-Type': upstream.headers.get('content-type') ?? 'application/json',
-    },
+    headers: { 'Content-Type': upstreamCt },
   });
 }

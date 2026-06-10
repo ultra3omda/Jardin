@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { downloadInvoicePdf } from '@/lib/api/billing';
 
 interface Invoice {
   id: string;
@@ -174,6 +175,7 @@ export default function PaymentsPage() {
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3">Échéance</th>
                 <th className="px-4 py-3">Payé le</th>
+                <th className="px-4 py-3 text-right">Facture</th>
               </tr>
             </thead>
             <tbody>
@@ -191,6 +193,19 @@ export default function PaymentsPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {inv.paidAt ? new Date(inv.paidAt).toLocaleDateString('fr-FR') : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (token) void downloadInvoicePdf(token, inv.id).catch(() => undefined);
+                      }}
+                      aria-label={`Télécharger la facture ${inv.title}`}
+                      title="Télécharger le PDF"
+                      className="rounded p-1 text-base hover:bg-slate-100"
+                    >
+                      📄
+                    </button>
                   </td>
                 </tr>
               ))}
