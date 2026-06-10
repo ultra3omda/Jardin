@@ -6,6 +6,7 @@ import { colors } from '@klasso/ui-mobile';
 import { ALL_TAB_NAMES, NON_TAB_ROUTES, getTabsForRole, type MobileTab } from '@/lib/tabs';
 import { useUnreadCount } from '@/lib/api/notifications';
 import { useAuthStore } from '@/lib/auth/store';
+import { usePushNotifications } from '@/lib/notifications/use-push-notifications';
 
 /** Inactive "-outline" icon → filled variant when active. */
 function filledName(name: string): string {
@@ -17,6 +18,10 @@ export default function AppLayout() {
   const tabs = getTabsForRole(role ?? 'STAFF');
   const { data: unreadData } = useUnreadCount();
   const unreadCount = unreadData?.count ?? 0;
+
+  // Register the device push token and handle incoming/ tapped notifications
+  // for the authenticated session.
+  usePushNotifications();
 
   // Map every potential tab route → its config for the current role (or null
   // when the role doesn't use it, so we can hide it with href:null).
