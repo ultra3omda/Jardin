@@ -200,6 +200,25 @@ export async function recordPayment(
   });
 }
 
+/**
+ * Fetch the invoice PDF (auth-gated, binary) and open it in a new tab.
+ * The API enforces access (SCHOOL_ADMIN any tenant invoice; PARENT own
+ * children only). Throws on a non-OK response so callers can surface an error.
+ */
+export async function downloadInvoicePdf(token: string, invoiceId: string): Promise<void> {
+  const res = await fetch(`${BASE}/invoices/${invoiceId}/pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`PDF download failed (${res.status})`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  // Revoke after a tick so the new tab has time to read the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 // ─── Formatting helpers ───────────────────────────────────────────────────────
 
 /** Format a number as a currency string with thousands separator. */

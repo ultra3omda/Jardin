@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
+import { InvoicePdfService } from './invoice-pdf.service';
 import { BillingService } from './billing.service';
 import type { CreateInvoiceDto } from './dto/billing.dto';
 
@@ -83,6 +84,10 @@ function buildPrismaMock() {
     },
     parentStudent: {
       findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    tenant: {
+      findFirst: vi.fn().mockResolvedValue({ name: 'École Démo' }),
     },
     payment: {
       create: vi.fn(),
@@ -104,6 +109,7 @@ describe('BillingService', () => {
         BillingService,
         { provide: PrismaService, useValue: prisma },
         { provide: NotificationFanoutService, useValue: { fanoutInvoice: vi.fn() } },
+        { provide: InvoicePdfService, useValue: { render: vi.fn().mockResolvedValue(Buffer.from('pdf')) } },
       ],
     }).compile();
 
@@ -386,6 +392,62 @@ describe('BillingService', () => {
       prisma.invoice.aggregate.mock.calls.forEach((call: any[]) => {
         expect((call[0] as { where: { tenantId: string } }).where.tenantId).toBe(TENANT_B);
       });
+    });
+  });
+
+  // ─── getInvoicePdf ───────────────────────────────────────────────────────────
+
+  describe('getInvoicePdf', () => {
+    const admin = { id: 'admin_1', email: 'a@t.test', tenantId: TENANT_A, role: 'SCHOOL_ADMIN' } as any;
+    const parent = { id: 'parent_1', email: 'p@t.test', tenantId: TENANT_A, role: 'PARENT' } as any;
+
+    it('renders a PDF for a SCHOOL_ADMIN and bills the balance correctly', async () => {
+      prisma.invoice.findFirst.mockResolvedValueOnce(
+        makeInvoice({
+          amount: dec(350),
+          payments: [makePayment(100)],
+          student: { id: 'stu_1', firstName: 'Salma', lastName: 'Ben Ali' },
+        } as any),
+      );
+      const pdfService = (service as any).invoicePdf as { render: ReturnType<typeof vi.fn> };
+
+      const buf = await service.getInvoicePdf(TENANT_A, 'inv_1', admin);
+
+      expect(Buffer.isBuffer(buf)).toBe(true);
+      const props = pdfService.render.mock.calls[0]![0];
+      expect(props.total).toBe(350);
+      expect(props.paidTotal).toBe(100);
+      expect(props.balance).toBe(250);
+      expect(props.billedToName).toBe('Salma Ben Ali');
+      expect(props.schoolName).toBe('École Démo');
+    });
+
+    it('throws NotFound for an invoice outside the tenant', async () => {
+      prisma.invoice.findFirst.mockResolvedValueOnce(null);
+      await expect(service.getInvoicePdf(TENANT_A, 'inv_x', admin)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('forbids a PARENT from downloading an invoice that is not their child’s', async () => {
+      prisma.invoice.findFirst.mockResolvedValueOnce(
+        makeInvoice({ studentId: 'someone_elses_kid' } as any),
+      );
+      prisma.parentStudent.count.mockResolvedValueOnce(0); // not linked
+      const err = await service.getInvoicePdf(TENANT_A, 'inv_1', parent).catch((e) => e);
+      expect(err?.getResponse?.().code).toBe('NOT_YOUR_INVOICE');
+    });
+
+    it('lets a PARENT download their own child’s invoice', async () => {
+      prisma.invoice.findFirst.mockResolvedValueOnce(
+        makeInvoice({
+          studentId: 'my_kid',
+          student: { id: 'my_kid', firstName: 'Omar', lastName: 'K.' },
+        } as any),
+      );
+      prisma.parentStudent.count.mockResolvedValueOnce(1); // linked
+      const buf = await service.getInvoicePdf(TENANT_A, 'inv_1', parent);
+      expect(Buffer.isBuffer(buf)).toBe(true);
     });
   });
 });

@@ -1,14 +1,24 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
-import { InvoiceStatus, Prisma } from '@prisma/client';
+import { InvoiceStatus, Prisma, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
+import { InvoicePdfService } from './invoice-pdf.service';
+
+const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  PENDING: 'En attente',
+  PARTIAL: 'Partiellement payée',
+  PAID: 'Payée',
+  OVERDUE: 'En retard',
+  CANCELLED: 'Annulée',
+};
 import type {
   BillingDashboardStatsDto,
   CreateInvoiceDto,
@@ -26,7 +36,69 @@ export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
+    private readonly invoicePdf: InvoicePdfService,
   ) {}
+
+  // ───── PDF ─────
+
+  /**
+   * Render a branded invoice PDF. SCHOOL_ADMIN can fetch any invoice in their
+   * tenant; a PARENT may only fetch an invoice billed to one of their own
+   * children (tenant-scoped + ownership-checked).
+   */
+  async getInvoicePdf(tenantId: string, id: string, user: AuthenticatedUser): Promise<Buffer> {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id, tenantId },
+      include: {
+        items: true,
+        payments: true,
+        student: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!invoice) throw new NotFoundException({ code: 'INVOICE_NOT_FOUND' });
+
+    if (user.role === UserRole.PARENT) {
+      const isOwnChild =
+        invoice.studentId !== null &&
+        (await this.prisma.parentStudent.count({
+          where: { tenantId, parentUserId: user.id, studentId: invoice.studentId },
+        })) > 0;
+      if (!isOwnChild) throw new ForbiddenException({ code: 'NOT_YOUR_INVOICE' });
+    }
+
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    const total = Number(invoice.amount);
+    const paidTotal = invoice.payments.reduce((s, p) => s + Number(p.amount), 0);
+    const billedToName = invoice.student
+      ? `${invoice.student.firstName} ${invoice.student.lastName}`.trim()
+      : null;
+
+    return this.invoicePdf.render({
+      schoolName: tenant?.name ?? 'Établissement',
+      invoiceNumber: `FAC-${invoice.id.slice(-8).toUpperCase()}`,
+      title: invoice.title,
+      statusLabel: INVOICE_STATUS_LABELS[invoice.status],
+      currency: invoice.currency,
+      issueDate: invoice.createdAt.toISOString(),
+      dueDate: invoice.dueDate.toISOString(),
+      billedToName,
+      items: invoice.items.map((it) => ({
+        label: it.label,
+        quantity: it.quantity,
+        unitPrice: Number(it.unitPrice),
+        amount: Number(it.amount),
+      })),
+      total,
+      paidTotal,
+      balance: Math.max(0, total - paidTotal),
+      notes: invoice.notes,
+      generatedAt: new Date().toISOString(),
+    });
+  }
 
   // ───── Queries ─────
 
