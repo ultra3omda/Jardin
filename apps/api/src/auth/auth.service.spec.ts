@@ -51,7 +51,11 @@ type PrismaMock = {
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
   };
-  auditLog: { create: ReturnType<typeof vi.fn> };
+  auditLog: {
+    create: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -60,7 +64,12 @@ function buildPrismaMock(): PrismaMock {
     tenant: { findUnique: vi.fn(), create: vi.fn() },
     user: { findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
     refreshToken: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    auditLog: { create: vi.fn().mockResolvedValue({}) },
+    auditLog: {
+      create: vi.fn().mockResolvedValue({}),
+      // Lockout check defaults: no prior success, zero recent failures.
+      findFirst: vi.fn().mockResolvedValue(null),
+      count: vi.fn().mockResolvedValue(0),
+    },
     $transaction: vi.fn(),
   };
 }
@@ -264,6 +273,47 @@ describe('AuthService', () => {
         data: { lastLoginAt: expect.any(Date) },
       });
       expect(prisma.refreshToken.create).toHaveBeenCalledOnce();
+    });
+
+    it('locks the account after too many recent failures (before bcrypt)', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 4);
+      prisma.user.findMany.mockResolvedValueOnce([
+        { ...baseUser, passwordHash, tenant: baseTenant },
+      ]);
+      // 10 recent failures since the last success → locked.
+      prisma.auditLog.count.mockResolvedValueOnce(10);
+
+      const err = await service
+        .login({ email: baseUser.email, password: 'correct-password' }, {})
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(ForbiddenException);
+      expect((err as ForbiddenException).getResponse()).toMatchObject({
+        code: 'ACCOUNT_TEMPORARILY_LOCKED',
+      });
+      // Locked out BEFORE issuing tokens, even with the correct password.
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: 'auth.login.locked' }),
+        }),
+      );
+    });
+
+    it('does not lock when recent failures are below the threshold', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 4);
+      prisma.user.findMany.mockResolvedValueOnce([
+        { ...baseUser, passwordHash, tenant: baseTenant },
+      ]);
+      prisma.auditLog.count.mockResolvedValueOnce(9); // below threshold
+      prisma.user.update.mockResolvedValueOnce({ ...baseUser, passwordHash });
+      prisma.refreshToken.create.mockResolvedValueOnce({});
+
+      const result = await service.login(
+        { email: baseUser.email, password: 'correct-password' },
+        {},
+      );
+      expect(result.accessToken).toBe('signed-access-token');
     });
   });
 

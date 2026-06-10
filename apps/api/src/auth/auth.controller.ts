@@ -57,6 +57,9 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  // Legit clients refresh often (token TTL is short), so keep this generous
+  // but bounded to curb token-stuffing.
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate the refresh token and issue a new access token' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
@@ -83,6 +86,7 @@ export class AuthController {
 
   @Public()
   @Post('email/verify')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Consume an email verification token (V1.5)' })
   @ApiResponse({ status: 200 })
@@ -95,6 +99,7 @@ export class AuthController {
   }
 
   @Post('email/resend')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiBearerAuth('access-token')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Resend the email verification email for the current user' })
@@ -108,6 +113,9 @@ export class AuthController {
 
   @Public()
   @Post('password/forgot')
+  // Tight: each call may send an email (Resend quota) and the anti-enumeration
+  // 204 must not become a free email-spam vector.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Request a password reset link (V1.5)',
@@ -121,6 +129,7 @@ export class AuthController {
 
   @Public()
   @Post('password/reset')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Consume a password reset token and set a new password (V1.5)',
