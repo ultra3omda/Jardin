@@ -234,10 +234,11 @@ export class StaffController {
         email: dto.email.toLowerCase().trim(),
         firstName: dto.firstName,
         lastName: dto.lastName,
+        phone: dto.phone?.trim() || null,
         passwordHash,
         role: UserRole.PARENT,
       },
-      select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, deletedAt: true },
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true, role: true, createdAt: true, deletedAt: true },
     });
     return { ...created, tempPassword };
   }

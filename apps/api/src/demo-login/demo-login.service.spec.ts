@@ -6,7 +6,21 @@ import { DemoLoginService } from './demo-login.service';
 function buildPrismaMock() {
   return {
     user: { findFirst: vi.fn(), upsert: vi.fn(), create: vi.fn() },
-    tenant: { findUnique: vi.fn(), upsert: vi.fn() },
+    tenant: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      // Brand re-sync path: echo back the tenant with the written brand, the
+      // way Prisma's update returns the fresh row.
+      update: vi.fn(async (args: { where: { id: string }; data: { brand: unknown } }) => ({
+        id: args.where.id,
+        name: 'Démo École Pilote',
+        slug: 'demo-ecole',
+        type: 'PRIMARY_SCHOOL',
+        status: 'ACTIVE',
+        onboardingCompletedAt: new Date(),
+        brand: args.data.brand,
+      })),
+    },
     auditLog: { create: vi.fn() },
   };
 }
@@ -71,6 +85,57 @@ describe('DemoLoginService', () => {
     expect(res.accessToken).toBe('access');
     expect(res.refreshToken).toBe('refresh');
     expect(auth.issueTokens).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-syncs the demo tenant brand when stale and serves the fresh one', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'u1',
+      tenantId: 't1',
+      email: 'admin@demo-ecole.klasso.tn',
+      firstName: 'Amadou',
+      lastName: 'Koné',
+      role: 'SCHOOL_ADMIN',
+      locale: 'fr',
+      // brand null = pre-DEMO_TENANT_BRANDS prod row → must be re-synced
+      tenant: { id: 't1', name: 'Démo École Pilote', slug: 'demo-ecole', type: 'PRIMARY_SCHOOL', brand: null },
+    });
+
+    const res = await service.demoLogin('admin-primary', '127.0.0.1');
+
+    expect(prisma.tenant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 't1' },
+        data: { brand: expect.objectContaining({ primaryColor: '#02a896' }) },
+      }),
+    );
+    expect((res.tenant?.brand as { primaryColor?: string })?.primaryColor).toBe('#02a896');
+
+    // Second login with the brand already in place → no further write.
+    prisma.tenant.update.mockClear();
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'u1',
+      tenantId: 't1',
+      email: 'admin@demo-ecole.klasso.tn',
+      firstName: 'Amadou',
+      lastName: 'Koné',
+      role: 'SCHOOL_ADMIN',
+      locale: 'fr',
+      tenant: {
+        id: 't1',
+        name: 'Démo École Pilote',
+        slug: 'demo-ecole',
+        type: 'PRIMARY_SCHOOL',
+        brand: {
+          primaryColor: '#02a896',
+          primaryHover: '#048275',
+          secondaryColor: '#048275',
+          emailHeaderColor: '#02a896',
+          logoUrl: 'https://ecole-saas.vercel.app/demo/logo-ecole.png',
+        },
+      },
+    });
+    await service.demoLogin('admin-primary', '127.0.0.1');
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 
   it('writes audit log with persona + ip on success', async () => {

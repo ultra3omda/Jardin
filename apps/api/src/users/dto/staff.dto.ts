@@ -6,6 +6,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -79,6 +80,18 @@ export class CreateParentDto {
   @ApiProperty()
   @IsString() @MinLength(1) @MaxLength(100)
   lastName!: string;
+
+  /**
+   * Contact phone. Optional at the API layer so the existing web form keeps
+   * working; the mobile form makes it mandatory client-side.
+   */
+  @ApiPropertyOptional({ example: '+216 22 345 678' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[+0-9 ().-]{8,40}$/, {
+    message: 'phone must contain 8 to 40 digits/phone characters',
+  })
+  phone?: string;
 }
 
 export class StaffUserResponseDto {
@@ -86,6 +99,7 @@ export class StaffUserResponseDto {
   @ApiProperty() email!: string;
   @ApiProperty() firstName!: string;
   @ApiProperty() lastName!: string;
+  @ApiPropertyOptional({ nullable: true }) phone?: string | null;
   @ApiProperty({ enum: UserRole }) role!: UserRole;
   @ApiProperty() createdAt!: Date;
   @ApiPropertyOptional({ nullable: true }) deletedAt!: Date | null;

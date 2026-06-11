@@ -24,10 +24,13 @@ export interface CreateParentInput {
   firstName: string;
   lastName: string;
   email: string;
+  /** Required by the mobile form (optional at the API layer). */
+  phone: string;
 }
 
 /** Mirror of the API's StaffUserResponseDto — tempPassword is shown ONCE. */
 export interface CreatedParent extends ParentOption {
+  phone?: string | null;
   tempPassword?: string;
 }
 

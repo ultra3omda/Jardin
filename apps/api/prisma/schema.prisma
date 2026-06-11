@@ -183,6 +183,9 @@ model User {
   passwordHash              String
   firstName                 String
   lastName                  String
+  // Contact phone — collected on parent-account creation (mobile makes it
+  // mandatory in the form; nullable here for pre-existing rows & other roles).
+  phone                     String?   @db.VarChar(40)
   role                      UserRole
   locale                    Locale    @default(fr)
   createdAt                 DateTime  @default(now())
