@@ -1,4 +1,13 @@
 export { colors, type ColorTokens } from './tokens/colors';
+export {
+  ThemeProvider,
+  useTheme,
+  buildTheme,
+  DEFAULT_THEME,
+  darken,
+  lighten,
+  type Theme,
+} from './theme';
 export { typography, type TypographyTokens } from './tokens/typography';
 export { fonts, type FontTokens } from './tokens/fonts';
 export { spacing, radius, type SpacingTokens, type RadiusTokens } from './tokens/spacing';

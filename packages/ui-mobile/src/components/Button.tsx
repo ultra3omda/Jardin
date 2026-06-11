@@ -2,6 +2,7 @@ import { ActivityIndicator, Pressable, Text, type PressableProps } from 'react-n
 import { colors } from '../tokens/colors';
 import { fonts } from '../tokens/fonts';
 import { radius } from '../tokens/spacing';
+import { useTheme } from '../theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
 
@@ -16,15 +17,16 @@ interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
  * full-width-friendly). `secondary` = white + navy text. `ghost` = no bg.
  */
 export function Button({ label, variant = 'primary', loading, disabled, ...rest }: ButtonProps) {
+  const theme = useTheme();
   const isDisabled = disabled || loading;
 
   const bg =
     variant === 'primary'
-      ? colors.ambre[500]
+      ? theme.primary
       : variant === 'secondary'
         ? colors.surface
         : 'transparent';
-  const fg = variant === 'primary' ? colors.white : colors.ink[900];
+  const fg = variant === 'primary' ? theme.onPrimary : colors.ink[900];
   // Visible hairline border so `secondary` (white) reads as a button on the
   // cream page background (`paper[50]`). `paper[100]` is lighter than the page,
   // so it was effectively invisible.

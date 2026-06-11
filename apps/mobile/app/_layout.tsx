@@ -1,12 +1,14 @@
 import '../global.css';
 import '../lib/i18n'; // initialise i18next au démarrage
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider, buildTheme } from '@klasso/ui-mobile';
+import { useTenantStore } from '@/lib/tenant/store';
 
 // Keep the splash up until the brand fonts are ready (or fail) so headings
 // never flash in the fallback face first.
@@ -49,9 +51,25 @@ export default function RootLayout() {
     // indicator) so screens can avoid being clipped — see the per-group layouts.
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <Stack screenOptions={{ headerShown: false }} />
-        <StatusBar style="auto" />
+        <ThemedApp />
       </QueryClientProvider>
     </SafeAreaProvider>
+  );
+}
+
+/**
+ * Applies the connected establishment's brand colour (white-label) on top of
+ * the default Médina palette. Reads the tenant store reactively so the accent
+ * updates as soon as a school is selected; falls back to Médina pre-auth or
+ * when the tenant has no custom brand.
+ */
+function ThemedApp() {
+  const primary = useTenantStore((s) => s.brand?.primaryColor);
+  const theme = useMemo(() => buildTheme(primary), [primary]);
+  return (
+    <ThemeProvider value={theme}>
+      <Stack screenOptions={{ headerShown: false }} />
+      <StatusBar style="auto" />
+    </ThemeProvider>
   );
 }

@@ -3,7 +3,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fonts } from '@klasso/ui-mobile';
+import { colors, fonts, useTheme } from '@klasso/ui-mobile';
 import { useUnreadCount } from '@/lib/api/notifications';
 import { useAuthStore } from '@/lib/auth/store';
 import { getTabsForRole } from '@/lib/tabs';
@@ -21,6 +21,7 @@ function filledName(name: string): string {
  */
 export function MobileTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const role = useAuthStore((s) => s.user?.role);
   const { data: unread } = useUnreadCount();
   const tabs = getTabsForRole(role ?? 'STAFF');
@@ -44,7 +45,7 @@ export function MobileTabBar({ state, navigation }: BottomTabBarProps) {
 
         const isActive = activeName === tab.name;
         const count = tab.name === 'notifications' ? unread?.count ?? 0 : 0;
-        const tint = isActive ? colors.ambre[600] : colors.navy[500];
+        const tint = isActive ? theme.primary : colors.navy[500];
 
         function onPress() {
           const event = navigation.emit({
@@ -72,7 +73,7 @@ export function MobileTabBar({ state, navigation }: BottomTabBarProps) {
                 paddingHorizontal: 16,
                 paddingVertical: 4,
                 borderRadius: 14,
-                backgroundColor: isActive ? colors.ambre[50] : 'transparent',
+                backgroundColor: isActive ? theme.primaryTint : 'transparent',
               }}
             >
               <Ionicons
@@ -89,7 +90,7 @@ export function MobileTabBar({ state, navigation }: BottomTabBarProps) {
                     minWidth: 16,
                     height: 16,
                     borderRadius: 8,
-                    backgroundColor: colors.ambre[500],
+                    backgroundColor: theme.primary,
                     alignItems: 'center',
                     justifyContent: 'center',
                     paddingHorizontal: 3,

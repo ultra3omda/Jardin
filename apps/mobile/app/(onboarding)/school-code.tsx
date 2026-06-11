@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, ZelligePattern, colors, fonts, radius } from '@klasso/ui-mobile';
+import { Button, ZelligePattern, colors, fonts, radius, useTheme } from '@klasso/ui-mobile';
 import { ApiError } from '@/lib/api/client';
 import { getTenantBrand } from '@/lib/api/tenant';
 import { saveTenantSlug } from '@/lib/auth/secure-storage';
@@ -14,6 +14,7 @@ const DEMO_SHORTCUTS = [
 
 export default function SchoolCodeScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const setTenant = useTenantStore((s) => s.setTenant);
 
   const [code, setCode] = useState('');
@@ -62,10 +63,10 @@ export default function SchoolCodeScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Hero block — Médina terracotta + zellige */}
+        {/* Hero block — Médina terracotta + zellige (pre-tenant default) */}
         <View
           style={{
-            backgroundColor: colors.ambre[700],
+            backgroundColor: theme.primaryDark,
             padding: 24,
             paddingTop: 64,
             paddingBottom: 44,

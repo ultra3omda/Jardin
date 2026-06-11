@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { Button, ZelligePattern, colors, fonts, radius } from '@klasso/ui-mobile';
+import { Button, ZelligePattern, colors, fonts, radius, useTheme } from '@klasso/ui-mobile';
 import { deleteTenantSlug } from '@/lib/auth/secure-storage';
 import { ApiError } from '@/lib/api/client';
 import { login } from '@/lib/api/auth';
@@ -21,6 +21,7 @@ import { getDemoPersonas } from '@/lib/personas';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const setSession = useAuthStore((s) => s.setSession);
   const tenantSlug = useTenantStore((s) => s.slug);
 
@@ -89,10 +90,10 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Hero block — Médina terracotta + zellige */}
+        {/* Hero block — establishment colour (Médina by default) + zellige */}
         <View
           style={{
-            backgroundColor: colors.ambre[700],
+            backgroundColor: theme.primaryDark,
             padding: 24,
             paddingTop: 64,
             paddingBottom: 44,
