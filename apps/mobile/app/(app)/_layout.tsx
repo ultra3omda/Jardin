@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 
-import { colors } from '@klasso/ui-mobile';
+import { colors, fonts } from '@klasso/ui-mobile';
 import { ALL_TAB_NAMES, NON_TAB_ROUTES, getTabsForRole, type MobileTab } from '@/lib/tabs';
 import { useUnreadCount } from '@/lib/api/notifications';
 import { useAuthStore } from '@/lib/auth/store';
@@ -42,7 +42,7 @@ export default function AppLayout() {
           paddingTop: 6,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', fontFamily: fonts.bodySemibold },
         tabBarItemStyle: { paddingTop: 2 },
       }}
     >

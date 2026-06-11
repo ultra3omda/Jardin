@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@klasso/ui-mobile';
+import { colors, fonts } from '@klasso/ui-mobile';
 
 /**
  * Espace parent (hors barre d'onglets) : emploi du temps + paiements,
@@ -11,6 +11,7 @@ export default function ParentLayout() {
     headerShown: true as const,
     headerTintColor: colors.ink[900],
     headerStyle: { backgroundColor: colors.surface },
+    headerTitleStyle: { fontFamily: fonts.displayBold, color: colors.ink[900] },
   };
   return (
     <Stack
