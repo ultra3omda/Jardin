@@ -130,7 +130,7 @@ describe('DemoLoginService', () => {
           primaryHover: '#048275',
           secondaryColor: '#048275',
           emailHeaderColor: '#02a896',
-          logoUrl: 'https://ecole-saas.vercel.app/demo/logo-ecole.png',
+          logoUrl: 'https://klasso.tn/demo/logo-ecole.png',
         },
       },
     });
