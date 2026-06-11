@@ -24,7 +24,22 @@ export function Button({ label, variant = 'primary', loading, disabled, ...rest 
         ? colors.surface
         : 'transparent';
   const fg = variant === 'primary' ? colors.white : colors.ink[900];
-  const borderColor = variant === 'secondary' ? colors.paper[100] : 'transparent';
+  // Visible hairline border so `secondary` (white) reads as a button on the
+  // cream page background (`paper[50]`). `paper[100]` is lighter than the page,
+  // so it was effectively invisible.
+  const borderColor = variant === 'secondary' ? colors.line : 'transparent';
+
+  // Soft elevation so solid buttons lift off the page (ghost stays flat).
+  const shadow =
+    variant === 'ghost'
+      ? null
+      : {
+          shadowColor: colors.ink[900],
+          shadowOpacity: 0.1,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+        };
 
   return (
     <Pressable
@@ -41,6 +56,7 @@ export function Button({ label, variant = 'primary', loading, disabled, ...rest 
         justifyContent: 'center',
         flexDirection: 'row',
         opacity: isDisabled ? 0.5 : pressed ? 0.8 : 1,
+        ...shadow,
       })}
     >
       {loading && <ActivityIndicator color={fg} style={{ marginRight: 8 }} />}

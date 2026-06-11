@@ -23,6 +23,9 @@ export const colors = {
     100: '#fafbfc',
   },
   surface: '#ffffff',
+  // Hairline border — visible on both white surfaces and the cream page bg
+  // (paper[50]). Use for card / button outlines.
+  line: '#e2e8f0',
   ink: {
     300: '#94a3b8',
     500: '#475569',

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Platform, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Button, ConfirmDialog, colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
@@ -14,6 +15,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
   const clear = useAuthStore((s) => s.clear);
@@ -54,7 +56,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 24, gap: 16 }}
+      contentContainerStyle={{ padding: 24, paddingTop: insets.top + 16, gap: 16 }}
     >
       {/* Avatar + name */}
       <View style={{ alignItems: 'center', paddingVertical: 16 }}>
