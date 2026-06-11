@@ -14,8 +14,11 @@ export const DEMO_TENANT_MAP: Record<string, { name: string; type: TenantType }>
 /**
  * Distinct white-label brand per demo tenant, so prospects SEE the
  * per-establishment theming (colors + logo) instead of two identical demos.
- * Logos are tiny PNGs served from the web app's public folder.
- * Applied by both `prisma/seed.ts` and the self-healing demo-login upsert.
+ * Logos are tiny PNGs served from the web app's public folder — via the
+ * canonical klasso.tn domain: the ecole-saas.vercel.app alias does NOT serve
+ * public/ assets (returns 404, verified — hero.svg 404s there too).
+ * Applied by both `prisma/seed.ts` and the self-healing demo-login upsert;
+ * the per-login brand re-sync propagates any change here automatically.
  */
 export const DEMO_TENANT_BRANDS: Record<string, Partial<TenantBrand>> = {
   'demo-ecole': {
@@ -23,14 +26,14 @@ export const DEMO_TENANT_BRANDS: Record<string, Partial<TenantBrand>> = {
     primaryHover: '#048275',
     secondaryColor: '#048275',
     emailHeaderColor: '#02a896',
-    logoUrl: 'https://ecole-saas.vercel.app/demo/logo-ecole.png',
+    logoUrl: 'https://klasso.tn/demo/logo-ecole.png',
   },
   'demo-maternelle': {
     primaryColor: '#7a30ff', // playful grape
     primaryHover: '#671bf0',
     secondaryColor: '#5012c4',
     emailHeaderColor: '#7a30ff',
-    logoUrl: 'https://ecole-saas.vercel.app/demo/logo-maternelle.png',
+    logoUrl: 'https://klasso.tn/demo/logo-maternelle.png',
   },
 };
 
