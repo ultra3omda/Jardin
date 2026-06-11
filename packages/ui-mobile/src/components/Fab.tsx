@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 import { colors } from '../tokens/colors';
+import { fonts } from '../tokens/fonts';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -23,7 +24,10 @@ export function Fab({ onPress, label, icon = 'add', extended }: FabProps) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => ({
+      android_ripple={{ color: 'rgba(255,255,255,0.18)', borderless: false }}
+      // Static style (no style-as-function) so the background/shadow always
+      // render — a Pressable style callback was not painting on this build.
+      style={{
         position: 'absolute',
         right: 18,
         bottom: 24,
@@ -41,12 +45,11 @@ export function Fab({ onPress, label, icon = 'add', extended }: FabProps) {
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
         elevation: 6,
-        opacity: pressed ? 0.85 : 1,
-      })}
+      }}
     >
       <Ionicons name={icon} size={26} color={colors.white} />
       {extended ? (
-        <Text style={{ color: colors.white, fontSize: 15, fontWeight: '700' }}>{label}</Text>
+        <Text style={{ color: colors.white, fontSize: 15, fontFamily: fonts.bodyBold }}>{label}</Text>
       ) : (
         <View />
       )}
