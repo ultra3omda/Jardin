@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, Card, EmptyState, KpiCard, ScreenHeader, type KpiVariant, colors } from '@klasso/ui-mobile';
 import { useDashboardOverview, type DashboardOverview } from '@/lib/api/dashboard';
@@ -61,6 +62,7 @@ function buildKpis(role: string | undefined, isKG: boolean, d?: DashboardOvervie
 }
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
   const { data, isLoading } = useDashboardOverview(user?.role);
@@ -75,7 +77,7 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+      contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 32 }}
     >
       <ScreenHeader title={heading} subtitle={subtitle} right={<Avatar initials={initials} size={44} />} />
 

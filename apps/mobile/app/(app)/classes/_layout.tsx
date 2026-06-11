@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@klasso/ui-mobile';
+import { colors, fonts } from '@klasso/ui-mobile';
 
 /**
  * Stack for the Classes section: the list (index) is the tab target; the
@@ -12,6 +12,7 @@ export default function ClassesLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.paper[50] },
+        headerTitleStyle: { fontFamily: fonts.displayBold, color: colors.ink[900] },
       }}
     >
       <Stack.Screen name="index" />

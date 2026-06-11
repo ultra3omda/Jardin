@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,19 +11,22 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { Button, colors, radius } from '@klasso/ui-mobile';
+import { Button, ZelligePattern, colors, fonts, radius, useTheme } from '@klasso/ui-mobile';
 import { deleteTenantSlug } from '@/lib/auth/secure-storage';
 import { ApiError } from '@/lib/api/client';
 import { login } from '@/lib/api/auth';
 import { demoLogin, type DemoPersona } from '@/lib/api/demo-login';
 import { useAuthStore } from '@/lib/auth/store';
 import { useTenantStore } from '@/lib/tenant/store';
-import { MOBILE_DEMO_PERSONAS } from '@/lib/personas';
+import { getDemoPersonas } from '@/lib/personas';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const setSession = useAuthStore((s) => s.setSession);
   const tenantSlug = useTenantStore((s) => s.slug);
+  const tenantName = useTenantStore((s) => s.name);
+  const logoUrl = useTenantStore((s) => s.brand?.logoUrl ?? null);
 
   async function handleChangeSchool() {
     await deleteTenantSlug();
@@ -89,41 +93,64 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Hero block — navy */}
+        {/* Hero block — establishment colour (Médina by default) + zellige */}
         <View
           style={{
-            backgroundColor: colors.navy[900],
+            backgroundColor: theme.primaryDark,
             padding: 24,
             paddingTop: 64,
-            paddingBottom: 40,
+            paddingBottom: 44,
+            overflow: 'hidden',
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
           }}
         >
-          <Text style={{ color: colors.white, fontSize: 24, fontWeight: '700' }}>
-            📘 Klasso
-          </Text>
-          <Text
-            style={{
-              color: colors.navy[500],
-              fontSize: 12,
-              marginTop: 2,
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-            }}
-          >
-            L'école à l'ère numérique
-          </Text>
+          <ZelligePattern color={colors.gold[100]} opacity={0.12} />
+          {/* White-label header: the establishment's own logo + name when the
+              tenant customised its brand; Klasso platform branding otherwise. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            {logoUrl ? (
+              <Image
+                source={{ uri: logoUrl }}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                }}
+                accessibilityLabel={tenantName ? `Logo ${tenantName}` : 'Logo'}
+              />
+            ) : null}
+            <View style={{ flexShrink: 1 }}>
+              <Text style={{ color: colors.white, fontSize: 25, fontFamily: fonts.displayBold }}>
+                {tenantName ?? '📘 Klasso'}
+              </Text>
+              <Text
+                style={{
+                  color: colors.gold[100],
+                  fontSize: 12,
+                  marginTop: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1.5,
+                  fontFamily: fonts.bodySemibold,
+                }}
+              >
+                {tenantName ? 'Propulsé par Klasso' : "L'école à l'ère numérique"}
+              </Text>
+            </View>
+          </View>
           <Text
             style={{
               color: colors.white,
-              fontSize: 22,
-              fontWeight: '600',
-              lineHeight: 28,
+              fontSize: 25,
+              fontFamily: fonts.display,
+              lineHeight: 32,
               marginTop: 20,
             }}
           >
             La plateforme qui{' '}
-            <Text style={{ color: colors.ambre[500] }}>simplifie</Text> votre
-            établissement.
+            <Text style={{ color: colors.gold[100], fontFamily: fonts.displayBold }}>simplifie</Text>{' '}
+            votre établissement.
           </Text>
         </View>
 
@@ -131,8 +158,8 @@ export default function LoginScreen() {
         <View style={{ padding: 24, gap: 14 }}>
           <Text
             style={{
-              fontSize: 18,
-              fontWeight: '700',
+              fontSize: 20,
+              fontFamily: fonts.displayBold,
               color: colors.ink[900],
               textAlign: 'center',
             }}
@@ -224,7 +251,7 @@ export default function LoginScreen() {
               Comptes de démonstration
             </Text>
             <View style={{ gap: 8 }}>
-              {MOBILE_DEMO_PERSONAS.map((p) => (
+              {getDemoPersonas(tenantSlug).map((p) => (
                 <Button
                   key={p.persona}
                   label={p.label}

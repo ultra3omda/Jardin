@@ -1,7 +1,8 @@
 import React from 'react';
 import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { colors, radius } from '@klasso/ui-mobile';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, fonts, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import {
   useAdminClassPerf,
@@ -356,6 +357,7 @@ function AdminContainer() {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function PedagogyScreen() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
   const isKG = tenant?.type === 'KINDERGARTEN';
@@ -373,12 +375,12 @@ export default function PedagogyScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+      contentContainerStyle={{ padding: 20, paddingTop: insets.top + 20, paddingBottom: 32 }}
     >
       <Text
         style={{
-          fontSize: 22,
-          fontWeight: '700',
+          fontSize: 24,
+          fontFamily: fonts.displayBold,
           color: colors.ink[900],
           marginBottom: 4,
         }}

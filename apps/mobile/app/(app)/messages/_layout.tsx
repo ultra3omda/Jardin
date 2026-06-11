@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@klasso/ui-mobile';
+import { colors, fonts } from '@klasso/ui-mobile';
 
 /** Stack for Messaging: conversation list (index) + thread ([id]). */
 export default function MessagesLayout() {
@@ -9,6 +9,7 @@ export default function MessagesLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.paper[50] },
+        headerTitleStyle: { fontFamily: fonts.displayBold, color: colors.ink[900] },
       }}
     >
       <Stack.Screen name="index" />

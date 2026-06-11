@@ -1,4 +1,5 @@
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import { colors, radius } from '@klasso/ui-mobile';
@@ -161,6 +162,7 @@ function NotifRow({ notification: n, onPress }: NotifRowProps) {
 // ---------------------------------------------------------------------------
 
 export default function NotificationsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data, isLoading, isError, refetch } = useNotifications();
   const markRead = useMarkRead();
@@ -179,7 +181,7 @@ export default function NotificationsScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 24 }}
     >
       {/* Header */}
       <View style={{ padding: 20, paddingBottom: 12 }}>

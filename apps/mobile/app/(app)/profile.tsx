@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Platform, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Button, ConfirmDialog, colors, radius } from '@klasso/ui-mobile';
+import { Button, ConfirmDialog, colors, fonts, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { deleteRefreshToken, deleteTenantSlug } from '@/lib/auth/secure-storage';
 
@@ -14,6 +15,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
   const clear = useAuthStore((s) => s.clear);
@@ -54,7 +56,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 24, gap: 16 }}
+      contentContainerStyle={{ padding: 24, paddingTop: insets.top + 16, gap: 16 }}
     >
       {/* Avatar + name */}
       <View style={{ alignItems: 'center', paddingVertical: 16 }}>
@@ -73,7 +75,7 @@ export default function ProfileScreen() {
             {user.firstName.charAt(0).toUpperCase()}
           </Text>
         </View>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink[900] }}>
+        <Text style={{ fontSize: 22, fontFamily: fonts.displayBold, color: colors.ink[900] }}>
           {user.firstName} {user.lastName}
         </Text>
         <Text style={{ fontSize: 13, color: colors.ink[500], marginTop: 2 }}>

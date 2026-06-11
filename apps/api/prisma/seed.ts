@@ -24,6 +24,7 @@ import {
   UserRole,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { DEMO_TENANT_BRANDS } from '../src/demo-login/demo-login.tenants';
 
 const prisma = new PrismaClient();
 
@@ -1237,11 +1238,15 @@ async function main(): Promise<void> {
     where: { slug: 'demo-ecole' },
     // Demo tenants are already operational → ACTIVE + onboarding done so the
     // SCHOOL_ADMIN isn't bounced into the blocking onboarding wizard.
+    // Each demo tenant carries a distinct white-label brand (colors + logo)
+    // so prospects see the per-establishment theming. Single source of truth:
+    // src/demo-login/demo-login.tenants.ts (shared with the self-healing path).
     update: {
       name: 'Démo École Pilote',
       type: TenantType.PRIMARY_SCHOOL,
       status: 'ACTIVE',
       onboardingCompletedAt: new Date(),
+      brand: DEMO_TENANT_BRANDS['demo-ecole'] as Prisma.InputJsonValue,
     },
     create: {
       id: createId(),
@@ -1252,6 +1257,7 @@ async function main(): Promise<void> {
       timezone: 'Africa/Tunis',
       status: 'ACTIVE',
       onboardingCompletedAt: new Date(),
+      brand: DEMO_TENANT_BRANDS['demo-ecole'] as Prisma.InputJsonValue,
     },
   });
 
@@ -1263,6 +1269,7 @@ async function main(): Promise<void> {
       type: TenantType.KINDERGARTEN,
       status: 'ACTIVE',
       onboardingCompletedAt: new Date(),
+      brand: DEMO_TENANT_BRANDS['demo-maternelle'] as Prisma.InputJsonValue,
     },
     create: {
       id: createId(),
@@ -1273,6 +1280,7 @@ async function main(): Promise<void> {
       timezone: 'Africa/Tunis',
       status: 'ACTIVE',
       onboardingCompletedAt: new Date(),
+      brand: DEMO_TENANT_BRANDS['demo-maternelle'] as Prisma.InputJsonValue,
     },
   });
 

@@ -1,25 +1,91 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Fab } from '@klasso/ui-mobile';
-import { listStudents, type StudentSummary } from '@/lib/api/students';
+import { EmptyState, Fab, colors, fonts, radius } from '@klasso/ui-mobile';
+import { listStudents } from '@/lib/api/students';
 import { useMyChildren } from '@/lib/api/parent';
 import { useAuthStore } from '@/lib/auth/store';
 
 /**
- * V2 — Mobile : liste élèves (admin/enseignant/staff) ; pour le PARENT, on
- * affiche ses enfants via /students/my-children (le filtre parentEmail du
- * endpoint liste n'est pas fiable pour les comptes de démo).
+ * V7 — Liste élèves. Admin/enseignant/staff voient tous les élèves (recherche),
+ * le PARENT voit ses enfants via /students/my-children (le filtre parentEmail
+ * du endpoint liste n'est pas fiable pour les comptes démo).
  */
-function Initials({ s }: { s: StudentSummary }) {
+
+function Avatar({ first, last }: { first: string; last: string }) {
   return (
-    <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-200">
-      <Text className="text-xs font-semibold text-gray-700">
-        {(s.firstName[0] ?? '') + (s.lastName[0] ?? '')}
+    <View
+      style={{
+        height: 44,
+        width: 44,
+        borderRadius: 22,
+        backgroundColor: colors.navy[900],
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ color: colors.white, fontSize: 14, fontFamily: fonts.bodySemibold }}>
+        {((first[0] ?? '') + (last[0] ?? '')).toUpperCase()}
       </Text>
     </View>
+  );
+}
+
+function StudentRow({
+  id,
+  first,
+  last,
+  subtitle,
+}: {
+  id: string;
+  first: string;
+  last: string;
+  subtitle: string;
+}) {
+  return (
+    <Link href={{ pathname: '/(app)/students/[id]', params: { id } }} asChild>
+      <View
+        accessibilityRole="link"
+        accessibilityLabel={`${first} ${last}, ${subtitle}`}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: colors.line,
+          padding: 12,
+          marginBottom: 10,
+        }}
+      >
+        <Avatar first={first} last={last} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 15, fontFamily: fonts.bodySemibold, color: colors.ink[900] }}>
+            {last} {first}
+          </Text>
+          <Text
+            style={{ fontSize: 12, color: colors.ink[500], marginTop: 2, fontFamily: fonts.body }}
+            numberOfLines={1}
+          >
+            {subtitle}
+          </Text>
+        </View>
+      </View>
+    </Link>
+  );
+}
+
+function ScreenTitle({ children }: { children: string }) {
+  return (
+    <Text
+      style={{ fontSize: 24, fontFamily: fonts.displayBold, color: colors.ink[900], marginBottom: 16 }}
+    >
+      {children}
+    </Text>
   );
 }
 
@@ -30,121 +96,130 @@ export default function StudentsListScreen() {
 }
 
 function MyChildrenScreen() {
+  const insets = useSafeAreaInsets();
   const { data, isLoading, error } = useMyChildren();
   const kids = data ?? [];
+
   return (
-    <View className="flex-1 bg-white">
-      <View className="border-b border-gray-200 p-4">
-        <Text className="text-2xl font-bold">Mon enfant</Text>
-      </View>
-      {isLoading ? (
-        <Text className="p-4 text-gray-500">Chargement…</Text>
-      ) : error ? (
-        <Text className="p-4 text-rose-600">Erreur : {(error as Error).message}</Text>
-      ) : kids.length === 0 ? (
-        <Text className="p-4 text-gray-500">Aucun enfant rattaché à votre compte.</Text>
-      ) : (
-        <FlatList
-          data={kids}
-          keyExtractor={(c) => c.id}
-          ItemSeparatorComponent={() => <View className="h-px bg-gray-100" />}
-          renderItem={({ item }) => (
-            <Link href={{ pathname: '/(app)/students/[id]', params: { id: item.id } }} asChild>
-              <View
-                className="flex-row items-center gap-3 p-4"
-                accessibilityRole="link"
-                accessibilityLabel={`${item.firstName} ${item.lastName}, classe ${item.className ?? ''}`}
-              >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-200">
-                  <Text className="text-xs font-semibold text-gray-700">
-                    {(item.firstName[0] ?? '') + (item.lastName[0] ?? '')}
-                  </Text>
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-medium">
-                    {item.lastName} {item.firstName}
-                  </Text>
-                  <Text className="text-sm text-gray-500">{item.className ?? 'Classe non assignée'}</Text>
-                </View>
-              </View>
-            </Link>
-          )}
-        />
-      )}
+    <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
+      <FlatList
+        data={kids}
+        keyExtractor={(c) => c.id}
+        contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 32 }}
+        ListHeaderComponent={<ScreenTitle>Mon enfant</ScreenTitle>}
+        ListEmptyComponent={
+          isLoading ? (
+            <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 32 }} />
+          ) : error ? (
+            <EmptyState
+              icon="alert-circle-outline"
+              title="Erreur"
+              description={(error as Error).message}
+            />
+          ) : (
+            <EmptyState
+              icon="happy-outline"
+              title="Aucun enfant"
+              description="Aucun enfant rattaché à votre compte."
+            />
+          )
+        }
+        renderItem={({ item }) => (
+          <StudentRow
+            id={item.id}
+            first={item.firstName}
+            last={item.lastName}
+            subtitle={item.className ?? 'Classe non assignée'}
+          />
+        )}
+      />
     </View>
   );
 }
 
 function StaffStudentsScreen({ isAdmin }: { isAdmin: boolean }) {
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['students', search],
-    queryFn: () =>
-      listStudents({ pageSize: 50, search: search.trim() || undefined }),
+    queryFn: () => listStudents({ pageSize: 50, search: search.trim() || undefined }),
   });
+  const items = data?.items ?? [];
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="border-b border-gray-200 p-4">
-        <Text className="text-2xl font-bold">Élèves</Text>
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Rechercher…"
-          className="mt-2 h-10 rounded-md border border-gray-300 px-3"
-          accessibilityLabel="Rechercher un élève"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </View>
-
-      {isLoading ? (
-        <Text className="p-4 text-gray-500" accessibilityRole="alert">
-          Chargement…
-        </Text>
-      ) : error ? (
-        <Text className="p-4 text-rose-600" accessibilityRole="alert">
-          Erreur : {(error as Error).message}
-        </Text>
-      ) : (
-        <FlatList
-          data={data?.items ?? []}
-          keyExtractor={(s) => s.id}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-          }
-          ItemSeparatorComponent={() => <View className="h-px bg-gray-100" />}
-          ListEmptyComponent={
-            <Text className="p-4 text-gray-500">
-              {search ? `Aucun résultat pour « ${search} ».` : 'Aucun élève.'}
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <Link
-              href={{ pathname: '/(app)/students/[id]', params: { id: item.id } }}
-              asChild
+    <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
+      <FlatList
+        data={items}
+        keyExtractor={(s) => s.id}
+        contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 96 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={colors.ambre[500]}
+          />
+        }
+        ListHeaderComponent={
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 24,
+                fontFamily: fonts.displayBold,
+                color: colors.ink[900],
+                marginBottom: 12,
+              }}
             >
-              <View
-                className="flex-row items-center gap-3 p-4"
-                accessibilityRole="link"
-                accessibilityLabel={`${item.firstName} ${item.lastName}, classe ${item.classroom}`}
-              >
-                <Initials s={item} />
-                <View className="flex-1">
-                  <Text className="text-base font-medium">
-                    {item.lastName} {item.firstName}
-                  </Text>
-                  <Text className="text-sm text-gray-500">
-                    {item.classroom} · {item.parentEmail}
-                  </Text>
-                </View>
-              </View>
-            </Link>
-          )}
-        />
-      )}
-
+              Élèves
+            </Text>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Rechercher…"
+              placeholderTextColor={colors.ink[300]}
+              accessibilityLabel="Rechercher un élève"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: radius.md,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                fontSize: 14,
+                color: colors.ink[900],
+                borderWidth: 1,
+                borderColor: colors.line,
+                fontFamily: fonts.body,
+              }}
+            />
+          </View>
+        }
+        ListEmptyComponent={
+          isLoading ? (
+            <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 32 }} />
+          ) : error ? (
+            <EmptyState
+              icon="alert-circle-outline"
+              title="Erreur"
+              description={(error as Error).message}
+            />
+          ) : (
+            <EmptyState
+              icon="people-outline"
+              title={search ? 'Aucun résultat' : 'Aucun élève'}
+              description={search ? `Aucun résultat pour « ${search} ».` : undefined}
+            />
+          )
+        }
+        renderItem={({ item }) => (
+          <StudentRow
+            id={item.id}
+            first={item.firstName}
+            last={item.lastName}
+            subtitle={`${item.classroom} · ${item.parentEmail}`}
+          />
+        )}
+      />
       {isAdmin ? (
         <Fab
           label="Ajouter un élève"

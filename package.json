@@ -26,7 +26,9 @@
   },
   "pnpm": {
     "overrides": {
-      "@expo/vector-icons": "^15.0.3"
+      "@expo/vector-icons": "^15.0.3",
+      "react-native-reanimated": "4.1.7",
+      "react-native-worklets": "0.5.1"
     }
   }
 }

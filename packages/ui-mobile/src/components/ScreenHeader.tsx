@@ -1,5 +1,7 @@
 import { Text, View } from 'react-native';
 import { colors } from '../tokens/colors';
+import { fonts } from '../tokens/fonts';
+import { useTheme } from '../theme';
 
 interface ScreenHeaderProps {
   title: string;
@@ -13,6 +15,7 @@ interface ScreenHeaderProps {
  * title and a muted subtitle. Used at the top of every mobile screen.
  */
 export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
+  const theme = useTheme();
   return (
     <View
       style={{
@@ -28,15 +31,24 @@ export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
             width: 34,
             height: 5,
             borderRadius: 3,
-            backgroundColor: colors.ambre[500],
+            backgroundColor: theme.primary,
             marginBottom: 10,
           }}
         />
-        <Text style={{ color: colors.ink[900], fontSize: 26, fontWeight: '800', letterSpacing: -0.4 }}>
+        <Text
+          style={{
+            color: colors.ink[900],
+            fontSize: 27,
+            fontFamily: fonts.displayBold,
+            letterSpacing: -0.4,
+          }}
+        >
           {title}
         </Text>
         {subtitle ? (
-          <Text style={{ color: colors.ink[500], fontSize: 13, marginTop: 3 }}>{subtitle}</Text>
+          <Text style={{ color: colors.ink[500], fontSize: 13, marginTop: 3, fontFamily: fonts.body }}>
+            {subtitle}
+          </Text>
         ) : null}
       </View>
       {right ? <View style={{ marginLeft: 12 }}>{right}</View> : null}

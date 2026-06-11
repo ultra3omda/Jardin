@@ -25,7 +25,8 @@ const T = {
   profile: { name: 'profile', label: 'Profil', icon: 'person-outline' as IoniconName },
 } satisfies Record<string, MobileTab>;
 
-const ADMIN_TABS: MobileTab[] = [T.dashboard, T.students, T.classes, T.pedagogy, T.notifications, T.profile];
+// SCHOOL_ADMIN needs messaging too (talk to teachers / parents).
+const ADMIN_TABS: MobileTab[] = [T.dashboard, T.students, T.classes, T.pedagogy, T.messages, T.notifications, T.profile];
 const TEACHER_TABS: MobileTab[] = [T.dashboard, T.classes, T.life, T.messages, T.notifications, T.profile];
 const PARENT_TABS: MobileTab[] = [T.dashboard, T.child, T.life, T.messages, T.notifications, T.profile];
 // STAFF has a tenant → can use messaging + notifications.

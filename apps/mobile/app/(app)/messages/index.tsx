@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Fab, colors, radius } from '@klasso/ui-mobile';
+import { Fab, colors, fonts, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { useConversations, type Conversation, type Participant } from '@/lib/api/messaging';
 
@@ -109,14 +110,15 @@ function ThreadRow({ conv, meId }: { conv: Conversation; meId?: string }) {
 }
 
 export default function MessagesScreen() {
+  const insets = useSafeAreaInsets();
   const meId = useAuthStore((s) => s.user?.id);
   const { data, isLoading, isError, refetch } = useConversations();
   const conversations = data?.items ?? [];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
-        <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink[900], marginBottom: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 96 }}>
+        <Text style={{ fontSize: 24, fontFamily: fonts.displayBold, color: colors.ink[900], marginBottom: 16 }}>
           Messages
         </Text>
 

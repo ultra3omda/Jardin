@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@klasso/ui-mobile';
+import { colors, fonts } from '@klasso/ui-mobile';
 
 /**
  * Stack for the Pedagogy section: the role dashboard (index) is the tab target;
@@ -11,6 +11,7 @@ export default function PedagogyLayout() {
     headerShown: true as const,
     headerTintColor: colors.ink[900],
     headerStyle: { backgroundColor: colors.surface },
+    headerTitleStyle: { fontFamily: fonts.displayBold, color: colors.ink[900] },
   };
   return (
     <Stack

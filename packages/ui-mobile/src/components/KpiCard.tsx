@@ -2,26 +2,28 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { Text, View } from 'react-native';
 import { colors } from '../tokens/colors';
+import { fonts } from '../tokens/fonts';
 import { radius } from '../tokens/spacing';
 
 export type KpiVariant = 'blue' | 'green' | 'orange' | 'amber' | 'pink' | 'purple';
 
+// Médina earthen palette — teal, terracotta, gold, deep green.
 const VARIANT_BG: Record<KpiVariant, string> = {
-  blue: '#2563eb',
-  green: '#059669',
+  blue: colors.teal[500],
+  green: '#0b7a5e',
   orange: colors.ambre[500],
-  amber: '#d97706',
-  pink: '#db2777',
-  purple: '#7c3aed',
+  amber: colors.gold[500],
+  pink: colors.ambre[700],
+  purple: colors.teal[700],
 };
 
 const VARIANT_TINT: Record<KpiVariant, string> = {
-  blue: 'rgba(37,99,235,0.10)',
-  green: 'rgba(5,150,105,0.10)',
-  orange: 'rgba(242,104,63,0.10)',
-  amber: 'rgba(217,119,6,0.10)',
-  pink: 'rgba(219,39,119,0.10)',
-  purple: 'rgba(124,58,237,0.10)',
+  blue: 'rgba(15,118,110,0.12)',
+  green: 'rgba(11,122,94,0.12)',
+  orange: 'rgba(242,104,63,0.12)',
+  amber: 'rgba(217,154,43,0.14)',
+  pink: 'rgba(156,51,24,0.12)',
+  purple: 'rgba(10,74,69,0.12)',
 };
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -65,7 +67,7 @@ export function KpiCard({ label, value, variant, sub, icon = 'stats-chart' }: Kp
           style={{
             color: colors.ink[500],
             fontSize: 10,
-            fontWeight: '700',
+            fontFamily: fonts.bodyBold,
             textTransform: 'uppercase',
             letterSpacing: 0.8,
             flex: 1,
@@ -88,11 +90,21 @@ export function KpiCard({ label, value, variant, sub, icon = 'stats-chart' }: Kp
           <Ionicons name={icon} size={19} color={VARIANT_BG[variant]} />
         </View>
       </View>
-      <Text style={{ color: colors.ink[900], fontSize: 28, fontWeight: '800', lineHeight: 30 }}>
+      <Text
+        style={{
+          color: colors.ink[900],
+          fontSize: 30,
+          fontFamily: fonts.displayBold,
+          lineHeight: 34,
+          letterSpacing: -0.5,
+        }}
+      >
         {value}
       </Text>
       {sub ? (
-        <Text style={{ color: colors.ink[500], fontSize: 11, marginTop: 3 }}>{sub}</Text>
+        <Text style={{ color: colors.ink[500], fontSize: 11, marginTop: 3, fontFamily: fonts.body }}>
+          {sub}
+        </Text>
       ) : null}
     </View>
   );

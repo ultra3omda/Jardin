@@ -1,6 +1,7 @@
 import React from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { useMyClasses as useMyClassesAPI, type ClassSummary } from '@/lib/api/classes';
@@ -252,6 +253,7 @@ function ParentContainer() {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function ClassesScreen() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const role = user?.role;
 
@@ -269,7 +271,7 @@ export default function ClassesScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+      contentContainerStyle={{ padding: 20, paddingTop: insets.top + 20, paddingBottom: 32 }}
     >
       <Text
         style={{ fontSize: 22, fontWeight: '700', color: colors.ink[900], marginBottom: 4 }}
