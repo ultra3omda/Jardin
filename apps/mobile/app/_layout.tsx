@@ -6,20 +6,15 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, buildTheme } from '@klasso/ui-mobile';
 import { useTenantStore } from '@/lib/tenant/store';
+import { queryClient } from '@/lib/query-client';
 
 // Keep the splash up until the brand fonts are ready (or fail) so headings
 // never flash in the fallback face first.
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* no-op: splash may already be hidden */
-});
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 2, staleTime: 5 * 60 * 1000 },
-  },
 });
 
 export default function RootLayout() {

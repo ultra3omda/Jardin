@@ -4,7 +4,7 @@ import { fonts } from '../tokens/fonts';
 import { radius } from '../tokens/spacing';
 import { useTheme } from '../theme';
 
-type Variant = 'primary' | 'secondary' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   label: string;
@@ -13,8 +13,10 @@ interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
 }
 
 /**
- * V7-B — Primary CTA button. Default variant is `primary` (ambre orange,
- * full-width-friendly). `secondary` = white + navy text. `ghost` = no bg.
+ * V7-B — Primary CTA button. Default variant is `primary` (tenant accent,
+ * full-width-friendly). `secondary` = white + ink text. `ghost` = no bg.
+ * `danger` = solid red, for destructive actions (logout, delete) — same red
+ * as ConfirmDialog's destructive confirm.
  */
 export function Button({ label, variant = 'primary', loading, disabled, ...rest }: ButtonProps) {
   const theme = useTheme();
@@ -23,10 +25,13 @@ export function Button({ label, variant = 'primary', loading, disabled, ...rest 
   const bg =
     variant === 'primary'
       ? theme.primary
-      : variant === 'secondary'
-        ? colors.surface
-        : 'transparent';
-  const fg = variant === 'primary' ? theme.onPrimary : colors.ink[900];
+      : variant === 'danger'
+        ? colors.status.danger500
+        : variant === 'secondary'
+          ? colors.surface
+          : 'transparent';
+  const fg =
+    variant === 'primary' ? theme.onPrimary : variant === 'danger' ? colors.white : colors.ink[900];
   // Visible hairline border so `secondary` (white) reads as a button on the
   // cream page background (`paper[50]`). `paper[100]` is lighter than the page,
   // so it was effectively invisible.
