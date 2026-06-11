@@ -16,10 +16,28 @@ export const colors = {
     100: '#ffe1d7',
     500: '#f2683f',
     600: '#df4f2a',
-    700: '#b03a1d',
+    700: '#9c3318',
+    900: '#5e1f0e',
+  },
+  // Médina secondary — deep zellige teal.
+  teal: {
+    50: '#e2f1ef',
+    100: '#bfe0db',
+    500: '#0f766e',
+    600: '#0b5f58',
+    700: '#0a4a45',
+  },
+  // Médina tertiary — warm gold / ochre.
+  gold: {
+    50: '#fbf1da',
+    100: '#f3dfb0',
+    500: '#d99a2b',
+    600: '#bd831f',
+    700: '#946417',
   },
   paper: {
-    50: '#f4f4ef',
+    // Warm sand — Médina daylight, a touch warmer than the old neutral cream.
+    50: '#f7f2e9',
     100: '#fafbfc',
   },
   surface: '#ffffff',

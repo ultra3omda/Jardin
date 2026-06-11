@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { Button, colors, fonts, radius } from '@klasso/ui-mobile';
+import { Button, ZelligePattern, colors, fonts, radius } from '@klasso/ui-mobile';
 import { deleteTenantSlug } from '@/lib/auth/secure-storage';
 import { ApiError } from '@/lib/api/client';
 import { login } from '@/lib/api/auth';
@@ -89,25 +89,30 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Hero block — navy */}
+        {/* Hero block — Médina terracotta + zellige */}
         <View
           style={{
-            backgroundColor: colors.navy[900],
+            backgroundColor: colors.ambre[700],
             padding: 24,
             paddingTop: 64,
-            paddingBottom: 40,
+            paddingBottom: 44,
+            overflow: 'hidden',
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
           }}
         >
+          <ZelligePattern color={colors.gold[100]} opacity={0.12} />
           <Text style={{ color: colors.white, fontSize: 26, fontFamily: fonts.displayBold }}>
             📘 Klasso
           </Text>
           <Text
             style={{
-              color: colors.navy[500],
+              color: colors.gold[100],
               fontSize: 12,
               marginTop: 2,
               textTransform: 'uppercase',
-              letterSpacing: 1,
+              letterSpacing: 1.5,
+              fontFamily: fonts.bodySemibold,
             }}
           >
             L'école à l'ère numérique
@@ -115,16 +120,14 @@ export default function LoginScreen() {
           <Text
             style={{
               color: colors.white,
-              fontSize: 24,
+              fontSize: 25,
               fontFamily: fonts.display,
-              lineHeight: 30,
+              lineHeight: 32,
               marginTop: 20,
             }}
           >
             La plateforme qui{' '}
-            <Text style={{ color: colors.ambre[500], fontFamily: fonts.displayBold }}>
-              simplifie
-            </Text>{' '}
+            <Text style={{ color: colors.gold[100], fontFamily: fonts.displayBold }}>simplifie</Text>{' '}
             votre établissement.
           </Text>
         </View>

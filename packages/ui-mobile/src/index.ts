@@ -7,6 +7,7 @@ export { Button } from './components/Button';
 export { KpiCard, type KpiVariant } from './components/KpiCard';
 export { Avatar } from './components/Avatar';
 export { ScreenHeader } from './components/ScreenHeader';
+export { ZelligePattern } from './components/ZelligePattern';
 export { EmptyState } from './components/EmptyState';
 export { Card } from './components/Card';
 export { FormField } from './components/FormField';

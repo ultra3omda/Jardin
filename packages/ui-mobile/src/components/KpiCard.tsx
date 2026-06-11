@@ -7,22 +7,23 @@ import { radius } from '../tokens/spacing';
 
 export type KpiVariant = 'blue' | 'green' | 'orange' | 'amber' | 'pink' | 'purple';
 
+// Médina earthen palette — teal, terracotta, gold, deep green.
 const VARIANT_BG: Record<KpiVariant, string> = {
-  blue: '#2563eb',
-  green: '#059669',
+  blue: colors.teal[500],
+  green: '#0b7a5e',
   orange: colors.ambre[500],
-  amber: '#d97706',
-  pink: '#db2777',
-  purple: '#7c3aed',
+  amber: colors.gold[500],
+  pink: colors.ambre[700],
+  purple: colors.teal[700],
 };
 
 const VARIANT_TINT: Record<KpiVariant, string> = {
-  blue: 'rgba(37,99,235,0.10)',
-  green: 'rgba(5,150,105,0.10)',
-  orange: 'rgba(242,104,63,0.10)',
-  amber: 'rgba(217,119,6,0.10)',
-  pink: 'rgba(219,39,119,0.10)',
-  purple: 'rgba(124,58,237,0.10)',
+  blue: 'rgba(15,118,110,0.12)',
+  green: 'rgba(11,122,94,0.12)',
+  orange: 'rgba(242,104,63,0.12)',
+  amber: 'rgba(217,154,43,0.14)',
+  pink: 'rgba(156,51,24,0.12)',
+  purple: 'rgba(10,74,69,0.12)',
 };
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
