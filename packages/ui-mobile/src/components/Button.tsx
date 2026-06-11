@@ -45,19 +45,24 @@ export function Button({ label, variant = 'primary', loading, disabled, ...rest 
     <Pressable
       {...rest}
       disabled={isDisabled}
-      style={({ pressed }) => ({
-        backgroundColor: bg,
-        borderWidth: 1,
-        borderColor,
-        borderRadius: radius.lg,
-        paddingVertical: 14,
-        paddingHorizontal: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'row',
-        opacity: isDisabled ? 0.5 : pressed ? 0.8 : 1,
-        ...shadow,
-      })}
+      // Static style array (no style-as-function) so the background/border
+      // always render; Android gets a ripple for press feedback.
+      android_ripple={{ color: 'rgba(15,20,25,0.10)' }}
+      style={[
+        {
+          backgroundColor: bg,
+          borderWidth: 1,
+          borderColor,
+          borderRadius: radius.lg,
+          paddingVertical: 14,
+          paddingHorizontal: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          opacity: isDisabled ? 0.5 : 1,
+        },
+        shadow,
+      ]}
     >
       {loading && <ActivityIndicator color={fg} style={{ marginRight: 8 }} />}
       <Text style={{ color: fg, fontSize: 15, fontWeight: '600' }}>{label}</Text>
