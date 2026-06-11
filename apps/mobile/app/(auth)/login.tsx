@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,6 +25,8 @@ export default function LoginScreen() {
   const theme = useTheme();
   const setSession = useAuthStore((s) => s.setSession);
   const tenantSlug = useTenantStore((s) => s.slug);
+  const tenantName = useTenantStore((s) => s.name);
+  const logoUrl = useTenantStore((s) => s.brand?.logoUrl ?? null);
 
   async function handleChangeSchool() {
     await deleteTenantSlug();
@@ -103,21 +106,39 @@ export default function LoginScreen() {
           }}
         >
           <ZelligePattern color={colors.gold[100]} opacity={0.12} />
-          <Text style={{ color: colors.white, fontSize: 26, fontFamily: fonts.displayBold }}>
-            📘 Klasso
-          </Text>
-          <Text
-            style={{
-              color: colors.gold[100],
-              fontSize: 12,
-              marginTop: 2,
-              textTransform: 'uppercase',
-              letterSpacing: 1.5,
-              fontFamily: fonts.bodySemibold,
-            }}
-          >
-            L'école à l'ère numérique
-          </Text>
+          {/* White-label header: the establishment's own logo + name when the
+              tenant customised its brand; Klasso platform branding otherwise. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            {logoUrl ? (
+              <Image
+                source={{ uri: logoUrl }}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                }}
+                accessibilityLabel={tenantName ? `Logo ${tenantName}` : 'Logo'}
+              />
+            ) : null}
+            <View style={{ flexShrink: 1 }}>
+              <Text style={{ color: colors.white, fontSize: 25, fontFamily: fonts.displayBold }}>
+                {tenantName ?? '📘 Klasso'}
+              </Text>
+              <Text
+                style={{
+                  color: colors.gold[100],
+                  fontSize: 12,
+                  marginTop: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1.5,
+                  fontFamily: fonts.bodySemibold,
+                }}
+              >
+                {tenantName ? 'Propulsé par Klasso' : "L'école à l'ère numérique"}
+              </Text>
+            </View>
+          </View>
           <Text
             style={{
               color: colors.white,

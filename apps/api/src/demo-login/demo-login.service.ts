@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
-import { Locale, Tenant, User } from '@prisma/client';
+import { Locale, Prisma, Tenant, User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { AuthService } from '../auth/auth.service';
@@ -15,6 +15,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { DEMO_PERSONA_MAP } from './demo-login.constants';
 import {
   DEMO_ROLE_MAP,
+  DEMO_TENANT_BRANDS,
   DEMO_TENANT_MAP,
   DEMO_USER_NAMES,
 } from './demo-login.tenants';
@@ -130,6 +131,11 @@ export class DemoLoginService {
       if (!tenantData) {
         throw new NotFoundException({ code: 'UNKNOWN_DEMO_TENANT' });
       }
+      // Distinct white-label brand per demo tenant — set on BOTH paths so
+      // already-existing prod rows pick it up on the next demo login.
+      const brand = DEMO_TENANT_BRANDS[config.tenantSlug] as
+        | Prisma.InputJsonValue
+        | undefined;
       tenant = await this.prisma.tenant.upsert({
         where: { slug: config.tenantSlug },
         // GTM — demo tenants are always fully onboarded so the 1-click demo
@@ -139,6 +145,7 @@ export class DemoLoginService {
           type: tenantData.type,
           status: 'ACTIVE',
           onboardingCompletedAt: new Date(),
+          ...(brand ? { brand } : {}),
         },
         create: {
           id: createId(),
@@ -149,6 +156,7 @@ export class DemoLoginService {
           timezone: 'Africa/Tunis',
           status: 'ACTIVE',
           onboardingCompletedAt: new Date(),
+          ...(brand ? { brand } : {}),
         },
       });
     }
