@@ -17,7 +17,7 @@ import { login } from '@/lib/api/auth';
 import { demoLogin, type DemoPersona } from '@/lib/api/demo-login';
 import { useAuthStore } from '@/lib/auth/store';
 import { useTenantStore } from '@/lib/tenant/store';
-import { MOBILE_DEMO_PERSONAS } from '@/lib/personas';
+import { getDemoPersonas } from '@/lib/personas';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -224,7 +224,7 @@ export default function LoginScreen() {
               Comptes de démonstration
             </Text>
             <View style={{ gap: 8 }}>
-              {MOBILE_DEMO_PERSONAS.map((p) => (
+              {getDemoPersonas(tenantSlug).map((p) => (
                 <Button
                   key={p.persona}
                   label={p.label}

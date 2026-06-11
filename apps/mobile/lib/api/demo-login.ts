@@ -10,6 +10,7 @@ export type DemoPersona =
   | 'parent-primary'
   | 'parent-kindergarten'
   | 'staff'
+  | 'staff-kindergarten'
   | 'super-admin';
 
 /**

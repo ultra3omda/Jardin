@@ -13,4 +13,5 @@ export const DEMO_PERSONA_MAP: Record<DemoPersona, DemoPersonaConfig> = {
   'parent-primary':        { tenantSlug: 'demo-ecole',      email: 'parent@demo-ecole.klasso.tn' },
   'parent-kindergarten':   { tenantSlug: 'demo-maternelle', email: 'parent@demo-maternelle.klasso.tn' },
   'staff':                 { tenantSlug: 'demo-ecole',      email: 'staff@demo-ecole.klasso.tn' },
+  'staff-kindergarten':    { tenantSlug: 'demo-maternelle', email: 'staff@demo-maternelle.klasso.tn' },
 };
