@@ -44,7 +44,9 @@ export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
           {title}
         </Text>
         {subtitle ? (
-          <Text style={{ color: colors.ink[500], fontSize: 13, marginTop: 3 }}>{subtitle}</Text>
+          <Text style={{ color: colors.ink[500], fontSize: 13, marginTop: 3, fontFamily: fonts.body }}>
+            {subtitle}
+          </Text>
         ) : null}
       </View>
       {right ? <View style={{ marginLeft: 12 }}>{right}</View> : null}

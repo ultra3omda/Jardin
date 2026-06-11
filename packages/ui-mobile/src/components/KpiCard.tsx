@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { Text, View } from 'react-native';
 import { colors } from '../tokens/colors';
+import { fonts } from '../tokens/fonts';
 import { radius } from '../tokens/spacing';
 
 export type KpiVariant = 'blue' | 'green' | 'orange' | 'amber' | 'pink' | 'purple';
@@ -65,7 +66,7 @@ export function KpiCard({ label, value, variant, sub, icon = 'stats-chart' }: Kp
           style={{
             color: colors.ink[500],
             fontSize: 10,
-            fontWeight: '700',
+            fontFamily: fonts.bodyBold,
             textTransform: 'uppercase',
             letterSpacing: 0.8,
             flex: 1,
@@ -88,11 +89,21 @@ export function KpiCard({ label, value, variant, sub, icon = 'stats-chart' }: Kp
           <Ionicons name={icon} size={19} color={VARIANT_BG[variant]} />
         </View>
       </View>
-      <Text style={{ color: colors.ink[900], fontSize: 28, fontWeight: '800', lineHeight: 30 }}>
+      <Text
+        style={{
+          color: colors.ink[900],
+          fontSize: 30,
+          fontFamily: fonts.displayBold,
+          lineHeight: 34,
+          letterSpacing: -0.5,
+        }}
+      >
         {value}
       </Text>
       {sub ? (
-        <Text style={{ color: colors.ink[500], fontSize: 11, marginTop: 3 }}>{sub}</Text>
+        <Text style={{ color: colors.ink[500], fontSize: 11, marginTop: 3, fontFamily: fonts.body }}>
+          {sub}
+        </Text>
       ) : null}
     </View>
   );

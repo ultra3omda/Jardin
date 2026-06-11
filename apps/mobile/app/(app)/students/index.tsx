@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fab } from '@klasso/ui-mobile';
 import { listStudents, type StudentSummary } from '@/lib/api/students';
@@ -30,11 +31,12 @@ export default function StudentsListScreen() {
 }
 
 function MyChildrenScreen() {
+  const insets = useSafeAreaInsets();
   const { data, isLoading, error } = useMyChildren();
   const kids = data ?? [];
   return (
     <View className="flex-1 bg-white">
-      <View className="border-b border-gray-200 p-4">
+      <View className="border-b border-gray-200 p-4" style={{ paddingTop: insets.top + 16 }}>
         <Text className="text-2xl font-bold">Mon enfant</Text>
       </View>
       {isLoading ? (
@@ -76,6 +78,7 @@ function MyChildrenScreen() {
 }
 
 function StaffStudentsScreen({ isAdmin }: { isAdmin: boolean }) {
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
@@ -86,7 +89,7 @@ function StaffStudentsScreen({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="border-b border-gray-200 p-4">
+      <View className="border-b border-gray-200 p-4" style={{ paddingTop: insets.top + 16 }}>
         <Text className="text-2xl font-bold">Élèves</Text>
         <TextInput
           value={search}

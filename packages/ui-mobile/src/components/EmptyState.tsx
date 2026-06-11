@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { Text, View } from 'react-native';
 import { colors } from '../tokens/colors';
+import { fonts } from '../tokens/fonts';
 
 interface EmptyStateProps {
   icon?: ComponentProps<typeof Ionicons>['name'];
@@ -26,7 +27,7 @@ export function EmptyState({ icon = 'sparkles-outline', title, description }: Em
       >
         <Ionicons name={icon} size={32} color={colors.ambre[500]} />
       </View>
-      <Text style={{ color: colors.ink[900], fontSize: 16, fontWeight: '700', textAlign: 'center' }}>
+      <Text style={{ color: colors.ink[900], fontSize: 18, fontFamily: fonts.display, textAlign: 'center' }}>
         {title}
       </Text>
       {description ? (
@@ -37,6 +38,7 @@ export function EmptyState({ icon = 'sparkles-outline', title, description }: Em
             textAlign: 'center',
             marginTop: 6,
             lineHeight: 19,
+            fontFamily: fonts.body,
           }}
         >
           {description}

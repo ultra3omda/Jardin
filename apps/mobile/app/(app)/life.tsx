@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { colors, radius } from '@klasso/ui-mobile';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, fonts, radius } from '@klasso/ui-mobile';
 
 import { useAuthStore } from '@/lib/auth/store';
 import { JournalSection } from '@/components/school-life/journal-section';
@@ -16,6 +17,7 @@ const SEGMENT_LABELS: Record<Segment, string> = {
 };
 
 export default function SchoolLifeScreen() {
+  const insets = useSafeAreaInsets();
   const role = useAuthStore((s) => s.user?.role);
   const tenantType = useAuthStore((s) => s.tenant?.type);
 
@@ -33,9 +35,9 @@ export default function SchoolLifeScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+      contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 32 }}
     >
-      <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink[900], marginBottom: 12 }}>
+      <Text style={{ fontSize: 24, fontFamily: fonts.displayBold, color: colors.ink[900], marginBottom: 12 }}>
         {title}
       </Text>
 
