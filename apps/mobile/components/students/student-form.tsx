@@ -11,6 +11,7 @@ import {
 } from '@klasso/ui-mobile';
 import { useMyClasses } from '@/lib/api/classes';
 import { useParents } from '@/lib/api/parents';
+import { AddParentSheet } from '@/components/students/add-parent-sheet';
 import {
   createStudent,
   updateStudent,
@@ -81,6 +82,7 @@ export function StudentForm({ mode, student, onSuccess, onCancel }: StudentFormP
   const qc = useQueryClient();
   const [form, setForm] = useState<FormState>(() => initialState(student));
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [addParentOpen, setAddParentOpen] = useState(false);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -230,11 +232,18 @@ export function StudentForm({ mode, student, onSuccess, onCancel }: StudentFormP
         emptyText="Aucun parent ne correspond."
         disabled={parentOptions.length === 0}
       />
-      {parentOptions.length === 0 ? (
-        <Text style={{ fontSize: 12, color: colors.ambre[600], marginTop: -8, marginBottom: 14 }}>
-          Aucun compte parent. Créez-en un d&apos;abord (annuaire) avant d&apos;ajouter l&apos;élève.
-        </Text>
-      ) : null}
+      <View style={{ marginTop: -6, marginBottom: 14 }}>
+        <Button
+          label="+ Créer un nouveau parent"
+          variant="secondary"
+          onPress={() => setAddParentOpen(true)}
+        />
+      </View>
+      <AddParentSheet
+        visible={addParentOpen}
+        onClose={() => setAddParentOpen(false)}
+        onCreated={(email) => set('parentEmail', email)}
+      />
       <Picker
         label="Lien de parenté"
         value={form.parentRelationType}
