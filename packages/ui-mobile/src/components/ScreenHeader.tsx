@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { colors } from '../tokens/colors';
+import { fonts } from '../tokens/fonts';
 
 interface ScreenHeaderProps {
   title: string;
@@ -32,7 +33,14 @@ export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
             marginBottom: 10,
           }}
         />
-        <Text style={{ color: colors.ink[900], fontSize: 26, fontWeight: '800', letterSpacing: -0.4 }}>
+        <Text
+          style={{
+            color: colors.ink[900],
+            fontSize: 27,
+            fontFamily: fonts.displayBold,
+            letterSpacing: -0.4,
+          }}
+        >
           {title}
         </Text>
         {subtitle ? (

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Button, ConfirmDialog, colors, radius } from '@klasso/ui-mobile';
+import { Button, ConfirmDialog, colors, fonts, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { deleteRefreshToken, deleteTenantSlug } from '@/lib/auth/secure-storage';
 
@@ -75,7 +75,7 @@ export default function ProfileScreen() {
             {user.firstName.charAt(0).toUpperCase()}
           </Text>
         </View>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink[900] }}>
+        <Text style={{ fontSize: 22, fontFamily: fonts.displayBold, color: colors.ink[900] }}>
           {user.firstName} {user.lastName}
         </Text>
         <Text style={{ fontSize: 13, color: colors.ink[500], marginTop: 2 }}>

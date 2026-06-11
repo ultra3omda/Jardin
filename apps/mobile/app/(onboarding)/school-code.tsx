@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button, colors, radius } from '@klasso/ui-mobile';
+import { Button, colors, fonts, radius } from '@klasso/ui-mobile';
 import { ApiError } from '@/lib/api/client';
 import { getTenantBrand } from '@/lib/api/tenant';
 import { saveTenantSlug } from '@/lib/auth/secure-storage';
@@ -71,7 +71,7 @@ export default function SchoolCodeScreen() {
             paddingBottom: 40,
           }}
         >
-          <Text style={{ color: colors.white, fontSize: 24, fontWeight: '700' }}>
+          <Text style={{ color: colors.white, fontSize: 26, fontFamily: fonts.displayBold }}>
             📘 Klasso
           </Text>
           <Text
@@ -88,14 +88,14 @@ export default function SchoolCodeScreen() {
           <Text
             style={{
               color: colors.white,
-              fontSize: 22,
-              fontWeight: '600',
-              lineHeight: 28,
+              fontSize: 24,
+              fontFamily: fonts.display,
+              lineHeight: 30,
               marginTop: 20,
             }}
           >
             Bienvenue sur{' '}
-            <Text style={{ color: colors.ambre[500] }}>Klasso</Text>
+            <Text style={{ color: colors.ambre[500], fontFamily: fonts.displayBold }}>Klasso</Text>
           </Text>
         </View>
 
@@ -103,8 +103,8 @@ export default function SchoolCodeScreen() {
         <View style={{ padding: 24, gap: 14 }}>
           <Text
             style={{
-              fontSize: 18,
-              fontWeight: '700',
+              fontSize: 20,
+              fontFamily: fonts.displayBold,
               color: colors.ink[900],
               textAlign: 'center',
             }}

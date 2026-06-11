@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, Text, type PressableProps } from 'react-native';
 import { colors } from '../tokens/colors';
+import { fonts } from '../tokens/fonts';
 import { radius } from '../tokens/spacing';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
@@ -65,7 +66,9 @@ export function Button({ label, variant = 'primary', loading, disabled, ...rest 
       ]}
     >
       {loading && <ActivityIndicator color={fg} style={{ marginRight: 8 }} />}
-      <Text style={{ color: fg, fontSize: 15, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ color: fg, fontSize: 15, fontWeight: '600', fontFamily: fonts.bodySemibold }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
