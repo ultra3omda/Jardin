@@ -11,38 +11,38 @@ export const colors = {
     900: '#0f1419',
   },
   // Accent corail — aligné sur la charte web V7 (remplace l'ancien jaune ambré).
-  // Primary — vivid coral (Médina, punchier & more playful).
+  // Primary — electric coral (Médina, max punch).
   ambre: {
-    50: '#fff0ea',
-    100: '#ffdacb',
-    500: '#ff5a36',
-    600: '#ed4524',
-    700: '#c9351a',
+    50: '#ffece4',
+    100: '#ffceba',
+    500: '#ff4318',
+    600: '#f2330a',
+    700: '#cc2606',
     900: '#5e1f0e',
   },
-  // Médina secondary — vivid zellige teal.
+  // Médina secondary — electric zellige teal.
   teal: {
-    50: '#dcf5f1',
-    100: '#aee9e1',
-    500: '#10b3a3',
-    600: '#0c948a',
-    700: '#0a746d',
+    50: '#d2f7f1',
+    100: '#9aeee0',
+    500: '#02c4ad',
+    600: '#02a896',
+    700: '#048275',
   },
-  // Médina tertiary — sunny gold.
+  // Médina tertiary — bright sun gold.
   gold: {
-    50: '#fff3d6',
-    100: '#ffe0a0',
-    500: '#ffb020',
-    600: '#ed9b0e',
-    700: '#c47e0a',
+    50: '#fff0cc',
+    100: '#ffdd8c',
+    500: '#ffa400',
+    600: '#f08d00',
+    700: '#c46e00',
   },
-  // Playful 4th accent — grape (kids/school energy).
+  // Playful 4th accent — electric grape (kids/school energy).
   grape: {
-    50: '#f3ebff',
-    100: '#e0ccff',
-    500: '#7c4dff',
-    600: '#6a3aef',
-    700: '#5326c4',
+    50: '#efe5ff',
+    100: '#d7bcff',
+    500: '#7a30ff',
+    600: '#671bf0',
+    700: '#5012c4',
   },
   paper: {
     // Warm sand — Médina daylight, a touch warmer than the old neutral cream.
