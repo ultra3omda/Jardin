@@ -63,6 +63,29 @@ export class DemoLoginService {
       seeded = true;
     }
 
+    // Keep the demo tenant's white-label brand in sync. The self-heal upsert
+    // above only runs when the demo USER is missing, so tenants that pre-date
+    // DEMO_TENANT_BRANDS (every already-seeded prod row) never received their
+    // distinct colors/logo. Field-compare and write once; subsequent logins
+    // are a no-op.
+    if (user.tenant) {
+      const configured = DEMO_TENANT_BRANDS[user.tenant.slug];
+      if (configured) {
+        const stored = (user.tenant.brand ?? {}) as Record<string, unknown>;
+        const outOfSync = Object.entries(configured).some(
+          ([key, value]) => stored[key] !== value,
+        );
+        if (outOfSync) {
+          this.logger.log(`Syncing demo brand for tenant=${user.tenant.slug}`);
+          const freshTenant = await this.prisma.tenant.update({
+            where: { id: user.tenant.id },
+            data: { brand: configured as Prisma.InputJsonValue },
+          });
+          user = { ...user, tenant: freshTenant };
+        }
+      }
+    }
+
     const tokens = await this.auth.issueTokens(user, ip ?? undefined);
 
     await this.prisma.auditLog.create({

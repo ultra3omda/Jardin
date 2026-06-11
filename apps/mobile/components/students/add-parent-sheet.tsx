@@ -12,6 +12,8 @@ interface AddParentSheetProps {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Mirrors the API's CreateParentDto phone validator.
+const PHONE_RE = /^[+0-9 ().-]{8,40}$/;
 
 /**
  * Inline parent-account creation from the student form (admin). Mirrors the
@@ -23,9 +25,13 @@ export function AddParentSheet({ visible, onClose, onCreated }: AddParentSheetPr
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; email?: string }>(
-    {},
-  );
+  const [phone, setPhone] = useState('');
+  const [errors, setErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+  }>({});
   const [created, setCreated] = useState<CreatedParent | null>(null);
   const mutation = useCreateParent();
 
@@ -33,6 +39,7 @@ export function AddParentSheet({ visible, onClose, onCreated }: AddParentSheetPr
     setFirstName('');
     setLastName('');
     setEmail('');
+    setPhone('');
     setErrors({});
     setCreated(null);
     mutation.reset();
@@ -50,11 +57,18 @@ export function AddParentSheet({ visible, onClose, onCreated }: AddParentSheetPr
     if (!firstName.trim()) e.firstName = 'Prénom requis';
     if (!lastName.trim()) e.lastName = 'Nom requis';
     if (!EMAIL_RE.test(email.trim())) e.email = 'Email invalide';
+    if (!phone.trim()) e.phone = 'Téléphone requis';
+    else if (!PHONE_RE.test(phone.trim())) e.phone = 'Téléphone invalide (8 chiffres minimum)';
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
     mutation.mutate(
-      { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim() },
+      {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+      },
       { onSuccess: (parent) => setCreated(parent) },
     );
   }
@@ -116,7 +130,9 @@ export function AddParentSheet({ visible, onClose, onCreated }: AddParentSheetPr
                 {created.tempPassword}
               </Text>
               <Text style={{ fontSize: 12, color: colors.ink[500], fontFamily: fonts.body }}>
-                Transmettez-le au parent ({created.email}). Il pourra le changer après connexion.
+                Transmettez-le au parent ({created.email}
+                {created.phone ? ` · ${created.phone}` : ''}). Il pourra le changer après
+                connexion.
               </Text>
             </View>
           ) : null}
@@ -158,6 +174,19 @@ export function AddParentSheet({ visible, onClose, onCreated }: AddParentSheetPr
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
+          />
+          <FormField
+            label="Téléphone"
+            required
+            value={phone}
+            onChangeText={(v) => {
+              setPhone(v);
+              if (errors.phone) setErrors((p) => ({ ...p, phone: undefined }));
+            }}
+            error={errors.phone}
+            placeholder="+216 22 345 678"
+            keyboardType="phone-pad"
+            autoCorrect={false}
           />
           {mutation.error ? (
             <Text style={{ fontSize: 12, color: colors.status.danger500, fontFamily: fonts.body }}>
