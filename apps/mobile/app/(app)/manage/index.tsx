@@ -51,6 +51,13 @@ const ENTRIES: Entry[] = [
     color: '#ec4899',
   },
   {
+    route: '/(app)/manage/observations',
+    title: 'Observations',
+    subtitle: 'Saisie rapide du fil pédagogique',
+    icon: 'eye-outline',
+    color: '#671bf0',
+  },
+  {
     route: '/(app)/manage/announcements',
     title: 'Annonces',
     subtitle: 'Communiquer avec parents & équipe',

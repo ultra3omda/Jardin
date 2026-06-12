@@ -95,6 +95,7 @@ export function ParentDashboard() {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         <Action icon="reader-outline" label="Devoirs" color="#8b5cf6" onPress={() => router.push('/(app)/parent/homework')} />
         <Action icon="calendar-outline" label="Emploi du temps" color="#3b82f6" onPress={() => router.push('/(app)/parent/schedule')} />
+        <Action icon="eye-outline" label="Observations" color="#671bf0" onPress={() => router.push('/(app)/parent/observations' as never)} />
         <Action icon="card-outline" label="Paiements" color="#14b8a6" onPress={() => router.push('/(app)/parent/payments')} />
         <Action icon="book-outline" label="Journal" color="#f59e0b" onPress={() => router.push('/(app)/life')} />
         <Action icon="chatbubbles-outline" label="Messages" color="#ec4899" onPress={() => router.push('/(app)/messages')} />
