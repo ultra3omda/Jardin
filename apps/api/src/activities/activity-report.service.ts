@@ -91,8 +91,27 @@ export class ActivityReportService {
     return report;
   }
 
-  get(tenantId: string, activityId: string) {
-    return this.prisma.activityReport.findFirst({ where: { tenantId, activityId } });
+  /** Métadonnées du rapport. PARENT : visible + son enfant participe, sinon null. */
+  async get(tenantId: string, activityId: string, user: AuthenticatedUser) {
+    const report = await this.prisma.activityReport.findFirst({
+      where: { tenantId, activityId },
+    });
+    if (!report) return null;
+    if (user.role === 'PARENT') {
+      if (!report.visibleToParent) return null;
+      const childIds = (
+        await this.prisma.parentStudent.findMany({
+          where: { tenantId, parentUserId: user.id },
+          select: { studentId: true },
+        })
+      ).map((r) => r.studentId);
+      const participates = await this.prisma.activityParticipation.findFirst({
+        where: { tenantId, activityId, studentId: { in: childIds } },
+        select: { id: true },
+      });
+      if (!participates) return null;
+    }
+    return report;
   }
 
   /** Rendu PDF à la demande. PARENT : son enfant doit participer à l'activité. */

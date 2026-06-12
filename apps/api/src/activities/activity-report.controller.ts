@@ -30,7 +30,7 @@ export class ActivityReportController {
   @Get(':id/report')
   @Roles(UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.PARENT)
   get(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return this.service.get(u.tenantId!, id);
+    return this.service.get(u.tenantId!, id, u);
   }
 
   @Get(':id/report/pdf')
