@@ -22,6 +22,7 @@ import { listTeachers } from '@/lib/api/staff';
 import { listClasses } from '@/lib/api/classes';
 import { CATEGORIES, type ActivityValues } from '@/lib/validation/activities.schemas';
 import { ManageParticipantsModal } from './manage-participants-modal';
+import { ActivityReportModal } from './activity-report-modal';
 
 const ACTIVITIES_KEY = ['activities', 'list'] as const;
 
@@ -71,6 +72,7 @@ export default function ActivitiesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
   const [managing, setManaging] = useState<Activity | null>(null);
+  const [reporting, setReporting] = useState<Activity | null>(null);
 
   const { data: teachersData } = useQuery({
     queryKey: ['teachers', 'options'],
@@ -186,6 +188,9 @@ export default function ActivitiesPage() {
                             <Button variant="outline" size="sm" onClick={() => setManaging(act)}>
                               Participants
                             </Button>
+                            <Button variant="outline" size="sm" onClick={() => setReporting(act)}>
+                              Rapport
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => setEditing(act)}>
                               Modifier
                             </Button>
@@ -241,6 +246,10 @@ export default function ActivitiesPage() {
           onClose={() => setManaging(null)}
           onChanged={invalidate}
         />
+      )}
+
+      {reporting && (
+        <ActivityReportModal activity={reporting} onClose={() => setReporting(null)} />
       )}
     </>
   );
