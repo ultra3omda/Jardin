@@ -51,3 +51,7 @@ Thumbs.db
 # EducaKids export tool — secrets and PII output
 tools/educakids-export/.env
 tools/educakids-export/output/
+
+# Python caches
+tools/educakids-export/**/__pycache__/
+tools/educakids-export/.pytest_cache/
