@@ -62,7 +62,9 @@ def crawl_navigation(session) -> dict:
             page = http_client.get(session, url)
         except Exception:
             continue
-        links = extract_internal_links(page, url)
+        # EducaKids uses flat, root-relative links (e.g. "student" -> /student),
+        # so resolve every href against the site root, not the current page path.
+        links = extract_internal_links(page, config.BASE_URL)
         site_map[url] = {"links": links, "title": _title(page)}
         for link in links:
             if link not in seen:
