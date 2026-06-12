@@ -98,6 +98,7 @@ export function ParentDashboard() {
         <Action icon="eye-outline" label="Observations" color="#671bf0" onPress={() => router.push('/(app)/parent/observations' as never)} />
         <Action icon="restaurant-outline" label="Cantine" color="#02a896" onPress={() => router.push('/(app)/parent/canteen' as never)} />
         <Action icon="color-palette-outline" label="Activités" color="#f08d00" onPress={() => router.push('/(app)/parent/activities' as never)} />
+        <Action icon="calendar-outline" label="Rendez-vous" color="#02a896" onPress={() => router.push('/(app)/parent/appointments' as never)} />
         <Action icon="card-outline" label="Paiements" color="#14b8a6" onPress={() => router.push('/(app)/parent/payments')} />
         <Action icon="book-outline" label="Journal" color="#f59e0b" onPress={() => router.push('/(app)/life')} />
         <Action icon="chatbubbles-outline" label="Messages" color="#ec4899" onPress={() => router.push('/(app)/messages')} />

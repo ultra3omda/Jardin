@@ -204,6 +204,26 @@ export class NotificationFanoutService {
     });
   }
 
+  /** G6 — A parent appointment was confirmed. */
+  async fanoutAppointment(
+    tenantId: string,
+    parentUserId: string,
+    body: string,
+    appointmentId: string,
+  ): Promise<void> {
+    return this.deliver({
+      tenantId,
+      userId: parentUserId,
+      type: NotificationType.APPOINTMENT,
+      title: 'Rendez-vous confirmé',
+      body,
+      emailSubject: 'Rendez-vous confirmé',
+      ctaLabel: 'Voir',
+      ctaPath: '/appointments',
+      data: { appointmentId },
+    });
+  }
+
   /** An announcement was published to a set of users. */
   async fanoutAnnouncement(
     tenantId: string,

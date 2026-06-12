@@ -41,6 +41,7 @@ import {
   Eye,
   UtensilsCrossed,
   CalendarPlus,
+  CalendarClock,
   BarChart3,
 } from 'lucide-react';
 
@@ -90,4 +91,5 @@ export const ICONS: Record<string, LucideIcon> = {
   expenses: ShoppingCart,
   suppliers: Truck,
   observations: Eye,
+  appointments: CalendarClock,
 };
