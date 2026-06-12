@@ -38,13 +38,20 @@ def run_extract(only_module: str | None) -> None:
         auth.login(session)
 
         # 1) PRIMARY: native export endpoints (Excel/PDF) — the clean migration path.
+        # Split dataset-level exports from the bulk per-activity PDFs so the .xls
+        # conversion (step 4) can glob a clean datasets/ dir, and so the 1600+
+        # activity PDFs land in their own folder.
         if export_urls and not (only_module and only_module != "exports"):
             if progress.is_done("exports"):
                 print("skip exports (already done)")
             else:
-                print(f"downloading {len(export_urls)} export endpoints ...")
-                count = binaries.download_binaries(session, export_urls, "exports")
-                print(f"  {count} export files saved")
+                datasets = [u for u in export_urls if "downloadactivitypdf" not in u.lower()]
+                activities = [u for u in export_urls if "downloadactivitypdf" in u.lower()]
+                print(f"downloading {len(datasets)} dataset exports "
+                      f"+ {len(activities)} activity PDFs ...")
+                n1 = binaries.download_binaries(session, datasets, "exports/datasets")
+                n2 = binaries.download_binaries(session, activities, "exports/activities")
+                print(f"  {n1} dataset files + {n2} activity PDFs saved")
                 progress.mark_done("exports")
                 progress.save()
 
