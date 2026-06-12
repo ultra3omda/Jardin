@@ -58,6 +58,13 @@ const ENTRIES: Entry[] = [
     color: '#671bf0',
   },
   {
+    route: '/(app)/manage/appointments',
+    title: 'Rendez-vous',
+    subtitle: 'Demandes des parents, confirmation',
+    icon: 'calendar-outline',
+    color: '#02a896',
+  },
+  {
     route: '/(app)/manage/announcements',
     title: 'Annonces',
     subtitle: 'Communiquer avec parents & équipe',
