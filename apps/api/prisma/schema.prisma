@@ -856,6 +856,7 @@ enum NotificationType {
   INVOICE
   ANNOUNCEMENT
   SYSTEM
+  PAYMENT_REMINDER // G2 — relance impayés
 }
 
 model Notification {
