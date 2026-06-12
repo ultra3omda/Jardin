@@ -52,6 +52,10 @@ export const TENANT_SCOPED_MODELS = [
   'TenantSubscription', // GTM payments
   'PaymentTransaction', // GTM payments
   'TeacherSubject', // affectations: matières enseignées
+  'FeeType', // G2 — référentiel de frais
+  'FeeAssignment', // G2 — référentiel de frais
+  'FeeInstallment', // G2 — référentiel de frais
+  'SmsLog', // G2 — historique SMS (transversal)
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 

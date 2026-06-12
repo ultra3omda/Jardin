@@ -124,6 +124,7 @@ model Tenant {
   grades          Grade[] // V6
   bulletins       Bulletin[] // V6
   invoices        Invoice[] // V8
+  feeAssignments  FeeAssignment[] // G2 — referentiel de frais
   notifications   Notification[] // V8
   announcements   Announcement[] // V9
   attendances     Attendance[] // V9
@@ -170,6 +171,11 @@ model Tenant {
 
   // affectations — matières enseignées (périmètre prof)
   teacherSubjects TeacherSubject[]
+
+  // G2 — referentiel de frais & SMS log
+  feeTypes        FeeType[]
+  feeInstallments FeeInstallment[]
+  smsLogs         SmsLog[]
 
   @@index([slug])
   @@index([status])
@@ -417,6 +423,7 @@ model Student {
   grades          Grade[] // V6
   bulletins       Bulletin[] // V6
   invoices        Invoice[] // V8
+  feeAssignments  FeeAssignment[] // G2 — referentiel de frais
   attendances     Attendance[] // V9
 
   // T2b — Journal & Activities
@@ -795,6 +802,10 @@ model Invoice {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  // G2 — referentiel de frais : rattachement optionnel + reconciliation import
+  feeTypeId   String?
+  externalRef String? // reconciliation import EducaKids
+
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   student  Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
   items    InvoiceItem[]
@@ -804,6 +815,7 @@ model Invoice {
   @@index([studentId])
   @@index([status])
   @@index([dueDate])
+  @@index([tenantId, externalRef])
 }
 
 model InvoiceItem {
@@ -1611,4 +1623,118 @@ model PaymentTransaction {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("payment_transactions")
+}
+
+// ============================================================================
+// G2 — Référentiel de frais & affectation (parité EducaKids)
+// ============================================================================
+
+enum FeeCategory {
+  STANDARD
+  DIVERS
+  OPTIONNEL
+}
+
+enum FeeRecurrence {
+  ONCE
+  MONTHLY
+  TERM
+  YEARLY
+}
+
+enum FeeAssignmentStatus {
+  DUE
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum SmsStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model FeeType {
+  id            String        @id // cuid2 (createId en service)
+  tenantId      String
+  name          String
+  category      FeeCategory
+  defaultAmount Decimal       @db.Decimal(10, 3)
+  recurrence    FeeRecurrence @default(YEARLY)
+  level         String? // niveau cible (3ans/4ans/prépa) ; null = tous
+  schoolYear    String
+  active        Boolean       @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignments FeeAssignment[]
+
+  @@index([tenantId, schoolYear, category])
+  @@map("fee_types")
+}
+
+model FeeAssignment {
+  id            String              @id // cuid2
+  tenantId      String
+  studentId     String
+  feeTypeId     String
+  schoolYear    String
+  totalAmount   Decimal             @db.Decimal(10, 3)
+  advanceAmount Decimal             @default(0) @db.Decimal(10, 3)
+  status        FeeAssignmentStatus @default(DUE)
+  externalRef   String? // reconciliation import
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeType      FeeType          @relation(fields: [feeTypeId], references: [id], onDelete: Restrict)
+  installments FeeInstallment[]
+
+  @@unique([studentId, feeTypeId, schoolYear], name: "unique_fee_per_student_year")
+  @@index([tenantId, status])
+  @@map("fee_assignments")
+}
+
+model FeeInstallment {
+  id           String            @id // cuid2
+  tenantId     String
+  assignmentId String
+  label        String
+  dueDate      DateTime          @db.Date
+  amount       Decimal           @db.Decimal(10, 3)
+  invoiceId    String?
+  status       InstallmentStatus @default(PENDING)
+  createdAt    DateTime          @default(now())
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignment FeeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, dueDate, status])
+  @@map("fee_installments")
+}
+
+model SmsLog {
+  id        String    @id // cuid2
+  tenantId  String
+  toMasked  String // n° masqué (4 derniers chiffres) — pas de PII complète
+  body      String    @db.Text
+  status    SmsStatus
+  context   String? // ex. "payment_reminder"
+  relatedId String? // id de l'entité source
+  createdAt DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("sms_logs")
 }
