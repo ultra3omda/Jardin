@@ -7,6 +7,58 @@ import auth
 import http_client
 import discover
 import audit
+import output
+import extract
+import binaries
+
+
+# HTML modules WITHOUT a native export, filled after reviewing the site map.
+# Each entry: extract.ModuleSpec(name=..., row_selector=..., next_selector=..., fields={...})
+MODULES: list = []
+
+
+def _load_site_map() -> dict:
+    path = config.AUDIT_DIR / "site-map.json"
+    if not path.exists():
+        raise SystemExit(
+            "No site-map.json found. Run `--phase discover` first."
+        )
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def run_extract(only_module: str | None) -> None:
+    config.ensure_dirs()
+    site_map = _load_site_map()
+    export_urls = binaries.find_export_endpoints(site_map)
+    progress = output.Progress.load()
+    with http_client.build_session() as session:
+        auth.login(session)
+
+        # 1) PRIMARY: native export endpoints (Excel/PDF) — the clean migration path.
+        if export_urls and not (only_module and only_module != "exports"):
+            if progress.is_done("exports"):
+                print("skip exports (already done)")
+            else:
+                print(f"downloading {len(export_urls)} export endpoints ...")
+                count = binaries.download_binaries(session, export_urls, "exports")
+                print(f"  {count} export files saved")
+                progress.mark_done("exports")
+                progress.save()
+
+        # 2) SECONDARY: HTML modules without an export.
+        for spec in MODULES:
+            if only_module and spec.name != only_module:
+                continue
+            if progress.is_done(spec.name):
+                print(f"skip {spec.name} (already done)")
+                continue
+            print(f"extracting {spec.name} ...")
+            records = extract.extract_records(session, spec)
+            output.write_json(spec.name, records)
+            output.write_csv(spec.name, records)
+            progress.mark_done(spec.name)
+            progress.save()
+            print(f"  {len(records)} records")
 
 
 def run_discover() -> None:
@@ -34,7 +86,7 @@ def main() -> None:
     if args.phase == "discover":
         run_discover()
     else:
-        raise SystemExit("Extract phase is implemented in a later task.")
+        run_extract(args.module)
 
 
 if __name__ == "__main__":
