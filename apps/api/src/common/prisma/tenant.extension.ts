@@ -64,6 +64,7 @@ export const TENANT_SCOPED_MODELS = [
   'ObservationMedia', // G3 — observations
   'Dish', // G4 — cantine catalogue
   'CanteenReservation', // G4 — cantine réservation
+  'ActivityReport', // G5 — rapports d'activité
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 

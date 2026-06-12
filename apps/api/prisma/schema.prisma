@@ -191,6 +191,9 @@ model Tenant {
   dishes              Dish[]
   canteenReservations CanteenReservation[]
 
+  // G5 — rapports d'activité
+  activityReports ActivityReport[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -881,6 +884,7 @@ enum NotificationType {
   SYSTEM
   PAYMENT_REMINDER // G2 — relance impayés
   OBSERVATION // G3 — nouvelle observation pédagogique
+  ACTIVITY_REPORT // G5 — rapport d'activité publié
 }
 
 model Notification {
@@ -1019,6 +1023,7 @@ model Activity {
   responsible    User?                   @relation("ActivityResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
   class          Class?                  @relation(fields: [classId], references: [id], onDelete: SetNull)
   participations ActivityParticipation[]
+  report         ActivityReport? // G5 — rapport d'activité (1/activité)
 
   @@index([tenantId])
   @@index([responsibleUserId])
@@ -1964,4 +1969,28 @@ model CanteenReservation {
   @@unique([studentId, date], name: "unique_reservation_per_day")
   @@index([tenantId, date, status])
   @@map("canteen_reservations")
+}
+
+// ============================================================================
+// G5 — Rapports d'activité PDF (parité EducaKids : downloadactivitypdf)
+// ============================================================================
+
+model ActivityReport {
+  id              String   @id // cuid2
+  tenantId        String
+  activityId      String   @unique
+  title           String
+  summary         String   @db.Text
+  photoUrls       String[] @default([]) // R2 public URLs
+  visibleToParent Boolean  @default(true)
+  generatedById   String
+  generatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, activityId])
+  @@map("activity_reports")
 }
