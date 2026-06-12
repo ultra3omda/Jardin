@@ -146,6 +146,44 @@ describe('Canteen reservation (e2e)', () => {
       .expect(403);
   });
 
+  it('PARENT annule sa réservation (CANCELLED) mais pas celle d’un autre enfant', async () => {
+    // réservation propre (par le parent)
+    const own = await request(app.getHttpServer())
+      .post('/api/canteen/reservations')
+      .set('Authorization', `Bearer ${parentA.accessToken}`)
+      .send({ studentId: studentOwned, date: '2026-02-20' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch(`/api/canteen/reservations/${own.body.id}`)
+      .set('Authorization', `Bearer ${parentA.accessToken}`)
+      .send({ status: 'CANCELLED' })
+      .expect(200);
+
+    // réservation d'un autre élève créée par l'admin
+    const other = await request(app.getHttpServer())
+      .post('/api/canteen/reservations')
+      .set('Authorization', `Bearer ${adminA.accessToken}`)
+      .send({ studentId: studentOther, date: '2026-02-20' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch(`/api/canteen/reservations/${other.body.id}`)
+      .set('Authorization', `Bearer ${parentA.accessToken}`)
+      .send({ status: 'CANCELLED' })
+      .expect(403);
+
+    // un parent ne peut pas marquer SERVED (seulement annuler)
+    const own2 = await request(app.getHttpServer())
+      .post('/api/canteen/reservations')
+      .set('Authorization', `Bearer ${parentA.accessToken}`)
+      .send({ studentId: studentOwned, date: '2026-02-21' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch(`/api/canteen/reservations/${own2.body.id}`)
+      .set('Authorization', `Bearer ${parentA.accessToken}`)
+      .send({ status: 'SERVED' })
+      .expect(403);
+  });
+
   it('ISOLATION : le tenant B ne voit pas les réservations du tenant A', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/canteen/reservations?date=2026-02-10')

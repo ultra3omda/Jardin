@@ -93,12 +93,12 @@ export class CanteenExtraController {
   }
 
   @Patch('reservations/:id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.STAFF)
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.STAFF, UserRole.PARENT)
   setStatus(
     @CurrentUser() u: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: UpdateReservationDto,
   ) {
-    return this.reservations.setStatus(u.tenantId!, id, dto.status);
+    return this.reservations.setStatus(u, id, dto.status);
   }
 }

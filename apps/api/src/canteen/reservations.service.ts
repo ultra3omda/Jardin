@@ -63,9 +63,21 @@ export class ReservationsService {
     return { created: students.length, total: students.length };
   }
 
-  async setStatus(tenantId: string, id: string, status: ReservationStatus) {
+  async setStatus(user: AuthenticatedUser, id: string, status: ReservationStatus) {
+    const tenantId = user.tenantId!;
     const existing = await this.prisma.canteenReservation.findFirst({ where: { id, tenantId } });
     if (!existing) return null;
+    // Un PARENT ne peut qu'annuler (CANCELLED) une réservation d'un de ses enfants.
+    if (user.role === 'PARENT') {
+      if (status !== ReservationStatus.CANCELLED) {
+        throw new ForbiddenException({ code: 'PARENT_CANCEL_ONLY' });
+      }
+      const owns = await this.prisma.parentStudent.findFirst({
+        where: { tenantId, parentUserId: user.id, studentId: existing.studentId },
+        select: { id: true },
+      });
+      if (!owns) throw new ForbiddenException({ code: 'STUDENT_NOT_OWNED' });
+    }
     return this.prisma.canteenReservation.update({ where: { id }, data: { status } });
   }
 
