@@ -39,6 +39,9 @@ import {
   ShoppingCart,
   Truck,
   Eye,
+  UtensilsCrossed,
+  CalendarPlus,
+  BarChart3,
 } from 'lucide-react';
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -59,6 +62,9 @@ export const ICONS: Record<string, LucideIcon> = {
   discipline: Scale,
   schedule: Calendar,
   canteen: Utensils,
+  canteenDishes: UtensilsCrossed,
+  canteenReservations: CalendarPlus,
+  canteenStats: BarChart3,
   transport: Bus,
   health: Stethoscope,
   security: ShieldAlert,

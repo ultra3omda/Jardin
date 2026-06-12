@@ -95,7 +95,10 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
       id: 'vieEcole',
       label: 'Vie école',
       items: [
-        { id: 'canteen',   label: 'Cantine',   href: '/canteen',   icon: ICONS.canteen },
+        { id: 'canteen',             label: 'Cantine',             href: '/canteen',              icon: ICONS.canteen },
+        { id: 'canteenDishes',       label: 'Plats',               href: '/canteen/dishes',       icon: ICONS.canteenDishes },
+        { id: 'canteenReservations', label: 'Réservations cantine', href: '/canteen/reservations', icon: ICONS.canteenReservations },
+        { id: 'canteenStats',        label: 'Stats cantine',       href: '/canteen/stats',        icon: ICONS.canteenStats },
         { id: 'transport', label: 'Transport', href: '/transport', icon: ICONS.transport },
         { id: 'health',    label: 'Santé',     href: '/health',    icon: ICONS.health },
       ],
@@ -219,7 +222,10 @@ function staffNav(_: BuildContext): NavSection[] {
       { id: 'students', label: 'Annuaire', href: '/students', icon: ICONS.students },
     ]},
     { id: 'vieEcole', label: 'Vie école', items: [
-      { id: 'canteen',   label: 'Cantine',          href: '/canteen',   icon: ICONS.canteen },
+      { id: 'canteen',             label: 'Cantine',             href: '/canteen',              icon: ICONS.canteen },
+      { id: 'canteenDishes',       label: 'Plats',               href: '/canteen/dishes',       icon: ICONS.canteenDishes },
+      { id: 'canteenReservations', label: 'Réservations cantine', href: '/canteen/reservations', icon: ICONS.canteenReservations },
+      { id: 'canteenStats',        label: 'Stats cantine',       href: '/canteen/stats',        icon: ICONS.canteenStats },
       { id: 'transport', label: 'Transport',        href: '/transport', icon: ICONS.transport },
       { id: 'health',    label: 'Santé',            href: '/health',    icon: ICONS.health },
       { id: 'security',  label: 'Sécurité',         href: '/security',  icon: ICONS.security },
