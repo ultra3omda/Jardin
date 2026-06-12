@@ -48,7 +48,7 @@ def crawl_navigation(session) -> dict:
     """
     seen: set[str] = set()
     site_map: dict[str, dict] = {}
-    frontier = [config.BASE_URL]
+    frontier = [urljoin(config.BASE_URL, config.DASHBOARD_PATH)]
     cap_hit = False
     while frontier:
         url = frontier.pop(0)
@@ -62,7 +62,7 @@ def crawl_navigation(session) -> dict:
             page = http_client.get(session, url)
         except Exception:
             continue
-        links = extract_internal_links(page, config.BASE_URL)
+        links = extract_internal_links(page, url)
         site_map[url] = {"links": links, "title": _title(page)}
         for link in links:
             if link not in seen:

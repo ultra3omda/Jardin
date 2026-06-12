@@ -1,15 +1,10 @@
 import http_client
 
 
-class FakeSelector:
-    def __init__(self, status, url):
-        self.status = status
-        self.url = url
+def test_looks_like_login_true_on_real_login_page():
+    html = "<form action='/login'>Mot de passe <button>Se connecter</button></form>"
+    assert http_client.looks_like_login(html) is True
 
 
-def test_looks_like_login_redirect_true():
-    assert http_client.looks_like_login("<form name=login>identifiant</form>") is True
-
-
-def test_looks_like_login_redirect_false():
-    assert http_client.looks_like_login("<table>students</table>") is False
+def test_looks_like_login_false_on_dashboard():
+    assert http_client.looks_like_login("<a href='/logout'>Déconnexion</a> students table") is False

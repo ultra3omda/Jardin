@@ -20,10 +20,11 @@ def build_login_payload() -> dict:
 
 
 def login(session) -> None:
-    """POST credentials; raises if the result still looks like the login page."""
+    """Prime cookies, POST credentials; raise if still on the login page."""
     assert_credentials()
+    session.get(config.BASE_URL)  # prime session cookies from the login page
     login_url = urljoin(config.BASE_URL, config.LOGIN_PATH)
     resp = session.post(login_url, data=build_login_payload())
-    body = getattr(resp, "html_content", "") or getattr(resp, "body", "") or str(resp)
+    body = http_client.response_body(resp)
     if http_client.looks_like_login(body):
         raise RuntimeError("Login failed — still on login page. Check credentials/field names.")

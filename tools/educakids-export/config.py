@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_URL = "https://admin.educakids.tn"
-LOGIN_PATH = "/"            # login form is served at root
-LOGIN_FIELD_USER = "identifiant"   # confirmed during discovery; adjust if input name differs
+LOGIN_PATH = "/login"       # login form action (POST)
+DASHBOARD_PATH = "/index"   # authenticated landing page
+LOGIN_FIELD_USER = "username"      # confirmed during discovery; adjust if input name differs
 LOGIN_FIELD_PASS = "password"      # confirmed during discovery; adjust if input name differs
 
 REQUEST_DELAY_SECONDS = 1.0
