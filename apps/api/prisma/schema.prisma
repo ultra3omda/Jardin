@@ -187,6 +187,10 @@ model Tenant {
   observations     Observation[]
   observationMedia ObservationMedia[]
 
+  // G4 — cantine : catalogue plats & réservations
+  dishes              Dish[]
+  canteenReservations CanteenReservation[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -442,6 +446,9 @@ model Student {
 
   // G3 — Observations
   observations Observation[]
+
+  // G4 — Réservations cantine
+  canteenReservations CanteenReservation[]
 
   // T2b PR-2 — Discipline & Santé
   disciplineIncidents DisciplineIncident[]
@@ -1218,6 +1225,7 @@ model CanteenMenu {
   main       String?   @db.VarChar(200)
   dessert    String?   @db.VarChar(200)
   vegetarian String?   @db.VarChar(200)
+  dishIds    String[]  @default([]) // G4 — plats du catalogue rattachés (parité légère)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
@@ -1911,4 +1919,49 @@ model ObservationMedia {
   observation Observation @relation(fields: [observationId], references: [id], onDelete: Cascade)
 
   @@map("observation_media")
+}
+
+// ============================================================================
+// G4 — Cantine : catalogue plats + réservation (parité EducaKids)
+// ============================================================================
+
+enum ReservationStatus {
+  RESERVED
+  CANCELLED
+  SERVED
+}
+
+model Dish {
+  id          String    @id // cuid2
+  tenantId    String
+  name        String
+  ingredients String[]  @default([])
+  allergens   String[]  @default([])
+  active      Boolean   @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active])
+  @@map("dishes")
+}
+
+model CanteenReservation {
+  id          String            @id // cuid2
+  tenantId    String
+  studentId   String
+  date        DateTime          @db.Date
+  status      ReservationStatus @default(RESERVED)
+  createdById String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date], name: "unique_reservation_per_day")
+  @@index([tenantId, date, status])
+  @@map("canteen_reservations")
 }
