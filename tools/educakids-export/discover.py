@@ -65,7 +65,11 @@ def crawl_navigation(session) -> dict:
         # EducaKids uses flat, root-relative links (e.g. "student" -> /student),
         # so resolve every href against the site root, not the current page path.
         links = extract_internal_links(page, config.BASE_URL)
-        site_map[url] = {"links": links, "title": _title(page)}
+        site_map[url] = {
+            "links": links,
+            "title": _title(page),
+            "forms": extract_forms(page),
+        }
         for link in links:
             if link not in seen:
                 frontier.append(link)
@@ -80,6 +84,23 @@ def crawl_navigation(session) -> dict:
 def _title(page) -> str:
     t = page.css("title::text")
     return str(t[0]).strip() if t else ""
+
+
+def extract_forms(page) -> list[dict]:
+    """Capture each form's action/method and field names — the functional audit."""
+    forms: list[dict] = []
+    for form in page.css("form"):
+        action = form.css("::attr(action)")
+        method = form.css("::attr(method)")
+        fields: list[str] = []
+        for sel in ("input::attr(name)", "select::attr(name)", "textarea::attr(name)"):
+            fields.extend(str(n).strip() for n in form.css(sel) if str(n).strip())
+        forms.append({
+            "action": str(action[0]).strip() if action else "",
+            "method": (str(method[0]).strip() if method else "get").lower(),
+            "fields": fields,
+        })
+    return forms
 
 
 def _group_modules(site_map: dict) -> dict:
