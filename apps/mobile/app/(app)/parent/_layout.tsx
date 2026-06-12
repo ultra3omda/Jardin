@@ -24,6 +24,7 @@ export default function ParentLayout() {
       <Stack.Screen name="payments" options={{ ...header, title: 'Paiements' }} />
       <Stack.Screen name="homework" options={{ ...header, title: 'Devoirs' }} />
       <Stack.Screen name="observations" options={{ ...header, title: 'Observations' }} />
+      <Stack.Screen name="canteen" options={{ ...header, title: 'Cantine' }} />
     </Stack>
   );
 }
