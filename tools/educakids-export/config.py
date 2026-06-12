@@ -13,6 +13,7 @@ LOGIN_FIELD_PASS = "password"      # confirmed during discovery; adjust if input
 REQUEST_DELAY_SECONDS = 1.0
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_RETRIES = 3
+MAX_PAGES = 5000           # safety cap for the discovery crawl
 
 OUTPUT_DIR = Path(__file__).parent / "output"
 DATA_DIR = OUTPUT_DIR / "data"
