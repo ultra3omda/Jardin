@@ -56,6 +56,10 @@ export const TENANT_SCOPED_MODELS = [
   'FeeAssignment', // G2 — référentiel de frais
   'FeeInstallment', // G2 — référentiel de frais
   'SmsLog', // G2 — historique SMS (transversal)
+  'CashRegisterSession', // G1 — caisse
+  'CashMovement', // G1 — caisse
+  'Supplier', // G1 — fournisseurs
+  'Expense', // G1 — dépenses
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 
