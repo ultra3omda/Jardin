@@ -47,3 +47,7 @@ Thumbs.db
 # Vercel
 .vercel
 .superpowers/
+
+# EducaKids export tool — secrets and PII output
+tools/educakids-export/.env
+tools/educakids-export/output/
