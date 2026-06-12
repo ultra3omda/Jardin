@@ -65,6 +65,9 @@ export const TENANT_SCOPED_MODELS = [
   'Dish', // G4 — cantine catalogue
   'CanteenReservation', // G4 — cantine réservation
   'ActivityReport', // G5 — rapports d'activité
+  'AppointmentType', // G6 — rendez-vous
+  'AppointmentSlot', // G6 — rendez-vous
+  'Appointment', // G6 — rendez-vous
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 

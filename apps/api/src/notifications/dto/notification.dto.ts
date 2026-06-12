@@ -28,6 +28,7 @@ export const NotificationType = {
   PAYMENT_REMINDER: 'PAYMENT_REMINDER', // G2 — relance impayés
   OBSERVATION: 'OBSERVATION', // G3 — observations
   ACTIVITY_REPORT: 'ACTIVITY_REPORT', // G5 — rapports d'activité
+  APPOINTMENT: 'APPOINTMENT', // G6 — rendez-vous
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

@@ -194,6 +194,11 @@ model Tenant {
   // G5 — rapports d'activité
   activityReports ActivityReport[]
 
+  // G6 — rendez-vous parents
+  appointmentTypes AppointmentType[]
+  appointmentSlots AppointmentSlot[]
+  appointments     Appointment[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -885,6 +890,7 @@ enum NotificationType {
   PAYMENT_REMINDER // G2 — relance impayés
   OBSERVATION // G3 — nouvelle observation pédagogique
   ACTIVITY_REPORT // G5 — rapport d'activité publié
+  APPOINTMENT // G6 — rendez-vous parent
 }
 
 model Notification {
@@ -1993,4 +1999,68 @@ model ActivityReport {
 
   @@index([tenantId, activityId])
   @@map("activity_reports")
+}
+
+// ============================================================================
+// G6 — Rendez-vous parents (parité EducaKids : appointment)
+// ============================================================================
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model AppointmentType {
+  id          String    @id // cuid2
+  tenantId    String
+  name        String
+  durationMin Int       @default(20)
+  active      Boolean   @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active])
+  @@map("appointment_types")
+}
+
+model AppointmentSlot {
+  id          String   @id // cuid2
+  tenantId    String
+  staffUserId String
+  startsAt    DateTime
+  endsAt      DateTime
+  isBooked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment Appointment?
+
+  @@index([tenantId, staffUserId, startsAt])
+  @@index([tenantId, isBooked, startsAt])
+  @@map("appointment_slots")
+}
+
+model Appointment {
+  id           String            @id // cuid2
+  tenantId     String
+  slotId       String            @unique
+  typeId       String
+  parentUserId String
+  studentId    String?
+  status       AppointmentStatus @default(REQUESTED)
+  note         String?           @db.Text
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slot   AppointmentSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, parentUserId])
+  @@index([tenantId, status])
+  @@map("appointments")
 }
