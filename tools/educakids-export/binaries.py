@@ -1,4 +1,5 @@
 """Download binary assets (photos, PDFs) and native export endpoints (Excel/PDF)."""
+import re
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -23,7 +24,14 @@ def collect_binary_urls(records: list[dict], fields: list[str]) -> list[str]:
 
 
 def safe_filename(url: str) -> str:
-    return Path(urlparse(url).path).name or "file.bin"
+    """Unique, filesystem-safe name from a URL's path AND query string."""
+    parsed = urlparse(url)
+    base = Path(parsed.path).name or "file.bin"
+    if parsed.query:
+        q = re.sub(r"[^A-Za-z0-9._-]+", "-", parsed.query).strip("-")
+        if q:
+            base = f"{base}_{q}"
+    return base or "file.bin"
 
 
 def find_export_endpoints(site_map: dict) -> list[str]:
@@ -47,6 +55,29 @@ def _response_bytes(resp) -> bytes:
     return str(resp).encode("utf-8", errors="replace")
 
 
+_MAGIC = (
+    (b"%PDF", ".pdf"),
+    (b"PK\x03\x04", ".xlsx"),
+    (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", ".xls"),
+)
+
+
+def _sniff_extension(content: bytes) -> str:
+    head = content[:8]
+    for magic, ext in _MAGIC:
+        if head.startswith(magic):
+            return ext
+    low = content[:512].lower()
+    if b"<html" in low or b"<table" in low or b"<!doctype" in low:
+        return ".html"
+    return ""
+
+
+def _clean_content(raw: bytes) -> bytes:
+    """Strip the leading blank lines some Tomcat endpoints prepend before the file."""
+    return raw.lstrip(b"\r\n\t ")
+
+
 def download_binaries(session, urls: list[str], subdir: str) -> int:
     """Download each URL into output/files/<subdir>/. Returns count saved."""
     target = config.FILES_DIR / subdir
@@ -56,7 +87,11 @@ def download_binaries(session, urls: list[str], subdir: str) -> int:
         absolute = urljoin(config.BASE_URL + "/", url)
         try:
             resp = http_client.get(session, absolute)
-            (target / safe_filename(absolute)).write_bytes(_response_bytes(resp))
+            content = _clean_content(_response_bytes(resp))
+            name = safe_filename(absolute)
+            if not Path(name).suffix:
+                name += _sniff_extension(content)
+            (target / name).write_bytes(content)
             saved += 1
         except Exception as exc:
             output.append_error(absolute, f"binary download: {exc}")
