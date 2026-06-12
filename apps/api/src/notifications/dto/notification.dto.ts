@@ -25,6 +25,7 @@ export const NotificationType = {
   INVOICE: 'INVOICE',
   ANNOUNCEMENT: 'ANNOUNCEMENT',
   SYSTEM: 'SYSTEM',
+  PAYMENT_REMINDER: 'PAYMENT_REMINDER', // G2 — relance impayés
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

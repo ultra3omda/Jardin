@@ -65,6 +65,13 @@ const ENTRIES: Entry[] = [
     color: '#14b8a6',
   },
   {
+    route: '/(app)/manage/unpaid',
+    title: 'Impayés',
+    subtitle: 'Échéances non réglées & relances',
+    icon: 'alert-circle-outline',
+    color: '#ef4444',
+  },
+  {
     route: '/(app)/manage/transport',
     title: 'Transport',
     subtitle: 'Lignes de bus & chauffeurs',

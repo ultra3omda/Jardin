@@ -31,6 +31,9 @@ import {
   BookMarked,
   CalendarRange,
   UploadCloud,
+  Receipt,
+  Layers,
+  AlertCircle,
 } from 'lucide-react';
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -68,4 +71,7 @@ export const ICONS: Record<string, LucideIcon> = {
   search: Search,
   subjects: BookMarked,
   gradePeriods: CalendarRange,
+  feeTypes: Receipt,
+  feeAssign: Layers,
+  feeUnpaid: AlertCircle,
 };

@@ -143,6 +143,26 @@ export class NotificationFanoutService {
     });
   }
 
+  /** G2 — A fee installment is unpaid: remind the parent. */
+  async fanoutPaymentReminder(
+    tenantId: string,
+    parentUserId: string,
+    body: string,
+    installmentId: string,
+  ): Promise<void> {
+    return this.deliver({
+      tenantId,
+      userId: parentUserId,
+      type: NotificationType.PAYMENT_REMINDER,
+      title: 'Rappel de paiement',
+      body,
+      emailSubject: 'Rappel de paiement',
+      ctaLabel: 'Voir mes factures',
+      ctaPath: '/billing',
+      data: { installmentId },
+    });
+  }
+
   /** An announcement was published to a set of users. */
   async fanoutAnnouncement(
     tenantId: string,

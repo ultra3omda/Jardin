@@ -110,9 +110,12 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
       id: 'finance',
       label: 'Finance',
       items: [
-        { id: 'billing',   label: 'Facturation', href: '/billing',    icon: ICONS.billing },
-        { id: 'payments',  label: 'Paiements',   href: '/payments',   icon: ICONS.payments },
-        { id: 'hrPayroll', label: 'RH / Paie',   href: '/hr',         icon: ICONS.hrPayroll },
+        { id: 'billing',     label: 'Facturation',        href: '/billing',           icon: ICONS.billing },
+        { id: 'feeTypes',    label: 'Référentiel de frais', href: '/frais/types',       icon: ICONS.feeTypes },
+        { id: 'feeAssign',   label: 'Affectation de frais', href: '/frais/affectation', icon: ICONS.feeAssign },
+        { id: 'feeUnpaid',   label: 'Impayés',            href: '/frais/impayes',     icon: ICONS.feeUnpaid },
+        { id: 'payments',    label: 'Paiements',          href: '/payments',          icon: ICONS.payments },
+        { id: 'hrPayroll',   label: 'RH / Paie',          href: '/hr',                icon: ICONS.hrPayroll },
       ],
     },
     {
