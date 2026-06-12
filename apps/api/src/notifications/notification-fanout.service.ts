@@ -183,6 +183,27 @@ export class NotificationFanoutService {
     });
   }
 
+  /** G5 — An activity report was published, visible to the parent. */
+  async fanoutActivityReport(
+    tenantId: string,
+    parentUserId: string,
+    activityName: string,
+    title: string,
+    activityId: string,
+  ): Promise<void> {
+    return this.deliver({
+      tenantId,
+      userId: parentUserId,
+      type: NotificationType.ACTIVITY_REPORT,
+      title: `Rapport : ${activityName}`,
+      body: title,
+      emailSubject: "Rapport d'activité",
+      ctaLabel: 'Voir',
+      ctaPath: '/activities',
+      data: { activityId },
+    });
+  }
+
   /** An announcement was published to a set of users. */
   async fanoutAnnouncement(
     tenantId: string,
