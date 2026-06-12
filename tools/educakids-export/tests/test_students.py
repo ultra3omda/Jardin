@@ -13,14 +13,24 @@ def test_get_class_options_skips_placeholder():
     assert len(classes) == 2
 
 
-def test_extract_students_from_class_parses_rows_and_id():
+def test_extract_students_from_class_parses_clean_record():
     page = Selector((FX / "student_class.html").read_text(encoding="utf-8"))
     recs = students.extract_students_from_class(page, "710", "3ans-Les poussins")
     assert len(recs) == 2
-    assert recs[0]["student_id"] == "8808"
-    assert recs[0]["class_id"] == "710"
-    assert recs[0]["class_label"] == "3ans-Les poussins"
-    assert "ben jaballah Elyana" in recs[0]["cells"]
+    r = recs[0]
+    assert r["student_id"] == "8808"
+    assert r["class_id"] == "710"
+    assert r["name"] == "ben jaballah Elyana"
+    assert r["admission_number"] == "8808"
+    assert r["code"] == "smi-8808"
+    assert r["birth_date"] == "2022-10-18"
+    assert r["phone"] == "51456844"
+
+
+def test_to_record_handles_short_rows():
+    rec = students.to_record(["0", "Solo"], "1", "x", None)
+    assert rec["name"] == "Solo"
+    assert rec["phone"] == ""
 
 
 def test_extract_students_skips_header_only_rows():

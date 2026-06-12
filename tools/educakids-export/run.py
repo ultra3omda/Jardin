@@ -1,6 +1,7 @@
 """CLI entrypoint for the EducaKids export tool."""
 import argparse
 import json
+from pathlib import Path
 
 import config
 import auth
@@ -10,6 +11,8 @@ import audit
 import output
 import extract
 import binaries
+import students
+import tabular
 
 
 # HTML modules WITHOUT a native export, filled after reviewing the site map.
@@ -45,6 +48,18 @@ def run_extract(only_module: str | None) -> None:
                 progress.mark_done("exports")
                 progress.save()
 
+        # 3) Student roster (per-class searchstd endpoint).
+        if not (only_module and only_module != "students"):
+            if progress.is_done("students"):
+                print("skip students (already done)")
+            else:
+                roster = students.extract_all_students(session)
+                output.write_json("students", roster)
+                output.write_csv("students", roster)
+                print(f"  {len(roster)} students extracted")
+                progress.mark_done("students")
+                progress.save()
+
         # 2) SECONDARY: HTML modules without an export.
         for spec in MODULES:
             if only_module and spec.name != only_module:
@@ -59,6 +74,20 @@ def run_extract(only_module: str | None) -> None:
             progress.mark_done(spec.name)
             progress.save()
             print(f"  {len(records)} records")
+
+    # 4) Convert downloaded .xls dataset exports to JSON + CSV.
+    exports_dir = config.FILES_DIR / "exports" / "datasets"
+    if exports_dir.exists():
+        for xls in sorted(exports_dir.glob("*.xls")):
+            try:
+                records = tabular.xls_to_records(xls)
+            except Exception as exc:
+                output.append_error(str(xls), f"xls parse: {exc}")
+                continue
+            name = f"export_{xls.stem}"
+            output.write_json(name, records)
+            output.write_csv(name, records)
+            print(f"  {xls.name}: {len(records)} rows -> {name}.json/csv")
 
 
 def run_discover() -> None:

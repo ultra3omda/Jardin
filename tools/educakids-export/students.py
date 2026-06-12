@@ -11,6 +11,25 @@ import http_client
 _SEARCH = "/searchstd?nom=&prenom=&age=&numad=&genre=0&groupe={gid}"
 _STUDENTID_RE = re.compile(r"studentid=(\d+)", re.I)
 
+# Live searchstd row layout (9 <td> cells). Indices are stable across all classes.
+STUDENT_CELL_INDEX = {
+    "name": 1,
+    "admission_number": 2,
+    "code": 4,
+    "birth_date": 5,
+    "phone": 6,
+}
+
+
+def to_record(cells: list[str], class_id: str, class_label: str, student_id) -> dict:
+    """Map raw <td> cell texts to a clean student record."""
+    def cell(i: int) -> str:
+        return cells[i] if len(cells) > i else ""
+    rec = {"class_id": class_id, "class_label": class_label, "student_id": student_id}
+    for field, idx in STUDENT_CELL_INDEX.items():
+        rec[field] = cell(idx)
+    return rec
+
 
 def get_class_options(student_page) -> list[dict]:
     """Return [{'id': '710', 'label': '...'}] for each real class (skip placeholder)."""
@@ -35,9 +54,15 @@ def extract_students_from_class(class_page, class_id: str, class_label: str) -> 
     records: list[dict] = []
     rows = class_page.css("table tr")
     for row in rows:
-        cells = [str(c).strip() for c in row.css("td::text") if str(c).strip()]
-        if not cells:
+        tds = row.css("td")
+        if not tds:
             continue  # header row (th) or empty
+        cells = [
+            " ".join(" ".join(str(t).split()) for t in td.css("::text")).strip()
+            for td in tds
+        ]
+        if not any(cells):
+            continue  # all-empty row
         # student id from any link in the row
         sid = None
         for href in row.css("a::attr(href)"):
@@ -45,12 +70,7 @@ def extract_students_from_class(class_page, class_id: str, class_label: str) -> 
             if m:
                 sid = m.group(1)
                 break
-        records.append({
-            "student_id": sid,
-            "class_id": class_id,
-            "class_label": class_label,
-            "cells": cells,
-        })
+        records.append(to_record(cells, class_id, class_label, sid))
     return records
 
 
