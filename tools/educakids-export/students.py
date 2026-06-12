@@ -5,7 +5,10 @@ from urllib.parse import urljoin
 import config
 import http_client
 
-_SEARCH = "/searchstd?groupe={gid}&nom=&prenom=&age=&numad=&genre="
+# NOTE: genre=0 ("all genders") is REQUIRED. An empty genre= filters out every
+# row (the legacy server treats "" as a non-matching filter). With genre=0 the
+# endpoint returns the full class roster deterministically.
+_SEARCH = "/searchstd?nom=&prenom=&age=&numad=&genre=0&groupe={gid}"
 _STUDENTID_RE = re.compile(r"studentid=(\d+)", re.I)
 
 
