@@ -60,6 +60,8 @@ export const TENANT_SCOPED_MODELS = [
   'CashMovement', // G1 — caisse
   'Supplier', // G1 — fournisseurs
   'Expense', // G1 — dépenses
+  'Observation', // G3 — observations
+  'ObservationMedia', // G3 — observations
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 

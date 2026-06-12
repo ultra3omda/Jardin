@@ -10,7 +10,8 @@ export type NotificationEmailType =
   | 'INVOICE'
   | 'ANNOUNCEMENT'
   | 'SYSTEM'
-  | 'PAYMENT_REMINDER';
+  | 'PAYMENT_REMINDER'
+  | 'OBSERVATION';
 
 export interface NotificationEmailProps {
   /** Notification headline, e.g. "Nouveau message de Mme Martin" */
@@ -40,6 +41,7 @@ const TYPE_LABELS: Record<NotificationEmailType, string> = {
   ANNOUNCEMENT: 'Annonce',
   SYSTEM: 'Notification',
   PAYMENT_REMINDER: 'Rappel de paiement',
+  OBSERVATION: 'Observation',
 };
 
 /**

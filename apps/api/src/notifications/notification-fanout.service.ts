@@ -163,6 +163,26 @@ export class NotificationFanoutService {
     });
   }
 
+  /** G3 — A new observation is visible to the parent. */
+  async fanoutObservation(
+    tenantId: string,
+    parentUserId: string,
+    title: string,
+    studentId: string,
+  ): Promise<void> {
+    return this.deliver({
+      tenantId,
+      userId: parentUserId,
+      type: NotificationType.OBSERVATION,
+      title: 'Nouvelle observation',
+      body: title,
+      emailSubject: 'Nouvelle observation',
+      ctaLabel: 'Voir',
+      ctaPath: '/observations',
+      data: { studentId },
+    });
+  }
+
   /** An announcement was published to a set of users. */
   async fanoutAnnouncement(
     tenantId: string,
