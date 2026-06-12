@@ -183,6 +183,10 @@ model Tenant {
   suppliers     Supplier[]
   expenses      Expense[]
 
+  // G3 — observations
+  observations     Observation[]
+  observationMedia ObservationMedia[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -435,6 +439,9 @@ model Student {
   // T2b — Journal & Activities
   dailyLogEntries        DailyLogEntry[]
   activityParticipations ActivityParticipation[]
+
+  // G3 — Observations
+  observations Observation[]
 
   // T2b PR-2 — Discipline & Santé
   disciplineIncidents DisciplineIncident[]
@@ -866,6 +873,7 @@ enum NotificationType {
   ANNOUNCEMENT
   SYSTEM
   PAYMENT_REMINDER // G2 — relance impayés
+  OBSERVATION // G3 — nouvelle observation pédagogique
 }
 
 model Notification {
@@ -1846,4 +1854,61 @@ model Expense {
   @@index([tenantId, paidAt])
   @@index([tenantId, category])
   @@map("expenses")
+}
+
+// ============================================================================
+// G3 — Observations structurées (parité EducaKids)
+// ============================================================================
+
+enum ObservationCategory {
+  LANGAGE
+  MOTRICITE
+  SOCIAL
+  AUTONOMIE
+  COGNITIF
+  ARTISTIQUE
+  AUTRE
+}
+
+enum ObservationMediaKind {
+  PHOTO
+  VIDEO
+}
+
+model Observation {
+  id              String              @id // cuid2
+  tenantId        String
+  studentId       String
+  authorId        String
+  category        ObservationCategory
+  title           String
+  content         String              @db.Text
+  observedAt      DateTime
+  visibleToParent Boolean             @default(true)
+  batchId         String? // regroupe les observations créées en masse
+  deletedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  media   ObservationMedia[]
+
+  @@index([tenantId, studentId, observedAt])
+  @@index([tenantId, category])
+  @@map("observations")
+}
+
+model ObservationMedia {
+  id            String               @id // cuid2
+  tenantId      String
+  observationId String
+  kind          ObservationMediaKind
+  url           String // R2 public URL
+  createdAt     DateTime             @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  observation Observation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@map("observation_media")
 }
