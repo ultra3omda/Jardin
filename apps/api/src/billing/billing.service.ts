@@ -273,9 +273,10 @@ export class BillingService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const paymentId = createId();
       await tx.payment.create({
         data: {
-          id: createId(),
+          id: paymentId,
           invoiceId,
           amount: new Prisma.Decimal(dto.amount),
           method: dto.method,
@@ -283,6 +284,32 @@ export class BillingService {
           notes: dto.notes ?? null,
         },
       });
+
+      // G1 — encaissement espèce rattaché à la session de caisse ouverte (si présente).
+      // Attribué à l'ouvreur de la caisse (recordPayment n'a pas l'utilisateur courant).
+      if (dto.method === 'cash') {
+        const session = await tx.cashRegisterSession.findFirst({
+          where: { tenantId, status: 'OPEN' },
+        });
+        if (session) {
+          await tx.cashMovement.create({
+            data: {
+              id: createId(),
+              tenantId,
+              sessionId: session.id,
+              kind: 'INCOME',
+              amount: new Prisma.Decimal(dto.amount),
+              label: 'Encaissement facture',
+              paymentId,
+              createdById: session.openedById,
+            },
+          });
+          await tx.payment.update({
+            where: { id: paymentId },
+            data: { cashSessionId: session.id },
+          });
+        }
+      }
 
       // Recalculate total paid (existing payments + new payment)
       const existingPaidSum = invoice.payments.reduce(

@@ -177,6 +177,12 @@ model Tenant {
   feeInstallments FeeInstallment[]
   smsLogs         SmsLog[]
 
+  // G1 — caisse, dépenses, fournisseurs
+  cashSessions  CashRegisterSession[]
+  cashMovements CashMovement[]
+  suppliers     Supplier[]
+  expenses      Expense[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -839,6 +845,9 @@ model Payment {
   reference String?
   notes     String?
   paidAt    DateTime @default(now())
+
+  // G1 — rattachement à la session de caisse ouverte (encaissement espèce)
+  cashSessionId String?
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
@@ -1738,4 +1747,103 @@ model SmsLog {
 
   @@index([tenantId, createdAt])
   @@map("sms_logs")
+}
+
+// ============================================================================
+// G1 — Caisse, dépenses, fournisseurs (parité EducaKids)
+// ============================================================================
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementKind {
+  INCOME
+  EXPENSE
+}
+
+model CashRegisterSession {
+  id             String            @id // cuid2
+  tenantId       String
+  openedById     String
+  openedAt       DateTime          @default(now())
+  openingFloat   Decimal           @db.Decimal(10, 3)
+  closedById     String?
+  closedAt       DateTime?
+  countedAmount  Decimal?          @db.Decimal(10, 3)
+  expectedAmount Decimal?          @db.Decimal(10, 3)
+  variance       Decimal?          @db.Decimal(10, 3)
+  status         CashSessionStatus @default(OPEN)
+  notes          String?           @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movements CashMovement[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, openedAt])
+  @@map("cash_register_sessions")
+}
+
+model CashMovement {
+  id          String           @id // cuid2
+  tenantId    String
+  sessionId   String
+  kind        CashMovementKind
+  amount      Decimal          @db.Decimal(10, 3)
+  label       String
+  paymentId   String?
+  expenseId   String?
+  createdById String
+  createdAt   DateTime         @default(now())
+
+  tenant  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session CashRegisterSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, sessionId])
+  @@map("cash_movements")
+}
+
+model Supplier {
+  id        String    @id // cuid2
+  tenantId  String
+  name      String
+  phone     String?
+  email     String?
+  taxId     String? // matricule fiscal
+  notes     String?   @db.Text
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@index([tenantId, name])
+  @@map("suppliers")
+}
+
+model Expense {
+  id           String    @id // cuid2
+  tenantId     String
+  supplierId   String?
+  category     String
+  amount       Decimal   @db.Decimal(10, 3)
+  paidAt       DateTime  @db.Date
+  method       String // "cash" | "cheque" | "bank_transfer"
+  reference    String?
+  notes        String?   @db.Text
+  recordedById String
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, paidAt])
+  @@index([tenantId, category])
+  @@map("expenses")
 }

@@ -65,6 +65,13 @@ const ENTRIES: Entry[] = [
     color: '#14b8a6',
   },
   {
+    route: '/(app)/manage/caisse',
+    title: 'Caisse',
+    subtitle: 'Caisse du jour & clôture',
+    icon: 'cash-outline',
+    color: '#02a896',
+  },
+  {
     route: '/(app)/manage/unpaid',
     title: 'Impayés',
     subtitle: 'Échéances non réglées & relances',

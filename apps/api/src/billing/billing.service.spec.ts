@@ -91,6 +91,14 @@ function buildPrismaMock() {
     },
     payment: {
       create: vi.fn(),
+      update: vi.fn(),
+    },
+    // G1 — caisse : par défaut aucune session ouverte (le chemin cash est un no-op)
+    cashRegisterSession: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    cashMovement: {
+      create: vi.fn(),
     },
   };
 }
@@ -280,6 +288,34 @@ describe('BillingService', () => {
 
       expect(result.status).toBe(InvoiceStatus.PARTIAL);
       expect(prisma.invoice.update.mock.calls[0][0].data.status).toBe(InvoiceStatus.PARTIAL);
+    });
+
+    it('G1 — paiement cash sans session ouverte : aucun mouvement de caisse', async () => {
+      prisma.invoice.findFirst.mockResolvedValueOnce(makeInvoice({ amount: dec(350), payments: [] }));
+      prisma.$transaction.mockImplementationOnce(async (fn: (tx: any) => Promise<any>) => fn(prisma));
+      prisma.payment.create.mockResolvedValueOnce({});
+      prisma.invoice.update.mockResolvedValueOnce(makeInvoice({ status: InvoiceStatus.PARTIAL }));
+
+      await service.recordPayment(TENANT_A, 'inv_1', { amount: 175, method: 'cash' });
+
+      expect(prisma.cashMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('G1 — paiement cash avec session ouverte : 1 mouvement INCOME + payment rattaché', async () => {
+      prisma.invoice.findFirst.mockResolvedValueOnce(makeInvoice({ amount: dec(350), payments: [] }));
+      prisma.$transaction.mockImplementationOnce(async (fn: (tx: any) => Promise<any>) => fn(prisma));
+      prisma.payment.create.mockResolvedValueOnce({});
+      prisma.cashRegisterSession.findFirst.mockResolvedValueOnce({ id: 'sess_1', openedById: 'user_1' });
+      prisma.invoice.update.mockResolvedValueOnce(makeInvoice({ status: InvoiceStatus.PARTIAL }));
+
+      await service.recordPayment(TENANT_A, 'inv_1', { amount: 175, method: 'cash' });
+
+      expect(prisma.cashMovement.create).toHaveBeenCalledTimes(1);
+      const mv = prisma.cashMovement.create.mock.calls[0][0].data;
+      expect(mv.kind).toBe('INCOME');
+      expect(mv.sessionId).toBe('sess_1');
+      expect(mv.createdById).toBe('user_1');
+      expect(prisma.payment.update).toHaveBeenCalledTimes(1);
     });
 
     it('sets status to PAID and stamps paidAt when payment covers full amount', async () => {
