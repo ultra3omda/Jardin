@@ -49,16 +49,18 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
 
   const academicItems: NavItem[] = isKG
     ? [
-        { id: 'journal',     label: 'Journal quotidien', href: '/journal',     icon: ICONS.journal },
-        { id: 'activities',  label: 'Activités',         href: '/activities',  icon: ICONS.activities },
-        { id: 'absences',    label: 'Présences',         href: '/absences',    icon: ICONS.absences },
-        { id: 'schedule',    label: 'Planning',          href: '/schedule',    icon: ICONS.schedule },
+        { id: 'journal',      label: 'Journal quotidien', href: '/journal',      icon: ICONS.journal },
+        { id: 'activities',   label: 'Activités',         href: '/activities',   icon: ICONS.activities },
+        { id: 'observations', label: 'Observations',      href: '/observations', icon: ICONS.observations },
+        { id: 'absences',     label: 'Présences',         href: '/absences',     icon: ICONS.absences },
+        { id: 'schedule',     label: 'Planning',          href: '/schedule',     icon: ICONS.schedule },
       ]
     : [
-        { id: 'notes',       label: 'Notes',           href: '/notes',       icon: ICONS.notes },
-        { id: 'bulletins',   label: 'Bulletins',       href: '/bulletins',   icon: ICONS.bulletins },
-        { id: 'evaluations', label: 'Évaluations',     href: '/evaluations', icon: ICONS.evaluations },
-        { id: 'absences',    label: 'Absences',        href: '/absences',    icon: ICONS.absences },
+        { id: 'notes',        label: 'Notes',           href: '/notes',        icon: ICONS.notes },
+        { id: 'bulletins',    label: 'Bulletins',       href: '/bulletins',    icon: ICONS.bulletins },
+        { id: 'evaluations',  label: 'Évaluations',     href: '/evaluations',  icon: ICONS.evaluations },
+        { id: 'observations', label: 'Observations',    href: '/observations', icon: ICONS.observations },
+        { id: 'absences',     label: 'Absences',        href: '/absences',     icon: ICONS.absences },
         { id: 'discipline',  label: 'Discipline',      href: '/discipline',  icon: ICONS.discipline },
         { id: 'schedule',    label: 'Emploi du temps', href: '/schedule',    icon: ICONS.schedule },
       ];
@@ -149,10 +151,11 @@ function teacherNav({ type }: BuildContext): NavSection[] {
     return [
       { id: 'accueil', label: 'Accueil', items: [{ id: 'dashboard', label: 'Ma journée', href: '/dashboard', icon: ICONS.dashboard }] },
       { id: 'pedagogie', label: 'Vie quotidienne', items: [
-        { id: 'journal',    label: 'Journal du jour', href: '/journal',    icon: ICONS.journal },
-        { id: 'activities', label: 'Activités',       href: '/activities', icon: ICONS.activities },
-        { id: 'absences',   label: 'Présences',       href: '/absences',   icon: ICONS.absences },
-        { id: 'schedule',   label: 'Mon planning',    href: '/schedule',   icon: ICONS.schedule },
+        { id: 'journal',      label: 'Journal du jour', href: '/journal',      icon: ICONS.journal },
+        { id: 'activities',   label: 'Activités',       href: '/activities',   icon: ICONS.activities },
+        { id: 'observations', label: 'Observations',    href: '/observations', icon: ICONS.observations },
+        { id: 'absences',     label: 'Présences',       href: '/absences',     icon: ICONS.absences },
+        { id: 'schedule',     label: 'Mon planning',    href: '/schedule',     icon: ICONS.schedule },
       ]},
       { id: 'communication', label: 'Communication', items: [
         { id: 'messages',      label: 'Messages parents', href: '/messages',      icon: ICONS.messages },
@@ -165,10 +168,11 @@ function teacherNav({ type }: BuildContext): NavSection[] {
   return [
     { id: 'accueil', label: 'Accueil', items: [{ id: 'dashboard', label: 'Tableau de bord', href: '/dashboard', icon: ICONS.dashboard }] },
     { id: 'pedagogie', label: 'Pédagogie', items: [
-      { id: 'notes',       label: 'Saisir notes',     href: '/notes',       icon: ICONS.notes },
-      { id: 'evaluations', label: 'Évaluations',      href: '/evaluations', icon: ICONS.evaluations },
-      { id: 'bulletins',   label: 'Bulletins',        href: '/bulletins',   icon: ICONS.bulletins },
-      { id: 'absences',    label: 'Absences',         href: '/absences',    icon: ICONS.absences },
+      { id: 'notes',        label: 'Saisir notes',     href: '/notes',        icon: ICONS.notes },
+      { id: 'evaluations',  label: 'Évaluations',      href: '/evaluations',  icon: ICONS.evaluations },
+      { id: 'observations', label: 'Observations',     href: '/observations', icon: ICONS.observations },
+      { id: 'bulletins',    label: 'Bulletins',        href: '/bulletins',    icon: ICONS.bulletins },
+      { id: 'absences',     label: 'Absences',         href: '/absences',     icon: ICONS.absences },
       { id: 'discipline',  label: 'Discipline',       href: '/discipline',  icon: ICONS.discipline },
       { id: 'schedule',    label: 'Mon EDT',          href: '/schedule',    icon: ICONS.schedule },
     ]},

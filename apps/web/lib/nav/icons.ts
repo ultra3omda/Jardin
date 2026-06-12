@@ -38,6 +38,7 @@ import {
   ArchiveRestore,
   ShoppingCart,
   Truck,
+  Eye,
 } from 'lucide-react';
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -82,4 +83,5 @@ export const ICONS: Record<string, LucideIcon> = {
   cashClosures: ArchiveRestore,
   expenses: ShoppingCart,
   suppliers: Truck,
+  observations: Eye,
 };
