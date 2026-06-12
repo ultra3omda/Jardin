@@ -199,6 +199,9 @@ model Tenant {
   appointmentSlots AppointmentSlot[]
   appointments     Appointment[]
 
+  // G7 — passage de classe
+  classPromotionLogs ClassPromotionLog[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -411,6 +414,7 @@ model Student {
   // — Scolarité —
   classroom         String // V2: string libre (ex: "CP-A"). Conservé & synchronisé avec `class.name`.
   classId           String? // Lot 3: FK vers Class (source de vérité). Nullable pour élèves non assignés / classe legacy non résolue.
+  status            StudentStatus @default(ACTIVE) // G7 — ACTIVE | ALUMNI (sortie/diplômé)
   enrollmentDate    DateTime @default(now()) @db.Date
   previousSchooling String?  @db.Text
 
@@ -2063,4 +2067,29 @@ model Appointment {
   @@index([tenantId, parentUserId])
   @@index([tenantId, status])
   @@map("appointments")
+}
+
+// ============================================================================
+// G7 — Passage de classe (parité EducaKids : passage / PassageClasseMiltiple)
+// ============================================================================
+
+enum StudentStatus {
+  ACTIVE
+  ALUMNI
+}
+
+model ClassPromotionLog {
+  id           String   @id // cuid2
+  tenantId     String
+  fromYear     String
+  toYear       String
+  mapping      Json // { fromClassId: toClassId | "GRADUATED" }
+  studentCount Int
+  executedById String
+  executedAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, toYear])
+  @@map("class_promotion_logs")
 }

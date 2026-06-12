@@ -68,6 +68,7 @@ export const TENANT_SCOPED_MODELS = [
   'AppointmentType', // G6 — rendez-vous
   'AppointmentSlot', // G6 — rendez-vous
   'Appointment', // G6 — rendez-vous
+  'ClassPromotionLog', // G7 — passage de classe
 ] as const;
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];
 
