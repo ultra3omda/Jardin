@@ -34,6 +34,10 @@ import {
   Receipt,
   Layers,
   AlertCircle,
+  Banknote,
+  ArchiveRestore,
+  ShoppingCart,
+  Truck,
 } from 'lucide-react';
 
 export const ICONS: Record<string, LucideIcon> = {
@@ -74,4 +78,8 @@ export const ICONS: Record<string, LucideIcon> = {
   feeTypes: Receipt,
   feeAssign: Layers,
   feeUnpaid: AlertCircle,
+  cashRegister: Banknote,
+  cashClosures: ArchiveRestore,
+  expenses: ShoppingCart,
+  suppliers: Truck,
 };
