@@ -38,8 +38,14 @@ export function useSubjects() {
   });
 }
 
+export type UpdateSubjectInput = Partial<CreateSubjectInput>;
+
 export function createSubject(input: CreateSubjectInput): Promise<Subject> {
   return fetchApi<Subject>('/api/subjects', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateSubject(id: string, input: UpdateSubjectInput): Promise<Subject> {
+  return fetchApi<Subject>(`/api/subjects/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
 
 export function deleteSubject(id: string): Promise<void> {
