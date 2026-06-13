@@ -10,7 +10,7 @@ import { getTabsForRole } from '../tabs';
 describe('getTabsForRole', () => {
   it('returns admin tabs for SCHOOL_ADMIN', () => {
     expect(getTabsForRole('SCHOOL_ADMIN').map((t) => t.name)).toEqual([
-      'dashboard', 'students', 'classes', 'pedagogy', 'notifications', 'profile',
+      'dashboard', 'students', 'classes', 'pedagogy', 'messages', 'notifications', 'profile',
     ]);
   });
 

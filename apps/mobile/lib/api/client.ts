@@ -4,6 +4,10 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Machine-readable error code from the API (e.g. TENANT_SLUG_REQUIRED). */
+    public readonly code?: string,
+    /** Raw error body — carries extra fields like availableTenantSlugs. */
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -41,10 +45,16 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
+    const body = (await response.json().catch(() => ({}))) as {
+      message?: string;
+      code?: string;
+      [key: string]: unknown;
+    };
     throw new ApiError(
       response.status,
-      (body as { message?: string }).message ?? response.statusText,
+      body.message ?? response.statusText,
+      body.code,
+      body,
     );
   }
 

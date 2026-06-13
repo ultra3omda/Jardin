@@ -12,9 +12,10 @@ import {
 import { useRouter } from 'expo-router';
 
 import { Button, ZelligePattern, colors, fonts, radius, useTheme } from '@klasso/ui-mobile';
-import { deleteTenantSlug } from '@/lib/auth/secure-storage';
-import { ApiError } from '@/lib/api/client';
+import { deleteTenantSlug, saveTenantSlug } from '@/lib/auth/secure-storage';
 import { login } from '@/lib/api/auth';
+import { interpretLoginError } from '@/lib/auth/login-flow';
+import { TenantPickerModal } from '@/components/auth/tenant-picker-modal';
 import { demoLogin, type DemoPersona } from '@/lib/api/demo-login';
 import { useAuthStore } from '@/lib/auth/store';
 import { useTenantStore } from '@/lib/tenant/store';
@@ -38,31 +39,59 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPersona, setLoadingPersona] = useState<DemoPersona | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Multi-tenant: slugs to choose from when one email exists in several schools.
+  const [tenantChoices, setTenantChoices] = useState<string[] | null>(null);
+  const [pickerLoading, setPickerLoading] = useState(false);
+
+  // Single login path, used both for the first attempt (no slug → the API
+  // resolves the tenant automatically) and for the retry after the user picks
+  // an establishment in the multi-tenant case.
+  async function runLogin(slug?: string) {
+    const session = await login({ email: email.trim(), password, tenantSlug: slug });
+    setSession({
+      accessToken: session.accessToken,
+      user: session.user,
+      tenant: session.tenant,
+    });
+    if (slug) await saveTenantSlug(slug);
+    router.replace('/(app)/dashboard');
+  }
+
+  function messageFor(err: unknown): string {
+    return interpretLoginError(err).type === 'invalid-credentials'
+      ? 'Email ou mot de passe incorrect.'
+      : 'Erreur de connexion.';
+  }
 
   async function handleLogin() {
     if (!email.trim() || !password) return;
     setIsLoading(true);
     setError(null);
     try {
-      const session = await login({
-        email: email.trim(),
-        password,
-        tenantSlug: tenantSlug ?? undefined,
-      });
-      setSession({
-        accessToken: session.accessToken,
-        user: session.user,
-        tenant: session.tenant,
-      });
-      router.replace('/(app)/dashboard');
+      await runLogin();
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 401
-          ? 'Email ou mot de passe incorrect.'
-          : 'Erreur de connexion.',
-      );
+      const result = interpretLoginError(err);
+      if (result.type === 'tenant-required') {
+        setTenantChoices(result.slugs);
+      } else {
+        setError(messageFor(err));
+      }
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleSelectTenant(slug: string) {
+    setPickerLoading(true);
+    setError(null);
+    try {
+      await runLogin(slug);
+      setTenantChoices(null);
+    } catch (err) {
+      setTenantChoices(null);
+      setError(messageFor(err));
+    } finally {
+      setPickerLoading(false);
     }
   }
 
@@ -267,11 +296,19 @@ export default function LoginScreen() {
           {/* Change school link */}
           <TouchableOpacity onPress={handleChangeSchool} style={{ paddingVertical: 8, alignItems: 'center' }}>
             <Text style={{ fontSize: 12, color: colors.ink[300] }}>
-              Changer d'établissement →
+              Saisir un code établissement →
             </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <TenantPickerModal
+        visible={tenantChoices !== null}
+        slugs={tenantChoices ?? []}
+        onSelect={handleSelectTenant}
+        onClose={() => setTenantChoices(null)}
+        loading={pickerLoading}
+      />
     </KeyboardAvoidingView>
   );
 }
