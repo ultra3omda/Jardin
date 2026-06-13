@@ -3,17 +3,17 @@ import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
-import { getSavedTenantSlug } from '@/lib/auth/secure-storage';
 import { refreshSession } from '@/lib/api/auth';
 
 /**
- * Boot router — Phase C (smart).
+ * Boot router — Phase D (auto-tenant).
  *
- * 1. Lit le slug tenant sauvegardé en SecureStore
- *    - Aucun  → redirige vers (onboarding)/school-code
- * 2. Tente un refresh silencieux du JWT
- *    - Échec  → redirige vers (auth)/login
- *    - Succès → hydrate AuthStore et redirige vers (app)/dashboard
+ * Tente un refresh silencieux du JWT :
+ *  - Succès → hydrate AuthStore et redirige vers (app)/dashboard
+ *  - Échec  → redirige directement vers (auth)/login
+ *
+ * Plus de pré-sélection d'établissement : le tenant est résolu côté API à
+ * partir de l'email lors du login (sélecteur si l'email est multi-tenant).
  *
  * Affiche un spinner pendant le boot (~ <1s en pratique).
  */
@@ -24,16 +24,7 @@ export default function Index() {
 
   useEffect(() => {
     async function boot() {
-      // 1. Récupérer le slug sauvegardé
-      const savedSlug = await getSavedTenantSlug();
-
-      if (!savedSlug) {
-        setHydrated(true);
-        router.replace('/(onboarding)/school-code');
-        return;
-      }
-
-      // 2. Tenter un refresh silencieux
+      // Tenter un refresh silencieux ; le tenant est résolu au login.
       const session = await refreshSession();
       setHydrated(true);
 
@@ -50,14 +41,14 @@ export default function Index() {
       router.replace('/(app)/dashboard');
     }
 
-    // V1.7-A2 fix : si boot() throw (ex: storage native cassé sur web), on
-    // doit quand même hydrate + rediriger vers onboarding plutôt que rester
-    // bloqué sur le spinner. Le user pourra retenter depuis l'écran code école.
+    // V1.7-A2 fix : si boot() throw (ex: storage natif cassé sur web), on
+    // hydrate quand même + redirige vers le login plutôt que de rester bloqué
+    // sur le spinner.
     boot().catch((err) => {
       // eslint-disable-next-line no-console
       console.error('Boot router failed:', err);
       setHydrated(true);
-      router.replace('/(onboarding)/school-code');
+      router.replace('/(auth)/login');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
