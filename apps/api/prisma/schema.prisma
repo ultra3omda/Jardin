@@ -220,6 +220,7 @@ model User {
   // Contact phone — collected on parent-account creation (mobile makes it
   // mandatory in the form; nullable here for pre-existing rows & other roles).
   phone                     String?   @db.VarChar(40)
+  externalRef               String? // Import — réconciliation EducaKids (ex. "ek-parent-51456844")
   role                      UserRole
   locale                    Locale    @default(fr)
   createdAt                 DateTime  @default(now())
@@ -268,6 +269,7 @@ model User {
   homeworksCreated           Homework[]                @relation("HomeworkCreator") // devoirs créés
 
   @@unique([tenantId, email], name: "email_per_tenant")
+  @@index([tenantId, externalRef])
   @@index([tenantId])
   @@index([email])
   @@map("users")
@@ -440,6 +442,9 @@ model Student {
   // — Photo —
   photoUrl String? // R2 public URL
 
+  // — Import — réconciliation EducaKids (rejouable) —
+  externalRef String? // ex. "ek-student-8808"
+
   // — Méta —
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -479,6 +484,7 @@ model Student {
   @@index([tenantId, lastName])
   @@index([tenantId, classroom])
   @@index([tenantId, classId])
+  @@index([tenantId, externalRef])
   @@index([tenantId, parentEmail])
   @@map("students")
 }
@@ -878,9 +884,13 @@ model Payment {
   // G1 — rattachement à la session de caisse ouverte (encaissement espèce)
   cashSessionId String?
 
+  // Import — réconciliation EducaKids (rejouable)
+  externalRef String?
+
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
+  @@index([externalRef])
 }
 
 // ============================================================================
