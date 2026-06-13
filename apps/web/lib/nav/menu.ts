@@ -78,6 +78,7 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
         { id: 'establishment', label: 'Établissement',                    href: '/settings/establishment', icon: ICONS.establishment },
         { id: 'schoolYear',    label: 'Année scolaire',                   href: '/settings/grade-periods', icon: ICONS.schoolYear },
         { id: 'classes',       label: isKG ? "Groupes d'âge" : 'Classes', href: '/classes',                icon: ICONS.classes },
+        { id: 'classPromotion', label: 'Passage de classe',               href: '/classes/promotion',      icon: ICONS.classPromotion },
       ],
     },
     {
