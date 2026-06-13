@@ -139,7 +139,7 @@ async function importStudents(students: StudentRow[]): Promise<void> {
         firstName,
         lastName,
         dateOfBirth: new Date(s.birth_date as unknown as string),
-        sex: defaultSex,
+        sex: s.sex === 'M' || s.sex === 'F' ? (s.sex as Sex) : defaultSex,
         classroom: className,
         classId: cls?.id ?? null,
         parentEmail,
@@ -215,7 +215,8 @@ async function main(): Promise<void> {
   const cash = load('export_ExportExcel.json') as Record<string, string>[];
   const cheque = load('export_ExportExcel2.json') as Record<string, string>[];
 
-  report.notes.push(`sex absent de l'extraction → défaut "${defaultSex}" (à corriger / re-scraper genre).`);
+  const withSex = students.filter((s) => s.sex === 'M' || s.sex === 'F').length;
+  report.notes.push(`sex re-scrapé depuis EducaKids : ${withSex}/${students.length} (genre exact) ; le reste → défaut "${defaultSex}".`);
   report.notes.push(`parentEmail synthétique déterministe (parent-<phone>@${EMAIL_DOMAIN}).`);
 
   if (phase === 'all' || phase === 'classes') await importClasses(students);
