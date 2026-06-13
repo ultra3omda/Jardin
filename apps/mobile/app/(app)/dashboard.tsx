@@ -8,6 +8,7 @@ import { Avatar, Card, EmptyState, KpiCard, ScreenHeader, type KpiVariant, color
 import { useDashboardOverview, type DashboardOverview } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/lib/auth/store';
 import { ParentDashboard } from '@/components/dashboard/parent-dashboard';
+import { SuperAdminDashboard } from '@/components/dashboard/super-admin-dashboard';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -83,6 +84,8 @@ export default function DashboardScreen() {
 
       {user?.role === 'PARENT' ? (
         <ParentDashboard />
+      ) : user?.role === 'SUPER_ADMIN' ? (
+        <SuperAdminDashboard />
       ) : !canSeeOverview ? (
         <EmptyState
           icon="sparkles-outline"
