@@ -120,6 +120,13 @@ const ENTRIES: Entry[] = [
     icon: 'shield-checkmark-outline',
     color: '#0ea5e9',
   },
+  {
+    route: '/(app)/manage/settings',
+    title: 'Réglages',
+    subtitle: 'Établissement & couleurs',
+    icon: 'settings-outline',
+    color: '#64748b',
+  },
 ];
 
 /** Admin management hub menu. */
