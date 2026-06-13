@@ -23,6 +23,7 @@ import {
 } from '@/lib/api/classes';
 import { useDirectory } from '@/lib/api/staff';
 import { useSubjects } from '@/lib/api/subjects';
+import { ScheduleEditorSheet } from '@/components/classes/schedule-editor-sheet';
 
 const YEAR_RE = /^\d{4}-\d{4}$/;
 
@@ -40,6 +41,7 @@ export default function ManageClassesScreen() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [assignFor, setAssignFor] = useState<ClassSummary | null>(null);
+  const [edtFor, setEdtFor] = useState<ClassSummary | null>(null);
   const [toDelete, setToDelete] = useState<ClassSummary | null>(null);
 
   const [name, setName] = useState('');
@@ -172,6 +174,24 @@ export default function ManageClassesScreen() {
                   Affecter un enseignant
                 </Text>
               </Pressable>
+              <Pressable
+                onPress={() => setEdtFor(c)}
+                accessibilityRole="button"
+                accessibilityLabel={`Emploi du temps de ${c.name}`}
+                style={{
+                  marginTop: 8,
+                  paddingVertical: 9,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.paper[100],
+                  borderWidth: 1,
+                  borderColor: colors.paper[100],
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink[900] }}>
+                  Emploi du temps
+                </Text>
+              </Pressable>
             </View>
           ))
         )}
@@ -255,6 +275,13 @@ export default function ManageClassesScreen() {
           </Text>
         ) : null}
       </FormSheet>
+
+      <ScheduleEditorSheet
+        classId={edtFor?.id ?? null}
+        className={edtFor?.name ?? ''}
+        visible={!!edtFor}
+        onClose={() => setEdtFor(null)}
+      />
 
       <ConfirmDialog
         visible={!!toDelete}

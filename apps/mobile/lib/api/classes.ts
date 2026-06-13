@@ -137,3 +137,25 @@ export function assignClassTeacher(
     body: JSON.stringify({ teacherUserId, subject, isMainTeacher }),
   });
 }
+
+// ── EDT / créneaux (SCHOOL_ADMIN) ────────────────────────────────────────────
+
+/** Champs d'un créneau EDT. dayOfWeek: 1=Lundi … 7=Dimanche. Heures en HH:MM. */
+export interface CreateTimeSlotInput {
+  dayOfWeek: number;
+  periodStart: string;
+  periodEnd: string;
+  subject: string;
+  room?: string;
+}
+
+export function createTimeSlot(classId: string, input: CreateTimeSlotInput): Promise<TimeSlot> {
+  return fetchApi<TimeSlot>(`/api/classes/${classId}/timeslots`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteTimeSlot(slotId: string): Promise<void> {
+  return fetchApi<void>(`/api/classes/timeslots/${slotId}`, { method: 'DELETE' });
+}
