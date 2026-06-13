@@ -8,6 +8,12 @@ import { fetchApi } from './client';
  */
 export type AnnouncementAudience = 'ALL' | 'TEACHERS' | 'PARENTS' | 'STAFF';
 
+/**
+ * G8 — Une annonce peut être une circulaire (CIRCULAIRE) accompagnée d'un PDF
+ * public (attachmentUrl, URL R2 ouvrable directement) ou une simple actualité.
+ */
+export type AnnouncementKind = 'NEWS' | 'CIRCULAIRE';
+
 export interface Announcement {
   id: string;
   title: string;
@@ -18,6 +24,9 @@ export interface Announcement {
   publishAt: string;
   createdAt: string;
   updatedAt: string;
+  kind: AnnouncementKind;
+  /** URL R2 publique du PDF de la circulaire (présent si kind === 'CIRCULAIRE'). */
+  attachmentUrl?: string;
 }
 
 export interface CreateAnnouncementInput {
