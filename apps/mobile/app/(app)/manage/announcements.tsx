@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 
 import {
   Button,
@@ -118,6 +120,29 @@ export default function ManageAnnouncementsScreen() {
                 </Pressable>
               </View>
               <Text style={{ fontSize: 13, color: colors.ink[700], marginTop: 4 }}>{a.body}</Text>
+              {a.kind === 'CIRCULAIRE' && a.attachmentUrl ? (
+                <Pressable
+                  onPress={() => void Linking.openURL(a.attachmentUrl as string)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Télécharger le PDF de ${a.title}`}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    alignSelf: 'flex-start',
+                    marginTop: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: radius.md,
+                    backgroundColor: colors.ambre[500] + '18',
+                  }}
+                >
+                  <Ionicons name="document-attach-outline" size={15} color={colors.ambre[600]} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ambre[600] }}>
+                    Télécharger le PDF
+                  </Text>
+                </Pressable>
+              ) : null}
               <Text style={{ fontSize: 11, color: colors.ink[300], marginTop: 6 }}>
                 {AUDIENCE_LABEL[a.audience]} · {a.authorName}
               </Text>

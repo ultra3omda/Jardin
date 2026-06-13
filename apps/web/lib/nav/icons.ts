@@ -42,6 +42,7 @@ import {
   UtensilsCrossed,
   CalendarPlus,
   CalendarClock,
+  CalendarDays,
   BarChart3,
 } from 'lucide-react';
 
@@ -92,5 +93,6 @@ export const ICONS: Record<string, LucideIcon> = {
   suppliers: Truck,
   observations: Eye,
   appointments: CalendarClock,
+  calendar: CalendarDays,
   classPromotion: GraduationCap,
 };
