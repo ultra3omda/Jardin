@@ -97,6 +97,36 @@ def run_extract(only_module: str | None) -> None:
             print(f"  {xls.name}: {len(records)} rows -> {name}.json/csv")
 
 
+def run_socle() -> None:
+    """Extraction rapide pour l'import « socle » (CI) : élèves + 3 exports
+    (paiements espèces/chèques + enseignants), SANS le crawl discover ni les
+    ~1634 PDF d'activités. Produit output/data/{students, export_*}.json."""
+    from urllib.parse import urljoin
+    config.ensure_dirs()
+    socle_paths = ["/ExportExcel", "/ExportExcel2", "/ExportteacherFile"]
+    urls = [urljoin(config.BASE_URL, p) for p in socle_paths]
+    with http_client.build_session() as session:
+        auth.login(session)
+        n = binaries.download_binaries(session, urls, "exports/datasets")
+        print(f"  {n} dataset exports saved")
+        roster = students.extract_all_students(session)
+        output.write_json("students", roster)
+        output.write_csv("students", roster)
+        print(f"  {len(roster)} students extracted")
+    exports_dir = config.FILES_DIR / "exports" / "datasets"
+    if exports_dir.exists():
+        for xls in sorted(exports_dir.glob("*.xls")):
+            try:
+                records = tabular.xls_to_records(xls)
+            except Exception as exc:
+                output.append_error(str(xls), f"xls parse: {exc}")
+                continue
+            name = f"export_{xls.stem}"
+            output.write_json(name, records)
+            output.write_csv(name, records)
+            print(f"  {xls.name}: {len(records)} rows -> {name}.json")
+
+
 def run_discover() -> None:
     config.ensure_dirs()
     with http_client.build_session() as session:
@@ -116,11 +146,13 @@ def run_discover() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--phase", choices=["discover", "extract"], required=True)
+    parser.add_argument("--phase", choices=["discover", "extract", "socle"], required=True)
     parser.add_argument("--module", default=None)
     args = parser.parse_args()
     if args.phase == "discover":
         run_discover()
+    elif args.phase == "socle":
+        run_socle()
     else:
         run_extract(args.module)
 
