@@ -10,6 +10,7 @@ export interface StudentRow {
   name: string;
   class_label: string;
   phone?: string;
+  sex?: string; // 'M' | 'F' (re-scrapé depuis EducaKids ; absent si genre non renseigné)
 }
 
 export interface PaymentRow {

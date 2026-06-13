@@ -30,22 +30,72 @@ const arg = (name: string): string | undefined => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const tenantId = arg('--tenant');
+const tenantArg = arg('--tenant');
+const ensureTenantName = arg('--ensure-tenant');
 const phase = arg('--phase') ?? 'all';
 const dryRun = args.includes('--dry-run');
 const defaultSex: Sex = (arg('--default-sex') as Sex) ?? Sex.F;
 
-if (!tenantId) {
-  console.error('Usage: import-educakids.ts --tenant <ID> [--phase all|classes|teachers|students|payments] [--dry-run] [--default-sex M|F]');
+if (!tenantArg && !ensureTenantName) {
+  console.error('Usage: import-educakids.ts (--tenant <ID> | --ensure-tenant <NOM>) [--phase all|classes|teachers|students|payments] [--dry-run] [--default-sex M|F]');
   process.exit(1);
 }
+
+// Résolu dans main() si --ensure-tenant ; sinon = --tenant.
+let tenantId: string | undefined = tenantArg;
 
 const prisma = new PrismaClient();
 const load = (f: string): unknown[] => JSON.parse(readFileSync(join(DATA_DIR, f), 'utf-8'));
 
+function slugify(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/** Crée (idempotent) le tenant + un SCHOOL_ADMIN, retourne son id. */
+async function ensureTenant(name: string): Promise<string> {
+  const slug = slugify(name);
+  let tenant = await prisma.tenant.findFirst({ where: { slug } });
+  if (!tenant) {
+    if (dryRun) {
+      report.notes.push(`(dry-run) tenant "${name}" serait créé (slug=${slug}).`);
+      return `dryrun-${slug}`;
+    }
+    tenant = await prisma.tenant.create({
+      data: {
+        id: createId(),
+        name,
+        slug,
+        type: 'KINDERGARTEN',
+        locale: 'fr',
+        status: 'ACTIVE',
+        onboardingCompletedAt: new Date(),
+      },
+    });
+    report.notes.push(`tenant "${name}" créé (id=${tenant.id}).`);
+  }
+  const email = `admin@${slug}.${EMAIL_DOMAIN}`;
+  const admin = await prisma.user.findFirst({ where: { tenantId: tenant.id, email } });
+  if (!admin && !dryRun) {
+    await prisma.user.create({
+      data: {
+        id: createId(),
+        tenantId: tenant.id,
+        role: 'SCHOOL_ADMIN',
+        email,
+        firstName: 'Admin',
+        lastName: name,
+        passwordHash: await bcrypt.hash(createId(), 12),
+        emailVerifiedAt: new Date(),
+      },
+    });
+    report.notes.push(`SCHOOL_ADMIN créé : ${email} (mot de passe aléatoire → reset requis).`);
+  }
+  return tenant.id;
+}
+
 const report = {
   mode: dryRun ? 'DRY-RUN (aucune écriture)' : 'IMPORT RÉEL',
-  tenantId,
+  tenantId: '' as string,
   classes: 0,
   teachers: 0,
   parents: 0,
@@ -139,7 +189,7 @@ async function importStudents(students: StudentRow[]): Promise<void> {
         firstName,
         lastName,
         dateOfBirth: new Date(s.birth_date as unknown as string),
-        sex: defaultSex,
+        sex: s.sex === 'M' || s.sex === 'F' ? (s.sex as Sex) : defaultSex,
         classroom: className,
         classId: cls?.id ?? null,
         parentEmail,
@@ -210,12 +260,16 @@ async function importPayments(students: StudentRow[], cash: Record<string, strin
 }
 
 async function main(): Promise<void> {
+  if (ensureTenantName) tenantId = await ensureTenant(ensureTenantName);
+  report.tenantId = tenantId ?? '';
+
   const students = load('students.json') as StudentRow[];
   const teachers = load('export_ExportteacherFile.json') as Record<string, string>[];
   const cash = load('export_ExportExcel.json') as Record<string, string>[];
   const cheque = load('export_ExportExcel2.json') as Record<string, string>[];
 
-  report.notes.push(`sex absent de l'extraction → défaut "${defaultSex}" (à corriger / re-scraper genre).`);
+  const withSex = students.filter((s) => s.sex === 'M' || s.sex === 'F').length;
+  report.notes.push(`sex re-scrapé depuis EducaKids : ${withSex}/${students.length} (genre exact) ; le reste → défaut "${defaultSex}".`);
   report.notes.push(`parentEmail synthétique déterministe (parent-<phone>@${EMAIL_DOMAIN}).`);
 
   if (phase === 'all' || phase === 'classes') await importClasses(students);

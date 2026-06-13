@@ -1,0 +1,90 @@
+name: Import EducaKids → Klasso (manuel)
+
+# Import des données EducaKids (socle élèves/profs + paiements) dans un tenant
+# Klasso. Déclenchement MANUEL uniquement. Données de MINEURS : extraites en
+# direct depuis EducaKids (credentials en secrets), jamais persistées hors du run.
+#
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   EDUCAKIDS_IDENTIFIANT  — identifiant admin EducaKids
+#   EDUCAKIDS_PASSWORD     — mot de passe admin EducaKids
+#   IMPORT_DATABASE_URL    — DATABASE_URL de la base cible (prod Neon)
+#
+# Sécurités : dry-run par défaut + texte de confirmation pour un import réel.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant_name:
+        description: "Établissement cible (créé s'il n'existe pas)"
+        required: true
+        default: 'Smiley'
+      dry_run:
+        description: 'Dry-run (aucune écriture en base)'
+        type: boolean
+        default: true
+      confirm:
+        description: "Pour un import RÉEL, taper exactement : IMPORT"
+        required: false
+        default: ''
+
+concurrency:
+  group: import-educakids
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Garde-fou confirmation (import réel)
+        if: ${{ inputs.dry_run == false && inputs.confirm != 'IMPORT' }}
+        run: |
+          echo "::error::Import RÉEL demandé sans confirmation. Relance avec confirm=IMPORT."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install scraper deps
+        run: pip install -r tools/educakids-export/requirements.txt
+
+      - name: Extraction socle (élèves + genre + paiements + enseignants)
+        working-directory: tools/educakids-export
+        env:
+          EDUCAKIDS_IDENTIFIANT: ${{ secrets.EDUCAKIDS_IDENTIFIANT }}
+          EDUCAKIDS_PASSWORD: ${{ secrets.EDUCAKIDS_PASSWORD }}
+        run: |
+          python run.py --phase socle
+          python genre_rescrape.py --col 7
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install API deps
+        run: pnpm install --frozen-lockfile --filter @ecole-saas/api...
+
+      - name: Prisma generate
+        run: pnpm --filter @ecole-saas/api exec prisma generate
+
+      - name: Import (${{ inputs.dry_run && 'DRY-RUN' || 'RÉEL' }}) → ${{ inputs.tenant_name }}
+        working-directory: apps/api
+        env:
+          DATABASE_URL: ${{ secrets.IMPORT_DATABASE_URL }}
+        run: |
+          pnpm exec tsx scripts/import-educakids.ts \
+            --ensure-tenant "${{ inputs.tenant_name }}" \
+            --phase all \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Nettoyage des données extraites (PII)
+        if: always()
+        run: rm -rf tools/educakids-export/output || true
