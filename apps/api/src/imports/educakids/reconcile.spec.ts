@@ -28,6 +28,13 @@ describe('matchPaymentToStudent', () => {
     );
     expect(sid).toBe('8');
   });
+  it("matche même si l'ordre nom/prénom diffère (Cherif Jana)", () => {
+    const sid = matchPaymentToStudent(
+      { name: 'Cherif Jana', niveau: "Jardin d'enfants -4ans", classe: '4ans-Les Tulipes' },
+      STUDENTS,
+    );
+    expect(sid).toBe('8');
+  });
   it('renvoie null si introuvable', () => {
     expect(matchPaymentToStudent({ name: 'Inconnu', niveau: 'x', classe: 'y' }, STUDENTS)).toBeNull();
   });

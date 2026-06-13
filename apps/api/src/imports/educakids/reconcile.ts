@@ -31,16 +31,23 @@ export function dedupeParentsByPhone(students: StudentRow[]): Map<string, string
   return map;
 }
 
-/** Rattache un paiement à un élève par nom normalisé + classe.
+/** Clé de nom insensible à l'ordre des tokens : « Jana Cherif » et
+ *  « Cherif Jana » donnent la même clé (l'ordre nom/prénom diffère entre la
+ *  roster et les exports de paiement EducaKids). */
+export function nameKey(s: string): string {
+  return normalizeName(s).split(' ').filter(Boolean).sort().join(' ');
+}
+
+/** Rattache un paiement à un élève par nom (ordre indifférent) + classe.
  *  Renvoie le `student_id` si match UNIQUE, sinon null (0 ou >1 candidat). */
 export function matchPaymentToStudent(
   payment: PaymentRow,
   students: StudentRow[],
 ): string | null {
-  const payName = normalizeName(payment.name ?? '');
+  const payName = nameKey(payment.name ?? '');
   const payClass = normalizeName(payment.classe ?? '');
   const candidates = students.filter((s) => {
-    if (normalizeName(s.name) !== payName) return false;
+    if (nameKey(s.name) !== payName) return false;
     if (!payClass) return true; // pas de classe fournie → match sur le nom seul
     const { name: className } = splitClass(s.class_label);
     return normalizeName(className) === payClass;
