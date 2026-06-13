@@ -24,14 +24,17 @@ DATA = Path(__file__).parent / "output" / "data"
 
 
 def read_env() -> dict:
-    env = {}
+    # CI : credentials fournis via variables d'environnement (secrets).
+    # Local : fichier .env (override).
+    env = dict(os.environ)
     p = Path(__file__).parent / ".env"
-    for line in p.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        env[k.strip()] = v.strip().strip('"').strip("'")
+    if p.exists():
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip().strip('"').strip("'")
     return env
 
 
