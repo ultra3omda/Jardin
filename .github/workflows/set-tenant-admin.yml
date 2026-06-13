@@ -1,0 +1,48 @@
+name: Définir le mot de passe admin d'un tenant (manuel)
+
+# Crée/met à jour un SCHOOL_ADMIN avec un mot de passe connu pour un tenant.
+# Utile après l'import EducaKids (l'admin créé a un mot de passe aléatoire).
+#
+# Secret requis : IMPORT_DATABASE_URL (DATABASE_URL de la base cible).
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'Slug du tenant'
+        required: true
+        default: 'smiley'
+      email:
+        description: "Email de l'admin (identifiant de connexion)"
+        required: true
+        default: 'admin@smiley.import.klasso.tn'
+      password:
+        description: 'Mot de passe à définir (≥ 8 caractères)'
+        required: true
+
+concurrency:
+  group: set-tenant-admin
+  cancel-in-progress: false
+
+jobs:
+  set-password:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --filter @ecole-saas/api...
+      - run: pnpm --filter @ecole-saas/api exec prisma generate
+      - name: Set password
+        working-directory: apps/api
+        env:
+          DATABASE_URL: ${{ secrets.IMPORT_DATABASE_URL }}
+          ADMIN_PASSWORD: ${{ inputs.password }} # via env → non échoué dans les logs
+        run: |
+          pnpm exec tsx scripts/set-tenant-admin-password.ts \
+            --slug "${{ inputs.slug }}" \
+            --email "${{ inputs.email }}"
