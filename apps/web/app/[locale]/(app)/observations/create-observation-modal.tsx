@@ -15,6 +15,7 @@ import type { SchoolClass } from '@/lib/api/classes';
 import type { StudentSummary } from '@/lib/api/students';
 import { useToast } from '@/lib/ui/use-toast';
 import { OBSERVATION_CATEGORIES } from '@/lib/validation/observations.schemas';
+import { StudentMultiSelect } from '@/components/students/student-multi-select';
 
 interface Props {
   open: boolean;
@@ -78,10 +79,6 @@ export function CreateObservationModal({ open, onClose, classes, students }: Pro
   function handleClose() {
     resetState();
     onClose();
-  }
-
-  function toggleStudent(id: string) {
-    setStudentIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   async function handleFileSelected(file: File) {
@@ -260,8 +257,12 @@ export function CreateObservationModal({ open, onClose, classes, students }: Pro
                     id="obs-class"
                     value={classId}
                     onChange={(e) => {
-                      setClassId(e.target.value);
-                      setStudentIds([]);
+                      const newClassId = e.target.value;
+                      setClassId(newClassId);
+                      // Toute la classe cochée par défaut ; l'utilisateur décoche au besoin.
+                      setStudentIds(
+                        students.filter((s) => s.classId === newClassId).map((s) => s.id),
+                      );
                     }}
                     className={INPUT}
                   >
@@ -274,31 +275,12 @@ export function CreateObservationModal({ open, onClose, classes, students }: Pro
                   </select>
                 </div>
                 {classId && (
-                  <fieldset className="rounded-md border p-3">
-                    <legend className="px-1 text-sm font-medium">
-                      Élèves ({studentIds.length} sélectionné(s))
-                    </legend>
-                    {classStudents.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Aucun élève dans cette classe.</p>
-                    ) : (
-                      <div className="max-h-40 space-y-1 overflow-y-auto">
-                        {classStudents.map((s) => (
-                          <label
-                            key={s.id}
-                            className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={studentIds.includes(s.id)}
-                              onChange={() => toggleStudent(s.id)}
-                              className="h-4 w-4 rounded border-gray-300"
-                            />
-                            {s.firstName} {s.lastName}
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </fieldset>
+                  <StudentMultiSelect
+                    students={classStudents}
+                    value={studentIds}
+                    onChange={setStudentIds}
+                    emptyHint="Aucun élève dans cette classe."
+                  />
                 )}
               </>
             )}
