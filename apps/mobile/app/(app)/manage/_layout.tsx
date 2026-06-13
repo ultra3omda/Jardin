@@ -35,6 +35,7 @@ export default function ManageLayout() {
       <Stack.Screen name="unpaid" options={{ ...header, title: 'Impayés' }} />
       <Stack.Screen name="transport" options={{ ...header, title: 'Transport' }} />
       <Stack.Screen name="health" options={{ ...header, title: 'Santé' }} />
+      <Stack.Screen name="security" options={{ ...header, title: 'Sécurité' }} />
     </Stack>
   );
 }

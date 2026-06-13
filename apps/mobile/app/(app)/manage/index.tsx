@@ -113,6 +113,13 @@ const ENTRIES: Entry[] = [
     icon: 'medkit-outline',
     color: '#ef4444',
   },
+  {
+    route: '/(app)/manage/security',
+    title: 'Sécurité',
+    subtitle: 'Incidents, visiteurs, exercices',
+    icon: 'shield-checkmark-outline',
+    color: '#0ea5e9',
+  },
 ];
 
 /** Admin management hub menu. */
