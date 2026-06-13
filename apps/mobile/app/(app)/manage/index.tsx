@@ -58,6 +58,13 @@ const ENTRIES: Entry[] = [
     color: '#671bf0',
   },
   {
+    route: '/(app)/manage/discipline',
+    title: 'Discipline',
+    subtitle: 'Incidents & sanctions',
+    icon: 'warning-outline',
+    color: '#ef4444',
+  },
+  {
     route: '/(app)/manage/appointments',
     title: 'Rendez-vous',
     subtitle: 'Demandes des parents, confirmation',
