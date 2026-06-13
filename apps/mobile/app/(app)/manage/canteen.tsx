@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Button, EmptyState, Fab, FormField, FormSheet, colors, radius } from '@klasso/ui-mobile';
 import {
@@ -8,6 +8,7 @@ import {
   SCHOOL_LIFE_KEYS,
   useCanteenMenus,
 } from '@/lib/api/school-life';
+import { MealPlansSection } from '@/components/canteen/meal-plans-section';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -23,6 +24,7 @@ export default function ManageCanteenScreen() {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useCanteenMenus();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'menus' | 'regimes'>('menus');
 
   const [date, setDate] = useState(today());
   const [starter, setStarter] = useState('');
@@ -54,6 +56,34 @@ export default function ManageCanteenScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
+      <View style={{ flexDirection: 'row', gap: 8, padding: 16, paddingBottom: 0 }}>
+        {(['menus', 'regimes'] as const).map((t) => (
+          <Pressable
+            key={t}
+            onPress={() => setTab(t)}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              paddingVertical: 8,
+              borderRadius: radius.md,
+              backgroundColor: tab === t ? colors.ambre[500] : colors.white,
+              borderWidth: 1,
+              borderColor: tab === t ? colors.ambre[500] : colors.paper[100],
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '700', color: tab === t ? colors.white : colors.ink[900] }}>
+              {t === 'menus' ? 'Menus' : 'Régimes'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {tab === 'regimes' ? (
+        <View style={{ flex: 1, padding: 16 }}>
+          <MealPlansSection />
+        </View>
+      ) : (
+        <>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
           <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
@@ -121,6 +151,8 @@ export default function ManageCanteenScreen() {
           </Text>
         ) : null}
       </FormSheet>
+        </>
+      )}
     </View>
   );
 }
