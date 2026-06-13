@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { AnnouncementAudience } from '@prisma/client';
+import { AnnouncementAudience, AnnouncementKind } from '@prisma/client';
 
 export class CreateAnnouncementDto {
   @ApiProperty({ maxLength: 200 })
@@ -14,6 +14,14 @@ export class CreateAnnouncementDto {
   @ApiPropertyOptional({ enum: AnnouncementAudience, default: 'ALL' })
   @IsOptional() @IsEnum(AnnouncementAudience)
   audience?: AnnouncementAudience;
+
+  @ApiPropertyOptional({ enum: AnnouncementKind, default: 'NEWS' })
+  @IsOptional() @IsEnum(AnnouncementKind)
+  kind?: AnnouncementKind;
+
+  @ApiPropertyOptional({ description: 'PDF joint (R2) pour une circulaire' })
+  @IsOptional() @IsString()
+  attachmentUrl?: string;
 
   @ApiPropertyOptional({ description: 'ISO date string, defaults to now' })
   @IsOptional() @IsDateString()
@@ -43,6 +51,8 @@ export class AnnouncementResponseDto {
   @ApiProperty() title!: string;
   @ApiProperty() body!: string;
   @ApiProperty({ enum: AnnouncementAudience }) audience!: AnnouncementAudience;
+  @ApiProperty({ enum: AnnouncementKind }) kind!: AnnouncementKind;
+  @ApiPropertyOptional({ nullable: true }) attachmentUrl!: string | null;
   @ApiProperty() authorId!: string;
   @ApiProperty() authorName!: string;
   @ApiProperty() publishAt!: Date;

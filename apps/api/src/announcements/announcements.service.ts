@@ -21,12 +21,15 @@ export class AnnouncementsService {
 
   private toDto(a: {
     id: string; title: string; body: string; audience: string;
+    kind: string; attachmentUrl: string | null;
     authorId: string; publishAt: Date; createdAt: Date; updatedAt: Date;
     author: { firstName: string; lastName: string };
   }): AnnouncementResponseDto {
     return {
       id: a.id, title: a.title, body: a.body,
       audience: a.audience as AnnouncementResponseDto['audience'],
+      kind: a.kind as AnnouncementResponseDto['kind'],
+      attachmentUrl: a.attachmentUrl,
       authorId: a.authorId, authorName: `${a.author.firstName} ${a.author.lastName}`,
       publishAt: a.publishAt, createdAt: a.createdAt, updatedAt: a.updatedAt,
     };
@@ -53,6 +56,8 @@ export class AnnouncementsService {
         title: dto.title,
         body: dto.body,
         audience: dto.audience ?? 'ALL',
+        kind: dto.kind ?? 'NEWS',
+        attachmentUrl: dto.attachmentUrl ?? null,
         publishAt: dto.publishAt ? new Date(dto.publishAt) : new Date(),
       },
       include: { author: { select: { firstName: true, lastName: true } } },
