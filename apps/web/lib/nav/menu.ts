@@ -59,6 +59,7 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
         { id: 'notes',        label: 'Notes',           href: '/notes',        icon: ICONS.notes },
         { id: 'bulletins',    label: 'Bulletins',       href: '/bulletins',    icon: ICONS.bulletins },
         { id: 'evaluations',  label: 'Évaluations',     href: '/evaluations',  icon: ICONS.evaluations },
+        { id: 'homework',     label: 'Devoirs',         href: '/homework',     icon: ICONS.evaluations },
         { id: 'observations', label: 'Observations',    href: '/observations', icon: ICONS.observations },
         { id: 'absences',     label: 'Absences',        href: '/absences',     icon: ICONS.absences },
         { id: 'discipline',  label: 'Discipline',      href: '/discipline',  icon: ICONS.discipline },
@@ -178,6 +179,7 @@ function teacherNav({ type }: BuildContext): NavSection[] {
     { id: 'pedagogie', label: 'Pédagogie', items: [
       { id: 'notes',        label: 'Saisir notes',     href: '/notes',        icon: ICONS.notes },
       { id: 'evaluations',  label: 'Évaluations',      href: '/evaluations',  icon: ICONS.evaluations },
+      { id: 'homework',     label: 'Devoirs',          href: '/homework',     icon: ICONS.evaluations },
       { id: 'observations', label: 'Observations',     href: '/observations', icon: ICONS.observations },
       { id: 'bulletins',    label: 'Bulletins',        href: '/bulletins',    icon: ICONS.bulletins },
       { id: 'absences',     label: 'Absences',         href: '/absences',     icon: ICONS.absences },
