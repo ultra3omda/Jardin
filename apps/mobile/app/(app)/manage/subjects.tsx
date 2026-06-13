@@ -12,12 +12,20 @@ import {
   colors,
   radius,
 } from '@klasso/ui-mobile';
-import { createSubject, deleteSubject, SUBJECTS_KEY, useSubjects, type Subject } from '@/lib/api/subjects';
+import {
+  createSubject,
+  updateSubject,
+  deleteSubject,
+  SUBJECTS_KEY,
+  useSubjects,
+  type Subject,
+} from '@/lib/api/subjects';
 
 export default function ManageSubjectsScreen() {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useSubjects();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Subject | null>(null);
   const [toDelete, setToDelete] = useState<Subject | null>(null);
 
   const [name, setName] = useState('');
@@ -27,20 +35,50 @@ export default function ManageSubjectsScreen() {
 
   const items = data?.items ?? [];
 
+  function resetForm() {
+    setName('');
+    setEmoji('');
+    setCoefficient('1');
+    setErrors({});
+  }
+
+  function openCreate() {
+    setEditing(null);
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(s: Subject) {
+    setEditing(s);
+    setName(s.name);
+    setEmoji(s.emoji ?? '');
+    setCoefficient(String(s.coefficient));
+    setErrors({});
+    setOpen(true);
+  }
+
+  const payload = () => ({
+    name: name.trim(),
+    emoji: emoji.trim() || undefined,
+    coefficient: parseFloat(coefficient) || 1,
+  });
+
   const createM = useMutation({
-    mutationFn: () =>
-      createSubject({
-        name: name.trim(),
-        emoji: emoji.trim() || undefined,
-        coefficient: parseFloat(coefficient) || 1,
-      }),
+    mutationFn: () => createSubject(payload()),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: SUBJECTS_KEY });
       setOpen(false);
-      setName('');
-      setEmoji('');
-      setCoefficient('1');
-      setErrors({});
+      resetForm();
+    },
+  });
+
+  const updateM = useMutation({
+    mutationFn: () => updateSubject(editing!.id, payload()),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: SUBJECTS_KEY });
+      setOpen(false);
+      setEditing(null);
+      resetForm();
     },
   });
 
@@ -57,7 +95,8 @@ export default function ManageSubjectsScreen() {
     if (!name.trim()) e.name = 'Nom requis';
     setErrors(e);
     if (Object.keys(e).length) return;
-    createM.mutate();
+    if (editing) updateM.mutate();
+    else createM.mutate();
   }
 
   return (
@@ -85,31 +124,41 @@ export default function ManageSubjectsScreen() {
                 marginBottom: 10,
               }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink[900] }}>
+              <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink[900] }}>
                 {s.emoji ? `${s.emoji} ` : ''}
                 {s.name}
                 <Text style={{ color: colors.ink[300], fontWeight: '400' }}>  · coef {s.coefficient}</Text>
               </Text>
-              <Pressable
-                onPress={() => setToDelete(s)}
-                accessibilityRole="button"
-                accessibilityLabel={`Supprimer ${s.name}`}
-                hitSlop={8}
-              >
-                <Text style={{ color: colors.status.danger500, fontWeight: '600', fontSize: 13 }}>
-                  Supprimer
-                </Text>
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 14, marginLeft: 8 }}>
+                <Pressable
+                  onPress={() => openEdit(s)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Modifier ${s.name}`}
+                  hitSlop={8}
+                >
+                  <Text style={{ color: colors.ambre[700], fontWeight: '600', fontSize: 13 }}>Éditer</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setToDelete(s)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Supprimer ${s.name}`}
+                  hitSlop={8}
+                >
+                  <Text style={{ color: colors.status.danger500, fontWeight: '600', fontSize: 13 }}>
+                    Supprimer
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           ))
         )}
       </ScrollView>
 
-      <Fab label="Nouvelle matière" extended onPress={() => setOpen(true)} />
+      <Fab label="Nouvelle matière" extended onPress={openCreate} />
 
       <FormSheet
         visible={open}
-        title="Nouvelle matière"
+        title={editing ? 'Modifier la matière' : 'Nouvelle matière'}
         onClose={() => setOpen(false)}
         footer={
           <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -117,7 +166,11 @@ export default function ManageSubjectsScreen() {
               <Button label="Annuler" variant="secondary" onPress={() => setOpen(false)} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button label="Créer" onPress={submit} loading={createM.isPending} />
+              <Button
+                label={editing ? 'Enregistrer' : 'Créer'}
+                onPress={submit}
+                loading={createM.isPending || updateM.isPending}
+              />
             </View>
           </View>
         }
@@ -131,9 +184,9 @@ export default function ManageSubjectsScreen() {
           keyboardType="decimal-pad"
           hint="De 1 à 10"
         />
-        {createM.error ? (
+        {createM.error || updateM.error ? (
           <Text style={{ fontSize: 13, color: colors.status.danger500 }}>
-            Erreur : {(createM.error as Error).message}
+            Erreur : {((createM.error || updateM.error) as Error).message}
           </Text>
         ) : null}
       </FormSheet>
