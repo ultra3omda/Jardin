@@ -73,3 +73,76 @@ export function createBusRoute(input: CreateBusRouteInput): Promise<BusRoute> {
 export function deleteBusRoute(id: string): Promise<void> {
   return fetchApi<void>(`/api/bus-routes/${id}`, { method: 'DELETE' });
 }
+
+// ---------------------------------------------------------------------------
+// Affectations transport (élève ↔ ligne) — T2b
+// Miroir de apps/api/src/transport/transport-assignments.controller.ts.
+// ---------------------------------------------------------------------------
+
+export type TransportDirection = 'MORNING' | 'EVENING' | 'BOTH';
+
+export interface TransportAssignment {
+  id: string;
+  studentId: string;
+  studentName: string;
+  routeId: string;
+  routeName: string;
+  stopId?: string | null;
+  stopName?: string | null;
+  direction: TransportDirection;
+  createdAt: string;
+}
+
+interface ListTransportAssignmentsResponse {
+  items: TransportAssignment[];
+  total: number;
+}
+
+export const transportAssignmentsKey = (routeId: string) =>
+  ['transport-assignments', routeId] as const;
+
+export function useTransportAssignments(routeId: string | null) {
+  return useQuery({
+    queryKey: ['transport-assignments', routeId ?? 'none'] as const,
+    queryFn: () =>
+      fetchApi<ListTransportAssignmentsResponse>(
+        `/api/transport-assignments?routeId=${encodeURIComponent(routeId as string)}`,
+      ),
+    enabled: !!routeId,
+  });
+}
+
+export interface CreateTransportAssignmentInput {
+  studentId: string;
+  routeId: string;
+  direction?: TransportDirection;
+}
+
+export function createTransportAssignment(
+  input: CreateTransportAssignmentInput,
+): Promise<TransportAssignment> {
+  return fetchApi<TransportAssignment>('/api/transport-assignments', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteTransportAssignment(id: string): Promise<void> {
+  return fetchApi<void>(`/api/transport-assignments/${id}`, { method: 'DELETE' });
+}
+
+/**
+ * Reconcile the currently-assigned students of a route against a new selection.
+ * The API only exposes single create/delete, so the sheet computes the delta.
+ */
+export function diffStudentAssignments(
+  current: readonly string[],
+  selected: readonly string[],
+): { toAdd: string[]; toRemove: string[] } {
+  const currentSet = new Set(current);
+  const selectedSet = new Set(selected);
+  return {
+    toAdd: selected.filter((id) => !currentSet.has(id)),
+    toRemove: current.filter((id) => !selectedSet.has(id)),
+  };
+}

@@ -19,6 +19,7 @@ import {
   useBusRoutes,
   type BusRoute,
 } from '@/lib/api/transport';
+import { AssignStudentsSheet } from '@/components/transport/assign-students-sheet';
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -27,6 +28,7 @@ export default function ManageTransportScreen() {
   const { data, isLoading, isError } = useBusRoutes();
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<BusRoute | null>(null);
+  const [assignRoute, setAssignRoute] = useState<BusRoute | null>(null);
 
   const [name, setName] = useState('');
   const [departureTime, setDepartureTime] = useState('');
@@ -118,6 +120,24 @@ export default function ManageTransportScreen() {
                 {r.assignmentCount} élève{r.assignmentCount > 1 ? 's' : ''} · {r.stops.length} arrêt
                 {r.stops.length > 1 ? 's' : ''}
               </Text>
+              <Pressable
+                onPress={() => setAssignRoute(r)}
+                accessibilityRole="button"
+                accessibilityLabel={`Affecter des élèves à ${r.name}`}
+                style={{
+                  marginTop: 10,
+                  alignSelf: 'flex-start',
+                  borderWidth: 1,
+                  borderColor: colors.ambre[500],
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                }}
+              >
+                <Text style={{ color: colors.ink[900], fontWeight: '700', fontSize: 13 }}>
+                  Affecter des élèves
+                </Text>
+              </Pressable>
             </View>
           ))
         )}
@@ -176,6 +196,12 @@ export default function ManageTransportScreen() {
         loading={deleteM.isPending}
         onConfirm={() => toDelete && deleteM.mutate(toDelete.id)}
         onCancel={() => setToDelete(null)}
+      />
+
+      <AssignStudentsSheet
+        route={assignRoute}
+        visible={!!assignRoute}
+        onClose={() => setAssignRoute(null)}
       />
     </View>
   );
