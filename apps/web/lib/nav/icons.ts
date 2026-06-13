@@ -92,4 +92,5 @@ export const ICONS: Record<string, LucideIcon> = {
   suppliers: Truck,
   observations: Eye,
   appointments: CalendarClock,
+  classPromotion: GraduationCap,
 };
