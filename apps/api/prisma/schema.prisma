@@ -202,6 +202,9 @@ model Tenant {
   // G7 — passage de classe
   classPromotionLogs ClassPromotionLog[]
 
+  // G8 — calendrier scolaire
+  calendarEvents SchoolCalendarEvent[]
+
   @@index([slug])
   @@index([status])
   @@map("tenants")
@@ -927,12 +930,19 @@ enum AnnouncementAudience {
   STAFF
 }
 
+enum AnnouncementKind {
+  NEWS
+  CIRCULAIRE
+}
+
 model Announcement {
   id        String               @id
   tenantId  String
   title     String               @db.VarChar(200)
   body      String               @db.Text
   audience  AnnouncementAudience @default(ALL)
+  kind          AnnouncementKind @default(NEWS) // G8 — NEWS | CIRCULAIRE
+  attachmentUrl String? // G8 — PDF joint (R2) pour les circulaires
   authorId  String
   publishAt DateTime             @default(now())
   createdAt DateTime             @default(now())
@@ -2092,4 +2102,34 @@ model ClassPromotionLog {
 
   @@index([tenantId, toYear])
   @@map("class_promotion_logs")
+}
+
+// ============================================================================
+// G8 — Calendrier scolaire (parité EducaKids : vacaances / circulaire)
+// ============================================================================
+
+enum CalendarEventType {
+  VACATION
+  HOLIDAY
+  EVENT
+  EXAM
+  MEETING
+}
+
+model SchoolCalendarEvent {
+  id         String            @id // cuid2
+  tenantId   String
+  title      String
+  type       CalendarEventType
+  startDate  DateTime          @db.Date
+  endDate    DateTime          @db.Date
+  schoolYear String
+  notes      String?           @db.Text
+  deletedAt  DateTime?
+  createdAt  DateTime          @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, schoolYear, startDate])
+  @@map("school_calendar_events")
 }
