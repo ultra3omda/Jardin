@@ -86,6 +86,13 @@ export interface SetAppointmentStatusInput {
   status: AppointmentStatus;
 }
 
+export interface BookAppointmentInput {
+  slotId: string;
+  typeId: string;
+  studentId?: string;
+  note?: string;
+}
+
 // ─── Error ───────────────────────────────────────────────────────────────────
 
 export class AppointmentsApiError extends Error {
@@ -155,6 +162,17 @@ export async function listStaffAppointments(token: string): Promise<Appointment[
   return apiFetch(`${BASE}`, token, { method: 'GET' });
 }
 
+export async function listMyAppointments(token: string): Promise<Appointment[]> {
+  return apiFetch(`${BASE}/mine`, token, { method: 'GET' });
+}
+
+export async function bookAppointment(
+  token: string,
+  data: BookAppointmentInput,
+): Promise<Appointment> {
+  return apiFetch(`${BASE}`, token, { method: 'POST', body: JSON.stringify(data) });
+}
+
 export async function setAppointmentStatus(
   token: string,
   id: string,
@@ -171,6 +189,7 @@ export async function setAppointmentStatus(
 export const appointmentTypesKey = (): QueryKey => ['appointments', 'types'];
 export const availableSlotsKey = (): QueryKey => ['appointments', 'slots'];
 export const staffAppointmentsKey = (): QueryKey => ['appointments', 'list'];
+export const myAppointmentsKey = (): QueryKey => ['appointments', 'mine'];
 
 // ─── Read hooks ──────────────────────────────────────────────────────────────
 
@@ -184,6 +203,10 @@ export function useAvailableSlots(): UseResourceResult<AppointmentSlot[]> {
 
 export function useStaffAppointments(): UseResourceResult<Appointment[]> {
   return useResource(staffAppointmentsKey(), (token) => listStaffAppointments(token));
+}
+
+export function useMyAppointments(): UseResourceResult<Appointment[]> {
+  return useResource(myAppointmentsKey(), (token) => listMyAppointments(token));
 }
 
 // ─── Write hooks ─────────────────────────────────────────────────────────────
@@ -205,6 +228,18 @@ export function useCreateSlot() {
   return useMutation({
     mutationFn: (data: CreateSlotInput) => createAppointmentSlot(requireToken(token), data),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: availableSlotsKey() });
+    },
+  });
+}
+
+export function useBookAppointment() {
+  const token = useAuthStore((s) => s.accessToken);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BookAppointmentInput) => bookAppointment(requireToken(token), data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: myAppointmentsKey() });
       void qc.invalidateQueries({ queryKey: availableSlotsKey() });
     },
   });

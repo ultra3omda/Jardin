@@ -1,7 +1,7 @@
 /** G6 — Rendez-vous parents `/appointments`. Server Component shell. */
 export const dynamic = 'force-dynamic';
 
-import { AppointmentsClient } from './appointments-client';
+import { AppointmentsRouter } from './appointments-router';
 
 export default function AppointmentsPage() {
   return (
@@ -9,11 +9,11 @@ export default function AppointmentsPage() {
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Rendez-vous</h1>
         <p className="text-sm text-muted-foreground">
-          Agenda des rendez-vous parents : types, créneaux disponibles et demandes à traiter.
+          Réservez un créneau (parents) ou gérez types, créneaux et demandes (équipe).
         </p>
       </header>
 
-      <AppointmentsClient />
+      <AppointmentsRouter />
     </div>
   );
 }
