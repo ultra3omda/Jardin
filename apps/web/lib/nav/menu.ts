@@ -110,6 +110,7 @@ function schoolAdminNav({ type }: BuildContext): NavSection[] {
       items: [
         { id: 'messages',      label: 'Messages',  href: '/messages',      icon: ICONS.messages },
         { id: 'announcements', label: 'Annonces',  href: '/announcements', icon: ICONS.announcements },
+        { id: 'calendar',      label: 'Calendrier', href: '/calendar',     icon: ICONS.calendar },
         { id: 'appointments',  label: 'Rendez-vous', href: '/appointments', icon: ICONS.appointments },
       ],
     },
@@ -165,6 +166,7 @@ function teacherNav({ type }: BuildContext): NavSection[] {
       { id: 'communication', label: 'Communication', items: [
         { id: 'messages',      label: 'Messages parents', href: '/messages',      icon: ICONS.messages },
         { id: 'announcements', label: 'Annonces',         href: '/announcements', icon: ICONS.announcements },
+        { id: 'calendar',      label: 'Calendrier',       href: '/calendar',      icon: ICONS.calendar },
         { id: 'appointments',  label: 'Rendez-vous',      href: '/appointments',  icon: ICONS.appointments },
       ]},
       { id: 'compte', label: 'Compte', items: [{ id: 'profile', label: 'Profil', href: '/profile', icon: ICONS.branding }] },
@@ -185,6 +187,7 @@ function teacherNav({ type }: BuildContext): NavSection[] {
     { id: 'communication', label: 'Communication', items: [
       { id: 'messages',      label: 'Messages', href: '/messages',      icon: ICONS.messages },
       { id: 'announcements', label: 'Annonces', href: '/announcements', icon: ICONS.announcements },
+      { id: 'calendar',      label: 'Calendrier', href: '/calendar',   icon: ICONS.calendar },
       { id: 'appointments',  label: 'Rendez-vous', href: '/appointments', icon: ICONS.appointments },
     ]},
     { id: 'compte', label: 'Compte', items: [{ id: 'profile', label: 'Profil', href: '/profile', icon: ICONS.branding }] },
@@ -211,6 +214,7 @@ function parentNav({ type }: BuildContext): NavSection[] {
     { id: 'communication', label: 'Communication', items: [
       { id: 'messages',      label: 'Messages', href: '/messages',      icon: ICONS.messages },
       { id: 'announcements', label: 'Annonces', href: '/announcements', icon: ICONS.announcements },
+      { id: 'calendar',      label: 'Calendrier', href: '/calendar',   icon: ICONS.calendar },
     ]},
     { id: 'finance', label: 'Finance', items: [
       { id: 'payments', label: 'Mes factures', href: '/payments', icon: ICONS.payments },
@@ -243,6 +247,7 @@ function staffNav(_: BuildContext): NavSection[] {
     { id: 'communication', label: 'Communication', items: [
       { id: 'messages',      label: 'Messages', href: '/messages',      icon: ICONS.messages },
       { id: 'announcements', label: 'Annonces', href: '/announcements', icon: ICONS.announcements },
+      { id: 'calendar',      label: 'Calendrier', href: '/calendar',   icon: ICONS.calendar },
       { id: 'appointments',  label: 'Rendez-vous', href: '/appointments', icon: ICONS.appointments },
     ]},
     { id: 'compte', label: 'Compte', items: [{ id: 'profile', label: 'Profil', href: '/profile', icon: ICONS.branding }] },
