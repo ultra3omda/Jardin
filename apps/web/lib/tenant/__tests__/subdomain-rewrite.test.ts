@@ -46,4 +46,18 @@ describe('resolveBrandedRewrite', () => {
       resolveBrandedRewrite({ ...base, host: 'ecole.klasso.tn', path: '/login' }),
     ).toBe('/t/ecole/login');
   });
+
+  it('rewrites for every configured locale (fr/en/es/ar)', () => {
+    const allLocales = ['fr', 'en', 'es', 'ar'] as const;
+    for (const locale of allLocales) {
+      expect(
+        resolveBrandedRewrite({
+          ...base,
+          locales: allLocales,
+          host: 'ecole.klasso.tn',
+          path: `/${locale}/login`,
+        }),
+      ).toBe(`/${locale}/t/ecole/login`);
+    }
+  });
 });
