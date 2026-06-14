@@ -2,6 +2,7 @@ import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { defaultLocale, locales } from '@/i18n';
+import { detectLocale, stripLocalePrefix } from '@/lib/i18n/locale-path';
 import { REFRESH_COOKIE_NAME } from '@/lib/auth/cookies';
 import { resolveBrandedRewrite } from '@/lib/tenant/subdomain-rewrite';
 
@@ -16,18 +17,6 @@ const intlMiddleware = createMiddleware({
   defaultLocale,
   localePrefix: 'always',
 });
-
-/**
- * Strip locale prefix from a path: `/fr/dashboard` → `/dashboard`.
- * Returns the original path if no locale prefix present.
- */
-function stripLocale(path: string): string {
-  for (const locale of locales) {
-    if (path === `/${locale}`) return '/';
-    if (path.startsWith(`/${locale}/`)) return path.slice(locale.length + 1);
-  }
-  return path;
-}
 
 export function middleware(request: NextRequest): NextResponse {
   const host = request.headers.get('host') ?? '';
@@ -52,11 +41,10 @@ export function middleware(request: NextRequest): NextResponse {
     }
   }
 
-  // V1.5 — Auth redirects, now locale-aware.
+  // V1.5 — Auth redirects, now locale-aware for ALL locales (fr/en/es/ar).
   const hasRefreshCookie = !!request.cookies.get(REFRESH_COOKIE_NAME);
-  const stripped = stripLocale(path);
-  const localeMatch = path.match(/^\/(fr|ar)(\/|$)/);
-  const locale = localeMatch ? localeMatch[1] : defaultLocale;
+  const stripped = stripLocalePrefix(path, locales);
+  const locale = detectLocale(path, locales, defaultLocale);
 
   if (
     PROTECTED_PREFIXES.some((p) => stripped === p || stripped.startsWith(`${p}/`)) &&
