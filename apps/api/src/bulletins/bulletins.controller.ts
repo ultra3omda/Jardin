@@ -18,6 +18,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { BulletinsService } from './bulletins.service';
 import {
   BulletinResponseDto,
+  type ChildBulletinsDto,
   GenerateBulletinDto,
 } from './dto/bulletin.dto';
 
@@ -27,6 +28,13 @@ import {
 @Controller('bulletins')
 export class BulletinsController {
   constructor(private readonly service: BulletinsService) {}
+
+  @Get('my-children')
+  @Roles(UserRole.PARENT)
+  @ApiOperation({ summary: "Parent: own children + their generated bulletins (for download)" })
+  myChildren(@CurrentUser() user: AuthenticatedUser): Promise<ChildBulletinsDto[]> {
+    return this.service.listForMyChildren(user);
+  }
 
   @Post('generate')
   @HttpCode(HttpStatus.OK)

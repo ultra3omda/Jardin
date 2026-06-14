@@ -45,3 +45,19 @@ export class BulletinResponseDto {
   @ApiProperty() generatedById!: string;
   @ApiPropertyOptional() pdfUrl?: string | null;
 }
+
+/** One generated bulletin available for download (parent view). */
+export interface ChildBulletinEntryDto {
+  gradePeriodId: string;
+  gradePeriodName: string;
+  schoolYear: string;
+  generatedAt: string;
+}
+
+/** A parent's child with the list of its officially generated bulletins. */
+export interface ChildBulletinsDto {
+  studentId: string;
+  studentName: string;
+  className: string;
+  bulletins: ChildBulletinEntryDto[];
+}

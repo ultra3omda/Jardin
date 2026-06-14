@@ -18,8 +18,9 @@ function buildPrismaMock() {
     bulletin: {
       upsert: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
-    parentStudent: { findFirst: vi.fn() },
+    parentStudent: { findFirst: vi.fn(), findMany: vi.fn() },
   };
 }
 
@@ -184,5 +185,31 @@ describe('BulletinsService', () => {
     await expect(service.getPdf({ studentId: 'st_other', gradePeriodId: 'p1' }, parentUser))
       .rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.student.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('listForMyChildren: returns each child with its generated bulletins', async () => {
+    prisma.parentStudent.findMany.mockResolvedValue([
+      { student: { id: 'st1', firstName: 'Lina', lastName: 'B', classroom: 'CP-A' } },
+    ]);
+    prisma.bulletin.findMany.mockResolvedValue([
+      {
+        studentId: 'st1',
+        gradePeriodId: 'p1',
+        generatedAt: new Date('2026-01-10'),
+        gradePeriod: { name: 'T1', schoolYear: '2025-2026' },
+      },
+    ]);
+    const res = await service.listForMyChildren(parentUser);
+    expect(res).toHaveLength(1);
+    expect(res[0]!.studentName).toBe('Lina B');
+    expect(res[0]!.bulletins).toHaveLength(1);
+    expect(res[0]!.bulletins[0]!.gradePeriodName).toBe('T1');
+  });
+
+  it('listForMyChildren: returns [] when the parent has no children', async () => {
+    prisma.parentStudent.findMany.mockResolvedValue([]);
+    const res = await service.listForMyChildren(parentUser);
+    expect(res).toEqual([]);
+    expect(prisma.bulletin.findMany).not.toHaveBeenCalled();
   });
 });
