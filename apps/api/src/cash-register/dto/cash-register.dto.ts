@@ -33,3 +33,24 @@ export class CreateExpenseDto {
   @ApiPropertyOptional() @IsOptional() @IsString() supplierId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() reference?: string;
 }
+
+export class UpdateSupplierDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(160) name?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() phone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() taxId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+}
+
+/**
+ * Édition de dépense — métadonnées uniquement. `amount`/`method` sont exclus
+ * volontairement : ils sont couplés au mouvement de caisse créé à la dépense
+ * (intégrité financière).
+ */
+export class UpdateExpenseDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) category?: string;
+  @ApiPropertyOptional({ description: 'ISO date' }) @IsOptional() @IsString() paidAt?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() supplierId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() reference?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+}
