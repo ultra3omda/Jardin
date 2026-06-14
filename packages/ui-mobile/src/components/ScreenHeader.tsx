@@ -51,7 +51,7 @@ export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
           </Text>
         ) : null}
       </View>
-      {right ? <View style={{ marginLeft: 12 }}>{right}</View> : null}
+      {right ? <View style={{ marginStart: 12 }}>{right}</View> : null}
     </View>
   );
 }

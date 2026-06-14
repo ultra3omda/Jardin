@@ -71,7 +71,7 @@ export function KpiCard({ label, value, variant, sub, icon = 'stats-chart' }: Kp
             textTransform: 'uppercase',
             letterSpacing: 0.8,
             flex: 1,
-            paddingRight: 8,
+            paddingEnd: 8,
           }}
           numberOfLines={2}
         >

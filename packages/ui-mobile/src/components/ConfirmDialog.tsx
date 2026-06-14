@@ -92,7 +92,7 @@ export function ConfirmDialog({
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? <ActivityIndicator color={colors.white} style={{ marginRight: 8 }} /> : null}
+              {loading ? <ActivityIndicator color={colors.white} style={{ marginEnd: 8 }} /> : null}
               <Text style={{ fontSize: 15, fontWeight: '700', color: colors.white }}>
                 {confirmLabel}
               </Text>

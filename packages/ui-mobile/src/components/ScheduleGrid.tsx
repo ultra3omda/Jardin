@@ -87,8 +87,8 @@ export function ScheduleGrid({ slots, secondary = 'room' }: ScheduleGridProps) {
                 width: DAY_COL,
                 padding: 8,
                 alignItems: 'center',
-                borderLeftWidth: 1,
-                borderLeftColor: colors.paper[100],
+                borderStartWidth: 1,
+                borderStartColor: colors.paper[100],
               }}
             >
               <Text style={{ fontSize: 11, fontWeight: '700', color: colors.ink[700] }}>

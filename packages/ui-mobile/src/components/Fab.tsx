@@ -31,7 +31,7 @@ export function Fab({ onPress, label, icon = 'add', extended }: FabProps) {
       // render — a Pressable style callback was not painting on this build.
       style={{
         position: 'absolute',
-        right: 18,
+        end: 18,
         bottom: 24,
         backgroundColor: theme.primary,
         borderRadius: 28,

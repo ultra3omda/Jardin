@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 export const STORAGE_KEYS = {
   REFRESH_TOKEN: 'klasso_refresh_token',
   TENANT_SLUG: 'klasso_tenant_slug',
+  LANGUAGE: 'klasso_language',
 } as const;
 
 /**
@@ -74,4 +75,12 @@ export async function getSavedTenantSlug(): Promise<string | null> {
 
 export async function deleteTenantSlug(): Promise<void> {
   await deleteItem(STORAGE_KEYS.TENANT_SLUG);
+}
+
+export async function saveLanguage(code: string): Promise<void> {
+  await setItem(STORAGE_KEYS.LANGUAGE, code);
+}
+
+export async function getSavedLanguage(): Promise<string | null> {
+  return getItem(STORAGE_KEYS.LANGUAGE);
 }
