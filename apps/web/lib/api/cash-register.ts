@@ -134,6 +134,17 @@ export interface ExpenseFilters {
   supplierId?: string;
 }
 
+export type UpdateSupplierInput = Partial<CreateSupplierInput> & { notes?: string };
+
+/** Édition de dépense — métadonnées uniquement (amount/method côté API exclus). */
+export interface UpdateExpenseInput {
+  category?: string;
+  paidAt?: string;
+  supplierId?: string;
+  reference?: string;
+  notes?: string;
+}
+
 // ─── Error ───────────────────────────────────────────────────────────────────
 
 export class CashRegisterApiError extends Error {
@@ -223,6 +234,17 @@ export async function createSupplier(token: string, data: CreateSupplierInput): 
   });
 }
 
+export async function updateSupplier(
+  token: string,
+  id: string,
+  data: UpdateSupplierInput,
+): Promise<Supplier> {
+  return apiFetch(`${SUPPLIERS_BASE}/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteSupplier(token: string, id: string): Promise<void> {
   return apiFetch(`${SUPPLIERS_BASE}/${id}`, token, { method: 'DELETE' });
 }
@@ -240,6 +262,21 @@ export async function createExpense(token: string, data: CreateExpenseInput): Pr
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export async function updateExpense(
+  token: string,
+  id: string,
+  data: UpdateExpenseInput,
+): Promise<Expense> {
+  return apiFetch(`${EXPENSES_BASE}/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteExpense(token: string, id: string): Promise<void> {
+  return apiFetch(`${EXPENSES_BASE}/${id}`, token, { method: 'DELETE' });
 }
 
 // ─── Query keys ──────────────────────────────────────────────────────────────
@@ -321,6 +358,18 @@ export function useCreateSupplier() {
   });
 }
 
+export function useUpdateSupplier() {
+  const token = useAuthStore((s) => s.accessToken);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateSupplierInput }) =>
+      updateSupplier(requireToken(token), id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: SUPPLIERS_KEY });
+    },
+  });
+}
+
 export function useDeleteSupplier() {
   const token = useAuthStore((s) => s.accessToken);
   const qc = useQueryClient();
@@ -337,6 +386,29 @@ export function useCreateExpense() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateExpenseInput) => createExpense(requireToken(token), data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cash-register', 'expenses'] });
+    },
+  });
+}
+
+export function useUpdateExpense() {
+  const token = useAuthStore((s) => s.accessToken);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateExpenseInput }) =>
+      updateExpense(requireToken(token), id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cash-register', 'expenses'] });
+    },
+  });
+}
+
+export function useDeleteExpense() {
+  const token = useAuthStore((s) => s.accessToken);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteExpense(requireToken(token), id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['cash-register', 'expenses'] });
     },
