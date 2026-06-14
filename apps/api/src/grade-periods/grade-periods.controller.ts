@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -73,5 +74,13 @@ export class GradePeriodsController {
     @Param('id') id: string,
   ): Promise<GradePeriodResponseDto> {
     return this.service.close(id, user);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(UserRole.SCHOOL_ADMIN)
+  @ApiOperation({ summary: 'Delete a grade period (blocked if it has evaluations/bulletins)' })
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string): Promise<void> {
+    return this.service.remove(id, user);
   }
 }

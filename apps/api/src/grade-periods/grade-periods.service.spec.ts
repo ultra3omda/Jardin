@@ -17,7 +17,10 @@ function buildPrismaMock() {
       count: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
+    evaluation: { count: vi.fn() },
+    bulletin: { count: vi.fn() },
     $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
   };
 }
@@ -90,5 +93,27 @@ describe('GradePeriodsService', () => {
   it('close() throws NotFound on unknown period', async () => {
     prisma.gradePeriod.findFirst.mockResolvedValue(null);
     await expect(service.close('p_missing', adminUser)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('remove() deletes a period with no dependents', async () => {
+    prisma.gradePeriod.findFirst.mockResolvedValue({ id: 'p1', tenantId: 't_demo' });
+    prisma.evaluation.count.mockResolvedValue(0);
+    prisma.bulletin.count.mockResolvedValue(0);
+    prisma.gradePeriod.delete.mockResolvedValue({ id: 'p1' });
+    await service.remove('p1', adminUser);
+    expect(prisma.gradePeriod.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
+  });
+
+  it('remove() throws when the period has evaluations or bulletins', async () => {
+    prisma.gradePeriod.findFirst.mockResolvedValue({ id: 'p1', tenantId: 't_demo' });
+    prisma.evaluation.count.mockResolvedValue(3);
+    prisma.bulletin.count.mockResolvedValue(0);
+    await expect(service.remove('p1', adminUser)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.gradePeriod.delete).not.toHaveBeenCalled();
+  });
+
+  it('remove() throws NotFound on unknown period', async () => {
+    prisma.gradePeriod.findFirst.mockResolvedValue(null);
+    await expect(service.remove('p_missing', adminUser)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
