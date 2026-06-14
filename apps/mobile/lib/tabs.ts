@@ -21,6 +21,8 @@ const T = {
   pedagogy: { name: 'pedagogy', label: 'Pédagogie', icon: 'book-outline' as IoniconName },
   life: { name: 'life', label: 'Vie scolaire', icon: 'color-palette-outline' as IoniconName },
   messages: { name: 'messages', label: 'Messages', icon: 'chatbubbles-outline' as IoniconName },
+  // COMMERCIAL — pipeline des établissements signés (rôle plateforme, sans tenant).
+  commercial: { name: 'commercial', label: 'Organisations', icon: 'business-outline' as IoniconName },
   notifications: { name: 'notifications', label: 'Notifs', icon: 'notifications-outline' as IoniconName },
   profile: { name: 'profile', label: 'Profil', icon: 'person-outline' as IoniconName },
 } satisfies Record<string, MobileTab>;
@@ -34,6 +36,9 @@ const STAFF_TABS: MobileTab[] = [T.dashboard, T.messages, T.notifications, T.pro
 // SUPER_ADMIN has NO tenant → tenant-scoped features (messaging) would 403.
 // Keep a minimal, safe set.
 const SUPER_ADMIN_TABS: MobileTab[] = [T.dashboard, T.notifications, T.profile];
+// COMMERCIAL has NO tenant → only platform-level features (org pipeline).
+// Tenant-scoped tabs (students, messaging…) would 403, so they are excluded.
+const COMMERCIAL_TABS: MobileTab[] = [T.dashboard, T.commercial, T.notifications, T.profile];
 
 /**
  * Resolve the bottom tab bar from the connected user's role at runtime. One
@@ -49,6 +54,8 @@ export function getTabsForRole(role: UserRole): MobileTab[] {
       return PARENT_TABS;
     case 'SUPER_ADMIN':
       return SUPER_ADMIN_TABS;
+    case 'COMMERCIAL':
+      return COMMERCIAL_TABS;
     case 'STAFF':
     default:
       return STAFF_TABS;
@@ -67,6 +74,7 @@ export const ALL_TAB_NAMES = [
   'pedagogy',
   'life',
   'messages',
+  'commercial',
   'notifications',
   'profile',
 ] as const;

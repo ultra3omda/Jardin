@@ -9,6 +9,7 @@ import { useDashboardOverview, type DashboardOverview } from '@/lib/api/dashboar
 import { useAuthStore } from '@/lib/auth/store';
 import { ParentDashboard } from '@/components/dashboard/parent-dashboard';
 import { SuperAdminDashboard } from '@/components/dashboard/super-admin-dashboard';
+import { CommercialDashboard } from '@/components/dashboard/commercial-dashboard';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -86,6 +87,8 @@ export default function DashboardScreen() {
         <ParentDashboard />
       ) : user?.role === 'SUPER_ADMIN' ? (
         <SuperAdminDashboard />
+      ) : user?.role === 'COMMERCIAL' ? (
+        <CommercialDashboard />
       ) : !canSeeOverview ? (
         <EmptyState
           icon="sparkles-outline"
