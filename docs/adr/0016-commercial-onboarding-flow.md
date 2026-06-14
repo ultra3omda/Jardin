@@ -1,7 +1,7 @@
 # ADR 0016 — Commercial pipeline & blocking organization onboarding
 
 **Status:** Accepted
-**Date:** 2026-05-31
+**Date:** 2026-05-31 (amended 2026-06-14 — mobile onboarding gate, decision 7)
 **Wave:** GTM (go-to-market)
 
 ## Context
@@ -72,12 +72,40 @@ The onboarding wizard reuses `TenantBrandService` (incl. its anti-SSRF logo
 check). The commercial flow reuses `InviteTokensService` and the existing
 `InviteEmail` Resend template. No new dependency was added.
 
+### 7. Blocking onboarding gate on mobile (amendment, 2026-06-14)
+
+The original ADR enforced the gate only on the web shell (decision 5), so a
+newly-invited SCHOOL_ADMIN who opened the **mobile** app could reach the
+dashboard while their organization was still `PENDING_ONBOARDING`. The mobile
+app now mirrors the web gate:
+
+- A pure helper `needsOnboarding(user, tenant)` (`apps/mobile/lib/auth/onboarding-gate.ts`)
+  returns true only for a `SCHOOL_ADMIN` whose `tenant.onboardingCompleted === false`.
+  It **fails open** when the flag is absent (legacy/cached sessions) so we never
+  lock out an admin on a stale payload — the API stays the source of truth.
+- The gate is applied at the two entry points where a session is established:
+  the boot router (`app/index.tsx`, silent refresh) and the login screen
+  (`app/(auth)/login.tsx`, both password login and demo personas). When it
+  fires, the app routes to `/(onboarding)/setup` instead of the dashboard.
+- The mobile wizard (`app/(onboarding)/setup.tsx`) confirms the establishment
+  name and an optional primary colour, calls `POST /api/onboarding/complete`
+  (same endpoint as web), then `patchTenant({ onboardingCompleted: true,
+  status: 'ACTIVE', … })` flips the in-memory session so the gate unlocks
+  without a full re-auth.
+
+The mobile wizard is intentionally lighter than the web one (name + colour, no
+logo upload yet) — native file upload is deferred, consistent with the rest of
+the mobile app. The API and `TenantBrandService` are unchanged.
+
 ## Consequences
 
 - The relations the product needs (student↔parent, student↔class, teacher↔class,
   subject↔level, student↔canteen, …) already existed from earlier waves; this
   wave focused on the genuinely new SaaS pipeline.
 - A future hardening item: move the onboarding gate to server-side enforcement
-  (block tenant-data mutations until `ACTIVE`) in addition to the web redirect.
+  (block tenant-data mutations until `ACTIVE`) in addition to the web/mobile
+  client redirects. As of the 2026-06-14 amendment the gate is enforced on both
+  clients, but server-side enforcement would close the remaining gap (a modified
+  client could still skip the wizard).
 - `COMMERCIAL` agents are created with an initial password set by the
   super-admin; migrating them to an invite/reset-link flow is a follow-up.

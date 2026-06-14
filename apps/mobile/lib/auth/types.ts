@@ -11,9 +11,16 @@
 
 import type { TenantBrand } from '@ecole-saas/shared';
 
-export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STAFF';
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'COMMERCIAL'
+  | 'SCHOOL_ADMIN'
+  | 'TEACHER'
+  | 'PARENT'
+  | 'STAFF';
 export type Locale = 'fr' | 'en' | 'ar' | 'es';
 export type TenantType = 'KINDERGARTEN' | 'PRIMARY_SCHOOL' | 'MIXED';
+export type TenantStatus = 'PENDING_ONBOARDING' | 'ACTIVE' | 'SUSPENDED';
 
 export interface AuthUser {
   id: string;
@@ -39,6 +46,9 @@ export interface AuthTenant {
   locale: Locale;
   timezone: string;
   brand: AuthTenantBrand;
+  /** GTM — onboarding gate signals (API: status + onboardingCompletedAt !== null). */
+  status?: TenantStatus;
+  onboardingCompleted?: boolean;
 }
 
 /**
