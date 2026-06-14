@@ -14,6 +14,7 @@ export function SuppliersClient() {
   const toast = useToast();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
   const [deleting, setDeleting] = useState<Supplier | null>(null);
 
   function confirmDelete() {
@@ -95,15 +96,26 @@ export function SuppliersClient() {
                   <td className="px-4 py-3 text-sm text-muted-foreground">{supplier.email || '—'}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{supplier.taxId || '—'}</td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setDeleting(supplier)}
-                      aria-label={`Supprimer le fournisseur ${supplier.name}`}
-                      title="Supprimer"
-                      className="rounded p-1 text-base hover:bg-muted"
-                    >
-                      🗑️
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(supplier)}
+                        aria-label={`Modifier le fournisseur ${supplier.name}`}
+                        title="Modifier"
+                        className="rounded p-1 text-base hover:bg-muted"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleting(supplier)}
+                        aria-label={`Supprimer le fournisseur ${supplier.name}`}
+                        title="Supprimer"
+                        className="rounded p-1 text-base hover:bg-muted"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -112,7 +124,14 @@ export function SuppliersClient() {
         </div>
       )}
 
-      <CreateSupplierModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateSupplierModal
+        open={createOpen || editing !== null}
+        supplier={editing}
+        onClose={() => {
+          setCreateOpen(false);
+          setEditing(null);
+        }}
+      />
 
       {deleting && (
         <div

@@ -3,7 +3,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-import { useCreateSupplier, CashRegisterApiError } from '@/lib/api/cash-register';
+import {
+  useCreateSupplier,
+  useUpdateSupplier,
+  CashRegisterApiError,
+  type Supplier,
+} from '@/lib/api/cash-register';
 import { useToast } from '@/lib/ui/use-toast';
 import {
   createSupplierSchema,
@@ -13,14 +18,19 @@ import {
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** When provided, the modal edits this supplier instead of creating one. */
+  supplier?: Supplier | null;
 }
 
 const INPUT =
   'h-10 w-full rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500';
 
-export function CreateSupplierModal({ open, onClose }: Props) {
+export function CreateSupplierModal({ open, onClose, supplier }: Props) {
   const toast = useToast();
-  const mutation = useCreateSupplier();
+  const createMutation = useCreateSupplier();
+  const updateMutation = useUpdateSupplier();
+  const isEdit = !!supplier;
+  const pending = createMutation.isPending || updateMutation.isPending;
 
   const {
     register,
@@ -29,6 +39,14 @@ export function CreateSupplierModal({ open, onClose }: Props) {
     formState: { errors },
   } = useForm<CreateSupplierValues>({
     resolver: zodResolver(createSupplierSchema),
+    values: supplier
+      ? {
+          name: supplier.name,
+          phone: supplier.phone ?? '',
+          email: supplier.email ?? '',
+          taxId: supplier.taxId ?? '',
+        }
+      : undefined,
   });
 
   function handleClose() {
@@ -37,25 +55,24 @@ export function CreateSupplierModal({ open, onClose }: Props) {
   }
 
   const onSubmit = handleSubmit((values) => {
-    mutation.mutate(
-      {
-        name: values.name,
-        phone: values.phone?.trim() || undefined,
-        email: values.email?.trim() || undefined,
-        taxId: values.taxId?.trim() || undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success('Fournisseur créé.');
-          handleClose();
-        },
-        onError: (err) => {
-          toast.error(
-            err instanceof CashRegisterApiError ? err.message : 'Création impossible.',
-          );
-        },
-      },
-    );
+    const data = {
+      name: values.name,
+      phone: values.phone?.trim() || undefined,
+      email: values.email?.trim() || undefined,
+      taxId: values.taxId?.trim() || undefined,
+    };
+    const onSuccess = () => {
+      toast.success(isEdit ? 'Fournisseur mis à jour.' : 'Fournisseur créé.');
+      handleClose();
+    };
+    const onError = (err: unknown) =>
+      toast.error(err instanceof CashRegisterApiError ? err.message : 'Opération impossible.');
+
+    if (supplier) {
+      updateMutation.mutate({ id: supplier.id, data }, { onSuccess, onError });
+    } else {
+      createMutation.mutate(data, { onSuccess, onError });
+    }
   });
 
   if (!open) return null;
@@ -70,7 +87,7 @@ export function CreateSupplierModal({ open, onClose }: Props) {
       <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-navy-800">
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-white/10">
           <h2 id="create-supplier-title" className="text-lg font-semibold">
-            Nouveau fournisseur
+            {isEdit ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
           </h2>
           <button
             type="button"
@@ -149,10 +166,10 @@ export function CreateSupplierModal({ open, onClose }: Props) {
             </button>
             <button
               type="submit"
-              disabled={mutation.isPending}
+              disabled={pending}
               className="h-10 rounded-md bg-navy-700 px-4 text-sm font-semibold text-white hover:bg-navy-600 disabled:opacity-50"
             >
-              {mutation.isPending ? 'Enregistrement…' : 'Créer le fournisseur'}
+              {pending ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer le fournisseur'}
             </button>
           </div>
         </form>
