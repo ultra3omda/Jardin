@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TableSkeletonProps {
   /** Number of placeholder rows (default: 5) */
@@ -28,11 +29,7 @@ export function TableSkeleton({ rows = 5, cols = 4, className }: TableSkeletonPr
       {/* Header row */}
       <div className="flex gap-4 px-4 pb-2">
         {Array.from({ length: cols }).map((_, i) => (
-          <div
-            key={i}
-            className="h-3 flex-1 animate-pulse rounded bg-paper-200"
-            style={{ animationDelay: `${i * 60}ms` }}
-          />
+          <Skeleton key={i} className="h-3 flex-1" style={{ animationDelay: `${i * 60}ms` }} />
         ))}
       </div>
 
@@ -43,12 +40,9 @@ export function TableSkeleton({ rows = 5, cols = 4, className }: TableSkeletonPr
           className="flex items-center gap-4 rounded-lg border border-paper-100 bg-white px-4 py-3"
         >
           {Array.from({ length: cols }).map((_, col) => (
-            <div
+            <Skeleton
               key={col}
-              className={cn(
-                'h-4 flex-1 animate-pulse rounded bg-paper-100',
-                BAR_WIDTHS[(row * cols + col) % BAR_WIDTHS.length],
-              )}
+              className={cn('h-4 flex-1', BAR_WIDTHS[(row * cols + col) % BAR_WIDTHS.length])}
               style={{ animationDelay: `${(row + col) * 40}ms` }}
             />
           ))}
