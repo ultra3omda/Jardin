@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
@@ -12,6 +12,8 @@ import {
   CreateExpenseDto,
   CreateSupplierDto,
   OpenSessionDto,
+  UpdateExpenseDto,
+  UpdateSupplierDto,
 } from './dto/cash-register.dto';
 import { ExpensesService } from './expenses.service';
 
@@ -81,6 +83,16 @@ export class CashRegisterController {
     return this.exp.createSupplier(u.tenantId!, dto);
   }
 
+  @Patch('suppliers/:id')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.STAFF)
+  updSupplier(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateSupplierDto,
+  ) {
+    return this.exp.updateSupplier(u.tenantId!, id, dto);
+  }
+
   @Delete('suppliers/:id')
   @Roles(UserRole.SCHOOL_ADMIN, UserRole.STAFF)
   delSupplier(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
@@ -103,5 +115,23 @@ export class CashRegisterController {
   @Roles(UserRole.SCHOOL_ADMIN, UserRole.STAFF)
   addExpense(@CurrentUser() u: AuthenticatedUser, @Body() dto: CreateExpenseDto) {
     return this.exp.createExpense(u.tenantId!, u.id, dto);
+  }
+
+  @Patch('expenses/:id')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Édite une dépense (métadonnées ; pas montant/méthode)' })
+  updExpense(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateExpenseDto,
+  ) {
+    return this.exp.updateExpense(u.tenantId!, id, dto);
+  }
+
+  @Delete('expenses/:id')
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Supprime une dépense (bloquée si caisse clôturée liée)' })
+  delExpense(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return this.exp.deleteExpense(u.tenantId!, id);
   }
 }
