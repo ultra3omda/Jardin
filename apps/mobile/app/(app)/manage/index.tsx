@@ -134,6 +134,13 @@ const ENTRIES: Entry[] = [
     icon: 'settings-outline',
     color: '#64748b',
   },
+  {
+    route: '/(app)/manage/imports',
+    title: 'Imports',
+    subtitle: 'Importer des données (CSV/Excel)',
+    icon: 'cloud-upload-outline',
+    color: '#0284c7',
+  },
 ];
 
 /** Admin management hub menu. */
