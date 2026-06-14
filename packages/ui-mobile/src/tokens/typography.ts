@@ -1,13 +1,18 @@
 /**
- * V7-B — Typography tokens. RN does not load Cormorant Garamond by default;
- * if needed at runtime, register via expo-font + @expo-google-fonts.
- * Until then `fontFamilyBrand` falls back to System on consumer side.
+ * V7-B — Typography SCALE tokens (sizes / weights / letter-spacing).
+ *
+ * Brand & body font FAMILIES live in ./fonts (the names registered via
+ * expo-font in apps/mobile/app/_layout.tsx). The `fontFamily*` aliases below
+ * mirror them for the rare component that reads typography directly, so they
+ * can never drift back to a stale face (was: a dead "Cormorant Garamond" ghost).
  */
+import { fonts } from './fonts';
+
 export const typography = {
-  /** Brand / heading font (Cormorant Garamond). System fallback if not loaded. */
-  fontFamilyBrand: 'CormorantGaramond_600SemiBold',
-  /** Body font (system). */
-  fontFamilyBody: undefined as string | undefined,
+  /** Brand / heading font (Fraunces SemiBold). Mirrors fonts.display. */
+  fontFamilyBrand: fonts.display,
+  /** Body font (Public Sans Regular). Mirrors fonts.body. */
+  fontFamilyBody: fonts.body,
   sizes: {
     h1: 28,
     h2: 22,

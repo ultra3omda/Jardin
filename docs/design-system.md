@@ -31,29 +31,41 @@ When designing a page :
 
 ### Color palette
 
-Tailwind config. Indigo is the brand primary because it carries authority (schools / institutional) without feeling corporate.
+> **Single source of truth:** `@ecole-saas/shared` → `design-tokens.ts`
+> (`STRUCTURAL_TOKENS`, `WEB_BRAND_TOKENS`, `MOBILE_BRAND_TOKENS`). Guard tests
+> (`apps/web/lib/ui/__tests__/design-tokens.test.ts`,
+> `apps/mobile/lib/__tests__/design-tokens.test.ts`) fail CI on any drift.
 
-| Token | Tailwind | Use |
-|---|---|---|
-| `primary` | `indigo-600` | Buttons, links, focus rings, brand marks |
-| `primary-hover` | `indigo-700` | Button hover, link hover |
-| `primary-soft` | `indigo-50` | Banner backgrounds, selected row states |
-| `neutral-fg` | `slate-900` | Body text |
-| `neutral-fg-muted` | `slate-500` | Captions, meta, secondary copy |
-| `neutral-bg` | `white` (light) / `slate-950` (dark) | Page background |
-| `neutral-surface` | `slate-50` (light) / `slate-900` (dark) | Card surface |
-| `neutral-border` | `slate-200` (light) / `slate-800` (dark) | Hairlines |
-| `success` | `emerald-600` | Confirmations, paid, attended |
-| `warning` | `amber-500` | Pending, due-soon |
-| `danger` | `rose-600` | Errors, overdue, destructive actions |
+V7 « Médina »: a cool **teal** brand (authority without feeling corporate), a
+deep **navy** structure, warm **cream** paper and a **coral** accent. The brand
+hierarchy is **deliberately different per platform** (locked 2026-05-24,
+branding non touché):
 
-Dark mode is **mandatory** (per CLAUDE.md). Use Tailwind's `dark:` prefix on every color token.
+| Token | Web | Mobile | Use |
+|---|---|---|---|
+| **primary** | teal `#02c4ad` (`--primary`) | electric coral `#ff4318` (`ambre`) | Buttons, links, focus rings, active states |
+| **accent** | coral `#f2683f` (`ambre`) | teal `#02c4ad` + gold/grape | CTAs, badges, highlights |
+| `navy-900…500` | `--navy-*` | `colors.navy` | Sidebar, strong ink, borders (identical) |
+| `ink-900…300` | `--ink-*` | `colors.ink` | Headings → muted captions (identical) |
+| `paper-50` | cream `#f4f4ef` | warm `#f7f2e9` | Page background |
+| `surface` | white | white | Cards, inputs (identical) |
+| `success` | `#16a34a` / `#dcfce7` | same | Confirmations, paid, attended |
+| `info` | `#1d4ed8` / `#dbeafe` | same | Informational |
+| `danger` | `#ef4444` | same | Errors, overdue, destructive actions |
+
+White-label: a tenant `brand` overrides **only** the accent vars (`--primary`,
+`--primary-hover`, `--ring`, `--secondary` on web; `theme.primary` on mobile) —
+structural tokens never change. Brandless fallback is `DEFAULT_BRAND` (indigo),
+a known white-label inconsistency vs the teal base, tracked separately.
+
+Dark mode is **mandatory** on web (`.dark` overrides, teal lightened for
+contrast). Mobile is light-only by design (V7-B).
 
 ### Typography
 
-- Web: `font-sans` → Inter (default Next.js font). Mobile: system-default sans-serif.
+- Web: `font-display` → **Fraunces** (serif, headings), `font-sans` → **Public Sans** (body), `font-mono` → JetBrains Mono. Arabic (RTL): **Markazi Text** (display) + **IBM Plex Sans Arabic** (body). Mobile embeds the same Fraunces + Public Sans faces via expo-font (`app/_layout.tsx`).
 - Scale: `text-sm` (12px) for meta, `text-base` (14-16px) for body, `text-lg` (18px) for sub-headers, `text-2xl` (24px) for page titles, `text-4xl` (36px) reserved for marketing.
-- Headlines: `font-semibold` (600). Body: `font-normal` (400). Captions: `font-medium text-slate-500`.
+- Headlines: `font-display font-semibold` (600). Body: `font-normal` (400). Captions: `font-medium text-ink-500`.
 - Line height: `leading-relaxed` for body, `leading-tight` for headlines.
 
 ### Spacing
@@ -182,7 +194,7 @@ From CLAUDE.md, must hold on every page :
 
 - Color contrast ≥ 4.5:1 on body text (verify with browser devtools).
 - All interactive elements keyboard-navigable. `<button>` not `<div onClick>`.
-- Focus rings visible on every focusable element (`focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2`).
+- Focus rings visible on every focusable element (`focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2` — `ring` maps to the teal primary / tenant accent).
 - `aria-label` on icon-only buttons.
 - Forms: every `<input>` has a `<label>` (or `aria-labelledby`).
 - Form errors announced via `aria-describedby` linked to the error text.

@@ -44,7 +44,8 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Preserved from Vague 0 landing page (now in indigo to match primary)
+        // Legacy indigo landing palette (pre-V7). Kept for backward-compat only;
+        // the app primary is now Médina teal (--primary). Avoid for new UI.
         brand: {
           50: '#eef2ff',
           100: '#e0e7ff',
