@@ -38,6 +38,7 @@ export default function ManageLayout() {
       <Stack.Screen name="health" options={{ ...header, title: 'Santé' }} />
       <Stack.Screen name="security" options={{ ...header, title: 'Sécurité' }} />
       <Stack.Screen name="settings" options={{ ...header, title: 'Réglages' }} />
+      <Stack.Screen name="imports" options={{ ...header, title: 'Imports' }} />
     </Stack>
   );
 }
