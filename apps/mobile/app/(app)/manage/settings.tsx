@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Button, FormField, colors, radius } from '@klasso/ui-mobile';
-import { BRANDING_KEY, getBranding, updateBranding, type BrandColors } from '@/lib/api/branding';
+import {
+  BRANDING_KEY,
+  getBranding,
+  pickAndUploadLogo,
+  updateBranding,
+  type BrandColors,
+} from '@/lib/api/branding';
 import { useTenantStore } from '@/lib/tenant/store';
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -50,6 +56,20 @@ export default function ManageSettingsScreen() {
     },
   });
 
+  const logoM = useMutation({
+    mutationFn: async () => {
+      const url = await pickAndUploadLogo();
+      if (url === null) return null;
+      return updateBranding({ logoUrl: url });
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
+
+  const removeLogoM = useMutation({
+    mutationFn: () => updateBranding({ logoUrl: null }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
+
   function submit() {
     const e: Record<string, string> = {};
     for (const { key } of COLOR_FIELDS) {
@@ -89,6 +109,55 @@ export default function ManageSettingsScreen() {
         </Text>
         {tenantSlug ? (
           <Text style={{ fontSize: 12, color: colors.ink[300], marginTop: 2 }}>code : {tenantSlug}</Text>
+        ) : null}
+      </View>
+
+      {/* Logo */}
+      <View
+        style={{
+          backgroundColor: colors.white,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: colors.paper[100],
+          padding: 14,
+          marginBottom: 16,
+        }}
+      >
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink[900] }}>Logo</Text>
+        {data?.logoUrl ? (
+          <Image
+            source={{ uri: data.logoUrl }}
+            style={{ width: 64, height: 64, borderRadius: 12, marginTop: 8, backgroundColor: colors.paper[100] }}
+            accessibilityLabel="Logo de l'établissement"
+          />
+        ) : (
+          <Text style={{ fontSize: 13, color: colors.ink[300], marginTop: 6 }}>Aucun logo défini.</Text>
+        )}
+        {Platform.OS === 'web' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
+            <View style={{ flexShrink: 1 }}>
+              <Button
+                label="Changer le logo"
+                variant="secondary"
+                onPress={() => logoM.mutate()}
+                loading={logoM.isPending}
+              />
+            </View>
+            {data?.logoUrl ? (
+              <Pressable onPress={() => removeLogoM.mutate()} hitSlop={6} disabled={removeLogoM.isPending}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.status.danger500 }}>Retirer</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          <Text style={{ fontSize: 12, color: colors.ink[300], marginTop: 8 }}>
+            Logo modifiable depuis l&apos;app web.
+          </Text>
+        )}
+        {logoM.error ? (
+          <Text style={{ fontSize: 13, color: colors.status.danger500, marginTop: 6 }}>
+            Erreur : {(logoM.error as Error).message}
+          </Text>
         ) : null}
       </View>
 
