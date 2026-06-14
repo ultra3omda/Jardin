@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
+import { needsOnboarding } from '@/lib/auth/onboarding-gate';
 import { refreshSession } from '@/lib/api/auth';
 
 /**
@@ -38,6 +39,10 @@ export default function Index() {
         user: session.user,
         tenant: session.tenant,
       });
+      if (needsOnboarding(session.user, session.tenant)) {
+        router.replace('/(onboarding)/setup');
+        return;
+      }
       router.replace('/(app)/dashboard');
     }
 

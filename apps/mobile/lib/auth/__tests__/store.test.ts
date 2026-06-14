@@ -155,6 +155,32 @@ describe('useAuthStore', () => {
     });
   });
 
+  describe('patchTenant', () => {
+    it('merges the patch into the current tenant', () => {
+      useAuthStore.getState().setSession({ accessToken: 'tok', user: mockUser, tenant: mockTenant });
+      useAuthStore.getState().patchTenant({ onboardingCompleted: true, status: 'ACTIVE' });
+      const tenant = useAuthStore.getState().tenant;
+      expect(tenant?.onboardingCompleted).toBe(true);
+      expect(tenant?.status).toBe('ACTIVE');
+      // Untouched fields are preserved.
+      expect(tenant?.slug).toBe('ecole-demo');
+      expect(tenant?.name).toBe('École Demo Tunis');
+    });
+
+    it('can update the tenant name (post-onboarding rename)', () => {
+      useAuthStore.getState().setSession({ accessToken: 'tok', user: mockUser, tenant: mockTenant });
+      useAuthStore.getState().patchTenant({ name: 'École Renommée' });
+      expect(useAuthStore.getState().tenant?.name).toBe('École Renommée');
+    });
+
+    it('is a no-op when there is no tenant (super-admin)', () => {
+      const superAdmin: AuthUser = { ...mockUser, id: 'sa-001', tenantId: null, role: 'SUPER_ADMIN' };
+      useAuthStore.getState().setSession({ accessToken: 'tok_sa', user: superAdmin, tenant: null });
+      expect(() => useAuthStore.getState().patchTenant({ status: 'ACTIVE' })).not.toThrow();
+      expect(useAuthStore.getState().tenant).toBeNull();
+    });
+  });
+
   describe('clear', () => {
     it('resets accessToken to null', () => {
       useAuthStore.getState().setSession({ accessToken: 'tok', user: mockUser, tenant: mockTenant });

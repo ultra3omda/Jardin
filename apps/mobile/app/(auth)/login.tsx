@@ -15,6 +15,8 @@ import { Button, ZelligePattern, colors, fonts, radius, useTheme } from '@klasso
 import { deleteTenantSlug, saveTenantSlug } from '@/lib/auth/secure-storage';
 import { login } from '@/lib/api/auth';
 import { interpretLoginError } from '@/lib/auth/login-flow';
+import { needsOnboarding } from '@/lib/auth/onboarding-gate';
+import type { AuthTenant, AuthUser } from '@/lib/auth/types';
 import { TenantPickerModal } from '@/components/auth/tenant-picker-modal';
 import { demoLogin, type DemoPersona } from '@/lib/api/demo-login';
 import { useAuthStore } from '@/lib/auth/store';
@@ -43,6 +45,16 @@ export default function LoginScreen() {
   const [tenantChoices, setTenantChoices] = useState<string[] | null>(null);
   const [pickerLoading, setPickerLoading] = useState(false);
 
+  // A SCHOOL_ADMIN whose org has not finished onboarding is routed through the
+  // blocking setup wizard; everyone else lands on the dashboard.
+  function routeAfterLogin(user: AuthUser, tenant: AuthTenant | null) {
+    if (needsOnboarding(user, tenant)) {
+      router.replace('/(onboarding)/setup');
+      return;
+    }
+    router.replace('/(app)/dashboard');
+  }
+
   // Single login path, used both for the first attempt (no slug → the API
   // resolves the tenant automatically) and for the retry after the user picks
   // an establishment in the multi-tenant case.
@@ -54,7 +66,7 @@ export default function LoginScreen() {
       tenant: session.tenant,
     });
     if (slug) await saveTenantSlug(slug);
-    router.replace('/(app)/dashboard');
+    routeAfterLogin(session.user, session.tenant);
   }
 
   function messageFor(err: unknown): string {
@@ -106,7 +118,7 @@ export default function LoginScreen() {
         user: session.user,
         tenant: session.tenant,
       });
-      router.replace('/(app)/dashboard');
+      routeAfterLogin(session.user, session.tenant);
     } catch {
       setError('Démo indisponible. Réessaye.');
       setLoadingPersona(null);

@@ -14,6 +14,8 @@ interface AuthState {
     user: AuthUser;
     tenant: AuthTenant | null;
   }) => void;
+  /** Partially update the current tenant (e.g. after onboarding completion). */
+  patchTenant: (patch: Partial<AuthTenant>) => void;
   clear: () => void;
   setHydrated: (v: boolean) => void;
 }
@@ -48,6 +50,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     set({ accessToken, user, tenant, isHydrated: true });
   },
+  patchTenant: (patch) =>
+    set((s) => {
+      if (!s.tenant) return s;
+      const tenant = { ...s.tenant, ...patch };
+      if (patch.name !== undefined || patch.brand !== undefined) {
+        useTenantStore
+          .getState()
+          .setTenant(tenant.slug, tenant.name, (tenant.brand ?? {}) as Partial<TenantBrand>);
+      }
+      return { tenant };
+    }),
   clear: () => {
     queryClient.clear();
     set({ accessToken: null, user: null, tenant: null, isHydrated: true });
