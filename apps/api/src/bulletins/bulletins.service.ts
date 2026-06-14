@@ -14,6 +14,7 @@ import type {
   BulletinResponseDto,
   BulletinSnapshotDto,
   BulletinSubjectEntryDto,
+  ChildBulletinsDto,
   GenerateBulletinDto,
 } from './dto/bulletin.dto';
 
@@ -184,6 +185,50 @@ export class BulletinsService {
       generatedById: b.generatedById,
       pdfUrl: b.pdfUrl,
     };
+  }
+
+  /**
+   * Parent view: each of the parent's children with the list of its officially
+   * generated bulletins (downloadable via GET /:studentId/:gradePeriodId/pdf).
+   */
+  async listForMyChildren(user: AuthenticatedUser): Promise<ChildBulletinsDto[]> {
+    if (!user.tenantId) throw new ForbiddenException({ code: 'TENANT_REQUIRED' });
+
+    const links = await this.prisma.parentStudent.findMany({
+      where: { tenantId: user.tenantId, parentUserId: user.id },
+      select: {
+        student: { select: { id: true, firstName: true, lastName: true, classroom: true } },
+      },
+    });
+    const students = links
+      .map((l) => l.student)
+      .filter((s): s is NonNullable<typeof s> => !!s);
+    if (students.length === 0) return [];
+
+    const bulletins = await this.prisma.bulletin.findMany({
+      where: { tenantId: user.tenantId, studentId: { in: students.map((s) => s.id) } },
+      select: {
+        studentId: true,
+        gradePeriodId: true,
+        generatedAt: true,
+        gradePeriod: { select: { name: true, schoolYear: true } },
+      },
+      orderBy: { generatedAt: 'desc' },
+    });
+
+    return students.map((s) => ({
+      studentId: s.id,
+      studentName: `${s.firstName} ${s.lastName}`,
+      className: s.classroom,
+      bulletins: bulletins
+        .filter((b) => b.studentId === s.id)
+        .map((b) => ({
+          gradePeriodId: b.gradePeriodId,
+          gradePeriodName: b.gradePeriod?.name ?? '',
+          schoolYear: b.gradePeriod?.schoolYear ?? '',
+          generatedAt: b.generatedAt.toISOString(),
+        })),
+    }));
   }
 
   private buildSnapshot(args: {

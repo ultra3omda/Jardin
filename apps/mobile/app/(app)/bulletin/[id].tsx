@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { useMyGrades, type ChildGrades } from '@/lib/api/evaluations';
+import { BulletinDownloads } from '@/components/bulletins/bulletin-downloads';
 
 function gradeColor(grade: number): string {
   if (grade >= 14) return '#34d399';
@@ -126,6 +127,8 @@ export default function BulletinScreen() {
       ) : (
         <Releve child={child} />
       )}
+
+      <BulletinDownloads />
     </ScrollView>
   );
 }
