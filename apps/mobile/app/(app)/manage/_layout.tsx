@@ -32,6 +32,7 @@ export default function ManageLayout() {
       <Stack.Screen name="announcements" options={{ ...header, title: 'Annonces' }} />
       <Stack.Screen name="finance" options={{ ...header, title: 'Finances' }} />
       <Stack.Screen name="caisse" options={{ ...header, title: 'Caisse' }} />
+      <Stack.Screen name="hr" options={{ ...header, title: 'RH — Contrats' }} />
       <Stack.Screen name="unpaid" options={{ ...header, title: 'Impayés' }} />
       <Stack.Screen name="transport" options={{ ...header, title: 'Transport' }} />
       <Stack.Screen name="health" options={{ ...header, title: 'Santé' }} />

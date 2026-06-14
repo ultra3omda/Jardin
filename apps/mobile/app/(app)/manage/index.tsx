@@ -93,6 +93,13 @@ const ENTRIES: Entry[] = [
     color: '#02a896',
   },
   {
+    route: '/(app)/manage/hr',
+    title: 'RH — Contrats',
+    subtitle: 'Contrats du personnel',
+    icon: 'briefcase-outline',
+    color: '#7c3aed',
+  },
+  {
     route: '/(app)/manage/unpaid',
     title: 'Impayés',
     subtitle: 'Échéances non réglées & relances',
