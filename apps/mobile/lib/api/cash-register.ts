@@ -68,6 +68,48 @@ export function useCloseSession() {
   });
 }
 
+export interface OpenSessionInput {
+  openingFloat: number;
+  notes?: string;
+}
+
+/** Ouvre la caisse du jour. */
+export function useOpenSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OpenSessionInput) =>
+      fetchApi<CashSession>('/api/cash-register/open', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CASH_REGISTER_KEYS.current });
+    },
+  });
+}
+
+export interface AddMovementInput {
+  sessionId: string;
+  kind: MovementKind;
+  amount: number;
+  label: string;
+}
+
+/** Ajoute un encaissement / décaissement à la session ouverte. */
+export function useAddMovement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, kind, amount, label }: AddMovementInput) =>
+      fetchApi<CashMovement>(`/api/cash-register/${sessionId}/movements`, {
+        method: 'POST',
+        body: JSON.stringify({ kind, amount, label }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CASH_REGISTER_KEYS.current });
+    },
+  });
+}
+
 export function formatAmount(amount: number, currency = 'TND'): string {
   return `${amount.toFixed(3)} ${currency}`;
 }

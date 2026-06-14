@@ -14,6 +14,8 @@ import {
   type CloseSessionResult,
 } from '@/lib/api/cash-register';
 import { useAuthStore } from '@/lib/auth/store';
+import { OpenCaisseForm } from '@/components/caisse/open-caisse-form';
+import { AddMovementForm } from '@/components/caisse/add-movement-form';
 
 export default function ManageCaisseScreen() {
   const role = useAuthStore((s) => s.user?.role);
@@ -78,11 +80,7 @@ export default function ManageCaisseScreen() {
             </View>
           </View>
         ) : session === null ? (
-          <EmptyState
-            icon="cash-outline"
-            title="Aucune caisse ouverte"
-            description="Ouvrez une caisse depuis le back-office web pour la consulter ici."
-          />
+          <OpenCaisseForm />
         ) : closed !== null ? (
           <EmptyState
             icon="checkmark-done-outline"
@@ -193,6 +191,8 @@ function OpenSession({
       ) : (
         session.movements.map((m) => <MovementRow key={m.id} movement={m} />)
       )}
+
+      <AddMovementForm sessionId={session.id} />
 
       <View
         style={{
