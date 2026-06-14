@@ -72,7 +72,7 @@ export function Button({ label, variant = 'primary', loading, disabled, ...rest 
         shadow,
       ]}
     >
-      {loading && <ActivityIndicator color={fg} style={{ marginRight: 8 }} />}
+      {loading && <ActivityIndicator color={fg} style={{ marginEnd: 8 }} />}
       <Text style={{ color: fg, fontSize: 15, fontWeight: '600', fontFamily: fonts.bodySemibold }}>
         {label}
       </Text>

@@ -21,7 +21,7 @@ export function Card({ children, style, accent }: CardProps) {
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
         elevation: 2,
-        ...(accent ? { borderLeftWidth: 4, borderLeftColor: accent } : {}),
+        ...(accent ? { borderStartWidth: 4, borderStartColor: accent } : {}),
         ...style,
       }}
     >

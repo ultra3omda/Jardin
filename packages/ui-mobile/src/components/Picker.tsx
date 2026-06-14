@@ -161,7 +161,7 @@ export function Picker({
                   autoCapitalize="none"
                   autoCorrect={false}
                   accessibilityLabel="Rechercher dans la liste"
-                  style={{ flex: 1, height: 44, marginLeft: 8, fontSize: 15, color: colors.ink[900] }}
+                  style={{ flex: 1, height: 44, marginStart: 8, fontSize: 15, color: colors.ink[900] }}
                 />
               </View>
             </View>

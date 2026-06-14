@@ -18,6 +18,8 @@ export { Avatar } from './components/Avatar';
 export { ScreenHeader } from './components/ScreenHeader';
 export { ZelligePattern } from './components/ZelligePattern';
 export { EmptyState } from './components/EmptyState';
+export { ErrorState } from './components/ErrorState';
+export { Skeleton } from './components/Skeleton';
 export { Card } from './components/Card';
 export { FormField } from './components/FormField';
 export { Picker, type PickerOption } from './components/Picker';

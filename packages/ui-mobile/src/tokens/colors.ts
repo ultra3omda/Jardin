@@ -1,6 +1,14 @@
 /**
- * V7-B — Mobile design tokens. Mirrors apps/web/app/globals.css V7 vars
- * so both web and mobile share the exact same hex palette.
+ * V7-B — Mobile design tokens (design system V7 « Médina »).
+ *
+ * STRUCTURAL tokens (navy, ink, status, surface, paper[100]) match
+ * apps/web/app/globals.css verbatim — enforced by the guard test in
+ * apps/mobile/lib/__tests__/design-tokens.test.ts against the shared contract
+ * (@ecole-saas/shared → design-tokens.ts).
+ *
+ * BRAND tokens are DELIBERATELY punchier than web (locked, branding non touché):
+ * `ambre` is the mobile PRIMARY electric coral (#ff4318) vs web's muted accent
+ * (#f2683f), plus mobile-only `teal`/`gold`/`grape` accents. See MOBILE_BRAND_TOKENS.
  */
 export const colors = {
   navy: {

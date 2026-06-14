@@ -9,6 +9,7 @@ import type { TenantBrand } from '@ecole-saas/shared';
 import { Button, ConfirmDialog, colors, fonts, radius, useTheme } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { deleteRefreshToken, deleteTenantSlug } from '@/lib/auth/secure-storage';
+import { LanguageSwitcher } from '@/components/language-switcher';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -198,6 +199,11 @@ export default function ProfileScreen() {
           </View>
         </SectionCard>
       ) : null}
+
+      {/* Language picker */}
+      <SectionCard icon="language-outline" title="Langue">
+        <LanguageSwitcher />
+      </SectionCard>
 
       {/* Logout — destructive, matches the confirm dialog's red */}
       <View style={{ marginTop: 8 }}>
