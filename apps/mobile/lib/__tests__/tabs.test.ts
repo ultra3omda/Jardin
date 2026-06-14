@@ -38,8 +38,14 @@ describe('getTabsForRole', () => {
     ]);
   });
 
+  it('returns platform pipeline tabs for COMMERCIAL (no tenant → no messaging)', () => {
+    expect(getTabsForRole('COMMERCIAL').map((t) => t.name)).toEqual([
+      'dashboard', 'commercial', 'notifications', 'profile',
+    ]);
+  });
+
   it('always ends with the profile tab', () => {
-    (['SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STAFF', 'SUPER_ADMIN'] as const).forEach((role) => {
+    (['SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STAFF', 'SUPER_ADMIN', 'COMMERCIAL'] as const).forEach((role) => {
       const tabs = getTabsForRole(role);
       expect(tabs[tabs.length - 1].name).toBe('profile');
     });

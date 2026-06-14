@@ -1,7 +1,7 @@
 # ADR 0016 — Commercial pipeline & blocking organization onboarding
 
 **Status:** Accepted
-**Date:** 2026-05-31 (amended 2026-06-14 — mobile onboarding gate, decision 7)
+**Date:** 2026-05-31 (amended 2026-06-14 — mobile onboarding gate + COMMERCIAL role, decisions 7–8)
 **Wave:** GTM (go-to-market)
 
 ## Context
@@ -96,6 +96,29 @@ app now mirrors the web gate:
 The mobile wizard is intentionally lighter than the web one (name + colour, no
 logo upload yet) — native file upload is deferred, consistent with the rest of
 the mobile app. The API and `TenantBrandService` are unchanged.
+
+### 8. COMMERCIAL role on mobile (amendment, 2026-06-14)
+
+The `COMMERCIAL` role (decisions 1–4) was reachable only on the web. It is now
+a first-class persona on mobile, reusing the same API
+(`/commercial/organizations*`):
+
+- **Navigation** — `COMMERCIAL` is tenant-less, so (like `SUPER_ADMIN`) it gets
+  a minimal platform tab set: dashboard + **Organisations** + notifications +
+  profile. Tenant-scoped tabs (students, messaging…) are excluded — they would
+  403 under the Prisma isolation extension's platform-role hard-block.
+- **Dashboard** — a `CommercialDashboard` shows pipeline KPIs (total / pending
+  onboarding / active / contracts) aggregated client-side from the org list via
+  the pure, unit-tested `summarizePipeline()`.
+- **Organisations** — list (`commercial/index`) with status + invite badges,
+  create (`commercial/new`: name + auto-suggested slug + type + admin invite,
+  with the `sendInviteEmail` toggle), and a read-only detail (`commercial/[id]`).
+- **Contracts** — the signed-PDF **upload** stays web-only (presigned R2 PUT +
+  file picker); on mobile an org is created without a contract (rattachable
+  later on web). The contract **download** on the detail screen is likewise
+  web-only (opens the presigned URL), mirroring the bulletin-PDF pattern.
+
+No API change — the mobile client consumes the existing controller as-is.
 
 ## Consequences
 
