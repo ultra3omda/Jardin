@@ -112,6 +112,27 @@ export class GradePeriodsService {
     return this.toResponse(updated);
   }
 
+  /**
+   * Delete a grade period. Blocked when it still has evaluations or bulletins
+   * (FK is onDelete: Restrict) — the caller must reassign/remove those first.
+   */
+  async remove(id: string, user: AuthenticatedUser): Promise<void> {
+    const existing = await this.prisma.gradePeriod.findFirst({
+      where: { id, tenantId: user.tenantId ?? undefined },
+    });
+    if (!existing) throw new NotFoundException({ code: 'PERIOD_NOT_FOUND' });
+
+    const [evaluations, bulletins] = await Promise.all([
+      this.prisma.evaluation.count({ where: { gradePeriodId: id } }),
+      this.prisma.bulletin.count({ where: { gradePeriodId: id } }),
+    ]);
+    if (evaluations + bulletins > 0) {
+      throw new BadRequestException({ code: 'PERIOD_IN_USE' });
+    }
+
+    await this.prisma.gradePeriod.delete({ where: { id } });
+  }
+
   private toResponse(p: {
     id: string;
     name: string;
