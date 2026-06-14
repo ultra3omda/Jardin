@@ -25,12 +25,25 @@ const TYPE_OPTIONS = [
   { value: 'MIXED', label: 'Mixte (primaire + jardin)' },
 ];
 
+// Accent fold for common Latin characters — avoids String.prototype.normalize
+// which is not guaranteed on Hermes (no other mobile code relies on it).
+const ACCENT_MAP: Record<string, string> = {
+  à: 'a', â: 'a', ä: 'a', á: 'a', ã: 'a', å: 'a',
+  ç: 'c',
+  é: 'e', è: 'e', ê: 'e', ë: 'e',
+  î: 'i', ï: 'i', í: 'i', ì: 'i',
+  ô: 'o', ö: 'o', ó: 'o', ò: 'o', õ: 'o',
+  ù: 'u', û: 'u', ü: 'u', ú: 'u',
+  ÿ: 'y', ý: 'y',
+  ñ: 'n',
+  æ: 'ae', œ: 'oe',
+};
+
 /** name → slug : minuscules, alphanumérique + tirets, sans accents superflus. */
 function slugify(name: string): string {
   return name
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[àâäáãåçéèêëîïíìôöóòõùûüúÿýñæœ]/g, (ch) => ACCENT_MAP[ch] ?? ch)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 63);
