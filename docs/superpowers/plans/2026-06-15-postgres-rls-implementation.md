@@ -8,7 +8,16 @@ Effort estimé : **~2-4 j** (dont soak staging). Chaque phase = 1 PR mergeable e
 
 ---
 
-## Phase 0 — Spike de validation (branche Neon jetable, ~0.5 j) — AUCUN merge
+## Phase 0 — Spike de validation
+
+> **✅ Partie « correction des policies » faite en CI** (`apps/api/test/rls-policy.e2e-spec.ts`)
+> au lieu d'une branche Neon manuelle : prouve, sur Postgres 16, que le pattern de
+> policy (USING/WITH CHECK + bypass + variable vide = *fail-closed* + clause
+> `tenant_id IS NULL` pour les modèles plateforme-partagés) bloque réellement le
+> cross-tenant — via `SET LOCAL ROLE` vers un rôle non-superuser + `set_config(...,true)`.
+> **Reste à faire sur vraie Neon** (besoin de ton environnement) : valider que
+> `set_config` LOCAL survit dans une tx du *pooler* pgbouncer, et mesurer l'overhead
+> « tx 2-statements » — ces points ne sont pas reproductibles sur le Postgres simple de la CI.
 
 But : prouver la chaîne de bout en bout et mesurer le coût, sans rien risquer.
 
