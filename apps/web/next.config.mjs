@@ -8,23 +8,39 @@ const withNextIntl = createNextIntlPlugin('./i18n.ts');
  * Security headers applied to every response served by Next.js.
  * CSP is intentionally permissive on script/style to accommodate
  * shadcn/ui inline styles and next-intl; tighten per-route as needed.
+ *
+ * `upgrade-insecure-requests` and HSTS are emitted ONLY on Vercel (real HTTPS
+ * origin). Off-Vercel they would break local dev and the http://localhost
+ * Playwright E2E run (subresource/API requests would be force-upgraded to https
+ * and fail), so they are gated on `process.env.VERCEL`.
  */
+const isHttpsDeployment = process.env.VERCEL === '1';
+
+const cspDirectives = [
+  "default-src 'self'",
+  // Next.js requires 'unsafe-eval' in dev; 'unsafe-inline' covers
+  // shadcn/ui CSS-in-JS and Tailwind inline styles.
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self' https://fonts.gstatic.com",
+  // API (custom domain api.klasso.tn, covered by *.klasso.tn) + Vercel preview URLs + Sentry tunnel.
+  "connect-src 'self' https://*.klasso.tn wss://*.klasso.tn https://*.vercel.app https://o4505000000000000.ingest.sentry.io",
+  "frame-src 'none'",
+  "object-src 'none'",
+  // Hardening: lock the document base, restrict form posts to same-origin
+  // (all mutations go through fetch, never an HTML form action), and block
+  // framing of our pages (clickjacking — complements X-Frame-Options).
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  ...(isHttpsDeployment ? ['upgrade-insecure-requests'] : []),
+];
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      // Next.js requires 'unsafe-eval' in dev; 'unsafe-inline' covers
-      // shadcn/ui CSS-in-JS and Tailwind inline styles.
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
-      "font-src 'self' https://fonts.gstatic.com",
-      // API (custom domain api.klasso.tn, covered by *.klasso.tn) + Vercel preview URLs + Sentry tunnel.
-      "connect-src 'self' https://*.klasso.tn wss://*.klasso.tn https://*.vercel.app https://o4505000000000000.ingest.sentry.io",
-      "frame-src 'none'",
-      "object-src 'none'",
-    ].join('; '),
+    value: cspDirectives.join('; '),
   },
   {
     key: 'X-Frame-Options',
@@ -42,6 +58,11 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=()',
   },
+  // HSTS — 2 years, include subdomains (all *.klasso.tn are HTTPS on Vercel).
+  // No `preload` (irreversible registry commitment — opt in deliberately later).
+  ...(isHttpsDeployment
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' }]
+    : []),
 ];
 
 /** @type {import('next').NextConfig} */
