@@ -137,7 +137,11 @@ The gate is now also enforced at the API by a global `OnboardingGuard`
   itself a gated write), so gating `SCHOOL_ADMIN` closes the hole with at most
   one PK lookup per admin write.
 - The endpoints the wizard needs are allow-listed with `@AllowDuringOnboarding()`
-  (the `onboarding`, `admin/tenant/branding` and `auth` controllers).
+  (the `onboarding`, `admin/tenant/branding` and `auth` controllers). The
+  `users` controller (`/me`: profile, password, sessions, RGPD export/delete,
+  notification prefs) is also allow-listed — **account self-management is not a
+  tenant-data write** and must work regardless of onboarding (RGPD self-delete
+  especially).
 
 **`PENDING_ONBOARDING` is now an explicit, opt-in state.** The `Tenant.status`
 column default flips from `PENDING_ONBOARDING` to **`ACTIVE`** (migration
