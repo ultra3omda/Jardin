@@ -1,12 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { BookOpenText, LogOut, X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { Link } from '@/i18n/routing';
 
 import { getNavForUser } from '@/lib/nav/menu';
+import { isItemActive } from '@/lib/nav/active';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 
-import { NavSection } from './nav-section';
+import { DomainRail } from './domain-rail';
+import { DomainPanel } from './domain-panel';
 import { UserPill } from './user-pill';
 
 interface Props {
@@ -18,11 +22,24 @@ interface Props {
 }
 
 export function Sidebar({ onLogout, open = false, onClose }: Props) {
+  // All hooks MUST be called unconditionally before any early return.
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
-  if (!user) return null;
+  const pathname = usePathname() ?? '';
 
-  const sections = getNavForUser(user, tenant);
+  // Compute sections with a guard so hook order is stable even when user is null.
+  const sections = user ? getNavForUser(user, tenant) : [];
+
+  const initialDomain =
+    sections.find((s) => s.items.some((it) => isItemActive(pathname, it.href)))?.id ??
+    sections[0]?.id ??
+    '';
+
+  const [activeDomain, setActiveDomain] = useState(initialDomain);
+  const current = sections.find((s) => s.id === activeDomain) ?? sections[0];
+
+  // Early return after all hooks.
+  if (!user) return null;
 
   return (
     <>
@@ -66,12 +83,10 @@ export function Sidebar({ onLogout, open = false, onClose }: Props) {
           </button>
         </div>
 
-        {/* Closing the drawer when a nav link is tapped (no-op on desktop). */}
-        <nav className="flex-1 overflow-y-auto py-2" onClick={onClose}>
-          {sections.map((section) => (
-            <NavSection key={section.id} section={section} />
-          ))}
-        </nav>
+        <div className="flex flex-1 overflow-hidden">
+          <DomainRail sections={sections} activeId={activeDomain} onSelect={setActiveDomain} />
+          <DomainPanel section={current} onNavigate={onClose} />
+        </div>
 
         <div className="border-t border-white/5 mx-3 my-2 px-2 py-3">
           <UserPill variant="sidebar" />
