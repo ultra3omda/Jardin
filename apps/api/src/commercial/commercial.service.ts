@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createId } from '@paralleldrive/cuid2';
-import { Contract, Locale, Prisma, UserRole } from '@prisma/client';
+import { Contract, Locale, Prisma, TenantStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { DEMO_TENANT_SLUG_PREFIX } from '../admin/constants/demo-tenants';
@@ -95,7 +95,9 @@ export class CommercialService {
           slug,
           type: dto.type,
           locale: dto.locale ?? Locale.fr,
-          // status defaults to PENDING_ONBOARDING — the admin must run the wizard.
+          // The invited admin must run the blocking wizard before using the app.
+          // Set explicitly: the column default is ACTIVE (ADR 0016 §9).
+          status: TenantStatus.PENDING_ONBOARDING,
         },
       });
       // The signed contract is optional — a commercial may register the org now

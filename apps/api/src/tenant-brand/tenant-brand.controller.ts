@@ -12,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
+import { AllowDuringOnboarding } from '../auth/decorators/allow-during-onboarding.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -30,6 +31,7 @@ import { TenantBrandService } from './tenant-brand.service';
 @ApiTags('admin')
 @ApiBearerAuth('access-token')
 @Roles(UserRole.SCHOOL_ADMIN, UserRole.SUPER_ADMIN)
+@AllowDuringOnboarding() // branding (logo upload + colors) is part of the wizard
 @Controller('admin/tenant/branding')
 export class TenantBrandController {
   constructor(private readonly service: TenantBrandService) {}

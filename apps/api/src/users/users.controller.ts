@@ -14,6 +14,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
+import { AllowDuringOnboarding } from '../auth/decorators/allow-during-onboarding.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { MeResponseDto, TenantDto } from '../auth/dto/auth-response.dto';
@@ -31,6 +32,10 @@ import { UsersService } from './users.service';
 
 @ApiTags('users')
 @ApiBearerAuth('access-token')
+// Self-account ops (profile, password, sessions, RGPD export/delete, notif prefs)
+// must work regardless of onboarding status — the gate blocks tenant DATA, not a
+// user managing their own account.
+@AllowDuringOnboarding()
 @Controller('users')
 export class UsersController {
   constructor(

@@ -12,6 +12,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 
 import { AuthService } from './auth.service';
+import { AllowDuringOnboarding } from './decorators/allow-during-onboarding.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
@@ -27,6 +28,7 @@ import { PasswordRecoveryService } from './password-recovery.service';
 import { getRequestMeta } from './utils/request-meta.utils';
 
 @ApiTags('auth')
+@AllowDuringOnboarding() // logout / refresh / me must work mid-onboarding
 @Controller('auth')
 export class AuthController {
   constructor(
