@@ -578,6 +578,175 @@ git commit -m "feat(web): CommandPalette component (accessible Cmd+K overlay)"
 
 ---
 
+## Task 4bis : Recherche d'entités « Élèves » dans la palette
+
+> Ajoute le groupe « Élèves » (recherche serveur debouncée) à la palette. APIs connues :
+> `listStudents(token, { search, pageSize })` → `{ items: StudentSummary[] }`
+> (`apps/web/lib/api/students.ts`), token via `useAuthStore((s) => s.accessToken)`
+> (`apps/web/lib/auth/use-auth-store.ts`). Les résultats d'entités sont **déjà filtrés
+> côté serveur** : ils ne repassent pas par `filterCommands` — ils sont fournis en `extraResults`.
+
+**Files:**
+- Create: `apps/web/lib/nav/use-student-commands.ts`
+- Test: `apps/web/lib/nav/__tests__/use-student-commands.test.tsx`
+- Modify: `apps/web/components/app-shell/command-palette.tsx` (props `extraResults` / `extraLoading` / `onQueryChange`)
+- Modify: `apps/web/components/app-shell/topbar.tsx` (câbler le hook)
+
+- [ ] **Step 1 : Test du hook**
+
+`apps/web/lib/nav/__tests__/use-student-commands.test.tsx` :
+
+```tsx
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+vi.mock('@/lib/api/students', () => ({
+  listStudents: vi.fn(async () => ({ items: [{ id: 's1', firstName: 'Lina', lastName: 'Ben Ali' }], total: 1, page: 1, pageSize: 5 })),
+}));
+vi.mock('@/lib/auth/use-auth-store', () => ({
+  useAuthStore: (sel: (s: { accessToken: string | null }) => unknown) => sel({ accessToken: 'tok' }),
+}));
+
+import { useStudentCommands } from '@/lib/nav/use-student-commands';
+
+function wrapper({ children }: { children: React.ReactNode }) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+}
+
+describe('useStudentCommands', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('ne cherche pas en dessous de 2 caractères', () => {
+    const { result } = renderHook(() => useStudentCommands('l'), { wrapper });
+    expect(result.current.results).toEqual([]);
+  });
+
+  it('mappe les élèves en commandes goto après debounce', async () => {
+    const { result } = renderHook(() => useStudentCommands('lina'), { wrapper });
+    await waitFor(() => expect(result.current.results.length).toBe(1));
+    expect(result.current.results[0]).toMatchObject({
+      kind: 'goto', label: 'Lina Ben Ali', href: '/students/s1', group: 'Élèves',
+    });
+  });
+});
+```
+
+- [ ] **Step 2 : Vérifier l'échec** — `pnpm --filter @ecole-saas/web type-check` → FAIL (module introuvable).
+
+- [ ] **Step 3 : Implémenter le hook**
+
+`apps/web/lib/nav/use-student-commands.ts` :
+
+```tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { listStudents } from '@/lib/api/students';
+import { useAuthStore } from '@/lib/auth/use-auth-store';
+import type { Command } from '@/lib/nav/commands';
+
+/** Recherche d'élèves (serveur, debouncée 200ms) → commandes "goto" pour la palette. */
+export function useStudentCommands(query: string): { results: Command[]; loading: boolean } {
+  const token = useAuthStore((s) => s.accessToken);
+  const [debounced, setDebounced] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 200);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const enabled = !!token && debounced.length >= 2;
+  const { data, isFetching } = useQuery({
+    queryKey: ['cmdk-students', debounced],
+    queryFn: () => listStudents(token as string, { search: debounced, pageSize: 5 }),
+    enabled,
+  });
+
+  const results: Command[] = (data?.items ?? []).map((s) => ({
+    id: `student:${s.id}`,
+    kind: 'goto',
+    label: `${s.firstName} ${s.lastName}`,
+    href: `/students/${s.id}`,
+    group: 'Élèves',
+  }));
+
+  return { results, loading: enabled && isFetching };
+}
+```
+
+- [ ] **Step 4 : Étendre `CommandPalette`** (props optionnelles, sans casser les tests de la Task 4)
+
+Dans `apps/web/components/app-shell/command-palette.tsx` :
+
+1. Ajouter aux props :
+```tsx
+  /** Résultats d'entités déjà filtrés côté serveur (non re-filtrés). */
+  extraResults?: Command[];
+  /** Indicateur de chargement des entités. */
+  extraLoading?: boolean;
+  /** Notifie le parent à chaque frappe (pour piloter une recherche serveur). */
+  onQueryChange?: (q: string) => void;
+```
+2. Déstructurer `extraResults = [], extraLoading = false, onQueryChange` et, dans l'input `onChange`, appeler aussi `onQueryChange?.(e.target.value)`.
+3. Calculer la liste navigable complète : `const all = [...results, ...extraResults];` et utiliser `all` (à la place de `results`) pour la navigation clavier (`active`, `Enter`) et le rendu de la liste.
+4. Avant la liste des entités, afficher un libellé de groupe « Élèves » si `extraResults.length > 0`, et une ligne « Recherche… » si `extraLoading`.
+
+Extrait de rendu (remplace le bloc `<ul>` de la Task 4) :
+```tsx
+<ul id="cmdk-list" role="listbox" className="max-h-80 overflow-y-auto py-2">
+  {all.length === 0 && !extraLoading ? (
+    <li className="px-4 py-6 text-center text-sm text-ink-500">Aucun résultat.</li>
+  ) : (
+    all.map((cmd, i) => (
+      <li key={cmd.id} role="option" aria-selected={i === active}>
+        <button
+          type="button"
+          onMouseEnter={() => setActive(i)}
+          onClick={() => exec(cmd)}
+          className={cn(
+            'flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm',
+            i === active ? 'bg-paper-100 text-navy-900' : 'text-ink-700',
+          )}
+        >
+          <span>{cmd.label}</span>
+          <span className="text-xs text-ink-300">{cmd.group ?? (cmd.kind === 'action' ? 'Action' : '')}</span>
+        </button>
+      </li>
+    ))
+  )}
+  {extraLoading ? <li className="px-4 py-2 text-xs text-ink-300">Recherche…</li> : null}
+</ul>
+```
+
+> Les tests de la Task 4 restent valides : `extraResults` par défaut `[]`, donc `all === results`.
+
+- [ ] **Step 5 : Câbler dans `Topbar`**
+
+Dans `apps/web/components/app-shell/topbar.tsx`, ajouter :
+```tsx
+import { useState } from 'react';
+import { useStudentCommands } from '@/lib/nav/use-student-commands';
+// ...
+const [paletteQuery, setPaletteQuery] = useState('');
+const { results: studentCmds, loading: studentsLoading } = useStudentCommands(paletteQuery);
+```
+et passer à `<CommandPalette … onQueryChange={setPaletteQuery} extraResults={studentCmds} extraLoading={studentsLoading} />`.
+
+- [ ] **Step 6 : Vérifier** — `pnpm --filter @ecole-saas/web type-check` (OK) +
+`pnpm --filter @ecole-saas/web exec eslint lib/nav/use-student-commands.ts components/app-shell/command-palette.tsx components/app-shell/topbar.tsx`.
+
+- [ ] **Step 7 : Commit**
+
+```bash
+git add apps/web/lib/nav/use-student-commands.ts apps/web/lib/nav/__tests__/use-student-commands.test.tsx apps/web/components/app-shell/command-palette.tsx apps/web/components/app-shell/topbar.tsx
+git commit -m "feat(web): Cmd+K entity search — students provider"
+```
+
+---
+
 ## Task 5 : Détection d'actif (segment exact)
 
 **Files:**
