@@ -4,6 +4,8 @@ import { Link } from '@/i18n/routing';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { FormPage, FormSection, FormField } from '@/components/crud/form-page';
+import { useUnsavedChanges } from '@/lib/ui/use-unsaved-changes';
 import { ApiError } from '@/lib/api/http';
 import {
   createContractUploadUrl,
@@ -115,6 +117,9 @@ export function CreateOrganizationForm() {
     }
   }
 
+  const isDirty = JSON.stringify(form) !== JSON.stringify(EMPTY) || file !== null;
+  useUnsavedChanges(isDirty);
+
   if (success) {
     return (
       <div className="space-y-4 rounded-lg border border-emerald-200 bg-emerald-50 p-6">
@@ -160,59 +165,64 @@ export function CreateOrganizationForm() {
   }
 
   return (
-    <form className="space-y-5 rounded-lg border bg-card p-6" onSubmit={handleSubmit}>
-      <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold text-navy-900">Établissement</legend>
-        <Field label="Nom de l'établissement">
+    <FormPage
+      title="Nouvelle organisation"
+      description="Créez l'établissement et invitez son administrateur."
+      onSubmit={handleSubmit}
+      submitting={submitting}
+      error={error}
+      submitLabel="Créer l'organisation"
+      cancelHref="/commercial"
+    >
+      <FormSection legend="Établissement">
+        <FormField label="Nom de l'établissement">
           <input className={inputClass} value={form.name} onChange={(e) => set('name', e.target.value)} required minLength={2} placeholder="École Saint Pierre" />
-        </Field>
-        <Field label="Slug (URL)" hint="Lettres minuscules, chiffres, tirets. 3-63 caractères.">
+        </FormField>
+        <FormField label="Slug (URL)" hint="Lettres minuscules, chiffres, tirets. 3-63 caractères.">
           <input className={`${inputClass} font-mono`} value={form.slug} onChange={(e) => set('slug', e.target.value)} required placeholder="saint-pierre" />
-        </Field>
-        <Field label="Type d'établissement">
+        </FormField>
+        <FormField label="Type d'établissement">
           <select className={inputClass} value={form.type} onChange={(e) => set('type', e.target.value as TenantType)}>
             {(Object.keys(TYPE_LABELS) as TenantType[]).map((k) => (
               <option key={k} value={k}>{TYPE_LABELS[k]}</option>
             ))}
           </select>
-        </Field>
-      </fieldset>
+        </FormField>
+      </FormSection>
 
-      <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold text-navy-900">Administrateur à inviter</legend>
+      <FormSection legend="Administrateur à inviter">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Prénom">
+          <FormField label="Prénom">
             <input className={inputClass} value={form.adminFirstName} onChange={(e) => set('adminFirstName', e.target.value)} required />
-          </Field>
-          <Field label="Nom">
+          </FormField>
+          <FormField label="Nom">
             <input className={inputClass} value={form.adminLastName} onChange={(e) => set('adminLastName', e.target.value)} required />
-          </Field>
+          </FormField>
         </div>
-        <Field label="Email de l'administrateur">
+        <FormField label="Email de l'administrateur">
           <input type="email" className={inputClass} value={form.adminEmail} onChange={(e) => set('adminEmail', e.target.value)} required />
-        </Field>
-      </fieldset>
+        </FormField>
+      </FormSection>
 
-      <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold text-navy-900">Contrat signé (optionnel)</legend>
+      <FormSection legend="Contrat signé" optional>
         <p className="text-xs text-muted-foreground">
           Vous pouvez créer l&apos;organisation sans contrat et le rattacher plus tard.
         </p>
-        <Field label="Référence (optionnel)">
+        <FormField label="Référence (optionnel)">
           <input className={inputClass} value={form.reference} onChange={(e) => set('reference', e.target.value)} placeholder="KL-2026-0042" />
-        </Field>
+        </FormField>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Date de signature">
+          <FormField label="Date de signature">
             <input type="date" className={inputClass} value={form.signedAt} onChange={(e) => set('signedAt', e.target.value)} />
-          </Field>
-          <Field label="Début">
+          </FormField>
+          <FormField label="Début">
             <input type="date" className={inputClass} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
-          </Field>
-          <Field label="Fin (optionnel)">
+          </FormField>
+          <FormField label="Fin (optionnel)">
             <input type="date" className={inputClass} value={form.endDate} onChange={(e) => set('endDate', e.target.value)} />
-          </Field>
+          </FormField>
         </div>
-        <Field label="Fichier du contrat (PDF, optionnel)">
+        <FormField label="Fichier du contrat (PDF, optionnel)">
           <div className="flex flex-wrap items-center gap-3">
             <label className="cursor-pointer">
               <input
@@ -238,34 +248,13 @@ export function CreateOrganizationForm() {
               </button>
             )}
           </div>
-        </Field>
-        <Field label="Notes (optionnel)">
+        </FormField>
+        <FormField label="Notes (optionnel)">
           <textarea className={inputClass} rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
-        </Field>
-      </fieldset>
-
-      {error && <p className="text-sm text-rose-600">{error}</p>}
-
-      <div className="flex items-center justify-end gap-2 pt-2">
-        <Link href="/commercial" className="text-sm font-medium text-muted-foreground hover:underline">
-          Annuler
-        </Link>
-        <Button type="submit" disabled={submitting}>
-          {submitting ? 'Création…' : "Créer l'organisation"}
-        </Button>
-      </div>
-    </form>
+        </FormField>
+      </FormSection>
+    </FormPage>
   );
 }
 
 const inputClass = 'block w-full rounded-md border bg-background px-3 py-2 text-sm';
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
-      {children}
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
