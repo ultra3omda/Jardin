@@ -74,14 +74,14 @@ describe('OnboardingGuard', () => {
   });
 
   it('blocks a SCHOOL_ADMIN write while the org is PENDING_ONBOARDING', async () => {
-    prisma.tenant.findUnique.mockResolvedValue({ onboardingCompletedAt: null });
+    prisma.tenant.findUnique.mockResolvedValue({ status: 'PENDING_ONBOARDING' });
     await expect(
       guard.canActivate(ctxFor({ user: admin(), method: 'POST' })),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('allows a SCHOOL_ADMIN write once the org is onboarded', async () => {
-    prisma.tenant.findUnique.mockResolvedValue({ onboardingCompletedAt: new Date() });
+  it('allows a SCHOOL_ADMIN write once the org is ACTIVE', async () => {
+    prisma.tenant.findUnique.mockResolvedValue({ status: 'ACTIVE' });
     await expect(guard.canActivate(ctxFor({ user: admin(), method: 'POST' }))).resolves.toBe(true);
   });
 

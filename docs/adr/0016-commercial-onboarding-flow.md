@@ -129,7 +129,8 @@ The gate is now also enforced at the API by a global `OnboardingGuard`
 `RolesGuard`):
 
 - It blocks **mutating verbs** (POST/PATCH/PUT/DELETE) for a `SCHOOL_ADMIN` whose
-  tenant has `onboardingCompletedAt === null`, returning `403 ONBOARDING_REQUIRED`.
+  tenant has `status === PENDING_ONBOARDING`, returning `403 ONBOARDING_REQUIRED`.
+  `onboarding/complete` flips status to `ACTIVE`, which unlocks writes.
 - **Reads always pass** (the admin may inspect their empty workspace), as do
   platform roles (SUPER_ADMIN/COMMERCIAL, no tenant) and every other persona —
   no teacher/parent/staff can exist before onboarding anyway (creating them is
@@ -137,6 +138,19 @@ The gate is now also enforced at the API by a global `OnboardingGuard`
   one PK lookup per admin write.
 - The endpoints the wizard needs are allow-listed with `@AllowDuringOnboarding()`
   (the `onboarding`, `admin/tenant/branding` and `auth` controllers).
+
+**`PENDING_ONBOARDING` is now an explicit, opt-in state.** The `Tenant.status`
+column default flips from `PENDING_ONBOARDING` to **`ACTIVE`** (migration
+`20260615000000_tenant_status_default_active`); only the two flows that require
+the wizard set it explicitly — self-service register (`auth.service`) and the
+commercial pipeline (`commercial.service`). Side effect (intended, per D23): an
+org created directly by a SUPER_ADMIN via `admin/tenants` is now `ACTIVE`
+(immediately usable) instead of bouncing its admin into the wizard. Demo seeds
+already set `ACTIVE` explicitly, so they are unaffected.
+
+Keying the guard on `status` (rather than `onboardingCompletedAt`) means a
+freshly created org under the new default is operational without a separate
+backfill of the timestamp.
 
 Covered by unit tests (guard branches) + e2e (`commercial-onboarding.e2e-spec.ts`:
 PENDING write → 403, reads/branding allowed, ACTIVE write unblocked).

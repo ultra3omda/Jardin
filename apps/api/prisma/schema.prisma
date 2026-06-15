@@ -100,9 +100,12 @@ model Tenant {
   locale                Locale       @default(fr)
   timezone              String       @default("Europe/Paris")
   brand                 Json?
-  // GTM — Onboarding bloquant : tant que onboardingCompletedAt est null, l'admin
-  // de l'org est redirigé de force vers le wizard de personnalisation.
-  status                TenantStatus @default(PENDING_ONBOARDING)
+  // GTM — Onboarding bloquant : un tenant en PENDING_ONBOARDING redirige son
+  // SCHOOL_ADMIN vers le wizard et bloque ses écritures (OnboardingGuard).
+  // Le défaut est ACTIVE : seuls les flux qui exigent l'assistant le mettent
+  // explicitement à PENDING (inscription self-service + flux commercial). Les
+  // tenants créés autrement (admin/tenants, seeds, fixtures) sont opérationnels.
+  status                TenantStatus @default(ACTIVE)
   onboardingCompletedAt DateTime?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt

@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createId } from '@paralleldrive/cuid2';
-import { Tenant, User, UserRole } from '@prisma/client';
+import { Tenant, TenantStatus, User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { InviteTokensService } from '../admin/invite-tokens.service';
@@ -138,6 +138,9 @@ export class AuthService {
               type: dto.tenant!.type,
               locale: dto.tenant!.locale ?? 'fr',
               timezone: dto.tenant!.timezone ?? 'Europe/Paris',
+              // A self-service org must complete the blocking onboarding wizard.
+              // Set explicitly: the column default is ACTIVE (ADR 0016 §9).
+              status: TenantStatus.PENDING_ONBOARDING,
             },
           });
       const newUser = await tx.user.create({

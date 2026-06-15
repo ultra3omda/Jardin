@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UserRole } from '@prisma/client';
+import { TenantStatus, UserRole } from '@prisma/client';
 
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../decorators/current-user.decorator';
@@ -30,6 +30,11 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * Runs after JwtAuthGuard/RolesGuard (req.user is set) and before the
  * TenantContextInterceptor, so it reads the tenant status directly by PK
  * (`Tenant` is not tenant-scoped — no AsyncLocalStorage context required).
+ *
+ * Keys off `Tenant.status` (not `onboardingCompletedAt`): the schema default is
+ * ACTIVE, and only the signup flows that require the wizard set
+ * PENDING_ONBOARDING explicitly. `onboarding/complete` flips status to ACTIVE,
+ * which unlocks writes.
  */
 @Injectable()
 export class OnboardingGuard implements CanActivate {
@@ -57,12 +62,12 @@ export class OnboardingGuard implements CanActivate {
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: user.tenantId },
-      select: { onboardingCompletedAt: true },
+      select: { status: true },
     });
     // Unknown tenant → let the handler deal with it rather than 403 spuriously.
     if (!tenant) return true;
 
-    if (tenant.onboardingCompletedAt === null) {
+    if (tenant.status === TenantStatus.PENDING_ONBOARDING) {
       throw new ForbiddenException({
         code: 'ONBOARDING_REQUIRED',
         message: "Terminez la configuration de votre établissement avant de continuer.",
