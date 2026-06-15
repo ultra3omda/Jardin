@@ -1,6 +1,6 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Wallet, UserX } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 
 import { useRouter, Link } from '@/i18n/routing';
@@ -8,6 +8,7 @@ import { KpiCard } from '@/components/dashboard/kpi-card';
 import { NotesPanel } from '@/components/dashboard/notes-panel';
 import { QuickAction } from '@/components/dashboard/quick-action';
 import { AnnouncementsPanel } from '@/components/dashboard/announcements-panel';
+import { ToDoPanel, type ToDoItem } from '@/components/dashboard/to-do-panel';
 import { getDashboardConfig } from '@/lib/dashboard/config';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { useResource } from '@/lib/hooks/use-resource';
@@ -109,6 +110,35 @@ export default function DashboardPage() {
 
   const att = data?.todayAttendance ?? { present: 0, absent: 0, late: 0, excused: 0 };
 
+  const showToDo = user.role === 'SCHOOL_ADMIN' || user.role === 'STAFF';
+  const toDoItems: ToDoItem[] = [];
+  if (showToDo && data) {
+    if (data.pendingPayments > 0) {
+      toDoItems.push({
+        id: 'unpaid',
+        icon: Wallet,
+        value: String(data.pendingPayments),
+        label: data.pendingPayments > 1 ? 'paiements en retard' : 'paiement en retard',
+        detail: `${data.amountDue} TND à recouvrer`,
+        href: '/frais/impayes',
+        cta: 'Voir',
+        tone: 'danger',
+      });
+    }
+    const absToday = data.todayAttendance.absent + data.todayAttendance.late;
+    if (absToday > 0) {
+      toDoItems.push({
+        id: 'absences',
+        icon: UserX,
+        value: String(absToday),
+        label: 'absences/retards du jour',
+        href: '/absences',
+        cta: 'Pointer',
+        tone: 'warn',
+      });
+    }
+  }
+
   return (
     <div className="space-y-5">
       <header className="flex items-start justify-between pt-2">
@@ -124,6 +154,8 @@ export default function DashboardPage() {
           Statistiques
         </button>
       </header>
+
+      {showToDo ? <ToDoPanel items={toDoItems} /> : null}
 
       <section
         className="grid gap-4"
