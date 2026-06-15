@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { Card, colors, radius } from '@klasso/ui-mobile';
+import { Card, EmptyState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { useMyChildren, useMyInvoices } from '@/lib/api/parent';
 import { useMyGrades } from '@/lib/api/evaluations';
 import { useJournal } from '@/lib/api/school-life';
@@ -27,20 +27,42 @@ export function ParentDashboard() {
 
   if (children.isLoading) {
     return (
-      <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-        <ActivityIndicator color={colors.ambre[500]} />
+      <View style={{ gap: 10, paddingTop: 8 }}>
+        <Skeleton height={64} radius={14} />
+        <Skeleton height={64} radius={14} />
+        <Skeleton height={88} radius={14} />
       </View>
     );
   }
 
   return (
     <View>
+      {/* À traiter — priorité paiements (Priority-first parity with web) */}
+      {pending > 0 ? (
+        <>
+          <SectionTitle>À traiter</SectionTitle>
+          <Card accent="#d97706">
+            <Text style={{ fontSize: 12, color: colors.ink[500] }}>Solde à régler</Text>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#d97706', marginTop: 2 }}>
+              {formatAmount(pending)}
+            </Text>
+            <Pressable onPress={() => router.push('/(app)/parent/payments')} accessibilityRole="button">
+              <Text style={{ fontSize: 13, color: colors.ambre[600], fontWeight: '600', marginTop: 6 }}>
+                Voir les factures →
+              </Text>
+            </Pressable>
+          </Card>
+        </>
+      ) : null}
+
       {/* Children */}
       <SectionTitle>Mes enfants</SectionTitle>
       {kids.length === 0 ? (
-        <Text style={{ fontSize: 13, color: colors.ink[300], marginBottom: 12 }}>
-          Aucun enfant rattaché à votre compte.
-        </Text>
+        <EmptyState
+          icon="people-outline"
+          title="Aucun enfant"
+          description="Aucun enfant n'est rattaché à votre compte."
+        />
       ) : (
         kids.map((c, i) => {
           const g = (grades.data ?? []).find(
@@ -104,21 +126,6 @@ export function ParentDashboard() {
         <Action icon="book-outline" label="Journal" color="#f59e0b" onPress={() => router.push('/(app)/life')} />
         <Action icon="chatbubbles-outline" label="Messages" color="#ec4899" onPress={() => router.push('/(app)/messages')} />
       </View>
-
-      {/* Payments summary */}
-      {pending > 0 ? (
-        <Card style={{ marginTop: 16 }} accent="#d97706">
-          <Text style={{ fontSize: 12, color: colors.ink[500] }}>Solde à régler</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: '#d97706', marginTop: 2 }}>
-            {formatAmount(pending)}
-          </Text>
-          <Pressable onPress={() => router.push('/(app)/parent/payments')} accessibilityRole="button">
-            <Text style={{ fontSize: 13, color: colors.ambre[600], fontWeight: '600', marginTop: 6 }}>
-              Voir les factures →
-            </Text>
-          </Pressable>
-        </Card>
-      ) : null}
 
       {/* Recent journal */}
       {recentJournal.length > 0 ? (
