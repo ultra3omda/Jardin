@@ -104,3 +104,42 @@ describe('getNavForUser', () => {
     expect(items.find((i) => i.id === 'notes')).toBeUndefined();
   });
 });
+
+const adminUser = { id: 'u1', role: 'SCHOOL_ADMIN', firstName: 'A', lastName: 'B', email: 'a@b.tn' } as unknown as AuthUser;
+const primaryTenant = { id: 't1', name: 'École', slug: 'ecole', type: 'PRIMARY_SCHOOL' } as unknown as AuthTenant;
+
+describe('schoolAdminNav — taxonomie validée (V1.1)', () => {
+  const ids = getNavForUser(adminUser, primaryTenant).map((s) => s.id);
+
+  it('expose les domaines validés dans l\'ordre', () => {
+    expect(ids).toEqual([
+      'accueil', 'scolarite', 'pedagogie', 'vieEcole',
+      'finance', 'rh', 'communication', 'parametres', 'compte',
+    ]);
+  });
+
+  it('n\'a plus de domaine "administration" (fusionné)', () => {
+    expect(ids).not.toContain('administration');
+  });
+
+  it('sort RH de Finance', () => {
+    const sections = getNavForUser(adminUser, primaryTenant);
+    const finance = sections.find((s) => s.id === 'finance')!;
+    const rh = sections.find((s) => s.id === 'rh')!;
+    expect(finance.items.some((i) => i.id === 'hrPayroll')).toBe(false);
+    expect(rh.items.map((i) => i.id)).toContain('hr');
+  });
+
+  it('met Absences et Discipline dans Vie école', () => {
+    const vie = getNavForUser(adminUser, primaryTenant).find((s) => s.id === 'vieEcole')!;
+    const itemIds = vie.items.map((i) => i.id);
+    expect(itemIds).toContain('absences');
+    expect(itemIds).toContain('discipline');
+  });
+
+  it('met Matières et Périodes dans Paramètres', () => {
+    const params = getNavForUser(adminUser, primaryTenant).find((s) => s.id === 'parametres')!;
+    const itemIds = params.items.map((i) => i.id);
+    expect(itemIds).toEqual(expect.arrayContaining(['subjects', 'gradePeriods', 'establishment', 'branding']));
+  });
+});
