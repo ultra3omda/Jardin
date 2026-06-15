@@ -10,15 +10,30 @@ interface Props {
   onClose: () => void;
   /** Appelé pour un goto (le parent route via next-intl). */
   onNavigate: (href: string) => void;
+  /** Résultats d'entités déjà filtrés côté serveur (non re-filtrés). */
+  extraResults?: Command[];
+  /** Indicateur de chargement des entités. */
+  extraLoading?: boolean;
+  /** Notifie le parent à chaque frappe (pour piloter une recherche serveur). */
+  onQueryChange?: (q: string) => void;
 }
 
 /** Palette de commandes globale (Cmd+K). Overlay accessible, navigation clavier. */
-export function CommandPalette({ open, commands, onClose, onNavigate }: Props) {
+export function CommandPalette({
+  open,
+  commands,
+  onClose,
+  onNavigate,
+  extraResults = [],
+  extraLoading = false,
+  onQueryChange,
+}: Props) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const results = useMemo(() => filterCommands(commands, query), [commands, query]);
+  const all = useMemo(() => [...results, ...extraResults], [results, extraResults]);
 
   useEffect(() => {
     if (open) {
@@ -44,15 +59,15 @@ export function CommandPalette({ open, commands, onClose, onNavigate }: Props) {
     if (e.key === 'Escape') return onClose();
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActive((i) => Math.min(i + 1, results.length - 1));
+      setActive((i) => Math.min(i + 1, all.length - 1));
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActive((i) => Math.max(i - 1, 0));
     }
-    if (e.key === 'Enter' && results[active]) {
+    if (e.key === 'Enter' && all[active]) {
       e.preventDefault();
-      exec(results[active]);
+      exec(all[active]);
     }
   }
 
@@ -73,7 +88,10 @@ export function CommandPalette({ open, commands, onClose, onNavigate }: Props) {
         <input
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            onQueryChange?.(e.target.value);
+          }}
           role="combobox"
           aria-expanded="true"
           aria-controls="cmdk-list"
@@ -82,10 +100,10 @@ export function CommandPalette({ open, commands, onClose, onNavigate }: Props) {
           className="w-full border-b border-border px-4 py-3 text-sm outline-none"
         />
         <ul id="cmdk-list" role="listbox" className="max-h-80 overflow-y-auto py-2">
-          {results.length === 0 ? (
+          {all.length === 0 && !extraLoading ? (
             <li className="px-4 py-6 text-center text-sm text-ink-500">Aucun résultat.</li>
           ) : (
-            results.map((cmd, i) => (
+            all.map((cmd, i) => (
               <li key={cmd.id} role="option" aria-selected={i === active}>
                 <button
                   type="button"
@@ -101,6 +119,9 @@ export function CommandPalette({ open, commands, onClose, onNavigate }: Props) {
                 </button>
               </li>
             ))
+          )}
+          {extraLoading && (
+            <li className="px-4 py-2 text-xs text-ink-300">Recherche…</li>
           )}
         </ul>
       </div>

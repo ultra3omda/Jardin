@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Menu, Search } from 'lucide-react';
 import { useRouter } from '@/i18n/routing';
 
@@ -10,6 +11,7 @@ import { useCommandPalette } from '@/lib/ui/use-command-palette';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { getNavForUser } from '@/lib/nav/menu';
 import { navToCommands } from '@/lib/nav/commands';
+import { useStudentCommands } from '@/lib/nav/use-student-commands';
 
 interface Props {
   /** Opens the mobile navigation drawer. Hamburger is hidden on lg+. */
@@ -22,6 +24,8 @@ export function Topbar({ onMenuClick }: Props) {
   const user = useAuthStore((s) => s.user);
   const tenant = useAuthStore((s) => s.tenant);
   const commands = user ? navToCommands(getNavForUser(user, tenant)) : [];
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const { results: studentCmds, loading: studentsLoading } = useStudentCommands(paletteQuery);
 
   return (
     <header className="flex items-center gap-2 px-4 py-4 bg-paper-50 sm:gap-4 sm:px-6">
@@ -53,6 +57,9 @@ export function Topbar({ onMenuClick }: Props) {
         commands={commands}
         onClose={() => setOpen(false)}
         onNavigate={(href) => router.push(href)}
+        onQueryChange={setPaletteQuery}
+        extraResults={studentCmds}
+        extraLoading={studentsLoading}
       />
     </header>
   );
