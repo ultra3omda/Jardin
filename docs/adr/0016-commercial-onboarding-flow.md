@@ -1,7 +1,7 @@
 # ADR 0016 — Commercial pipeline & blocking organization onboarding
 
 **Status:** Accepted
-**Date:** 2026-05-31 (amended 2026-06-14 — mobile onboarding gate + COMMERCIAL role, decisions 7–8)
+**Date:** 2026-05-31 (amended 2026-06-14 — mobile onboarding gate + COMMERCIAL role, decisions 7–8; 2026-06-15 — server-side gate enforcement, decision 9)
 **Wave:** GTM (go-to-market)
 
 ## Context
@@ -120,15 +120,34 @@ a first-class persona on mobile, reusing the same API
 
 No API change — the mobile client consumes the existing controller as-is.
 
+### 9. Server-side enforcement of the gate (amendment, 2026-06-15)
+
+The web/mobile gates (decisions 5, 7) are client-side redirects — a modified
+client could skip the wizard and mutate tenant data while `PENDING_ONBOARDING`.
+The gate is now also enforced at the API by a global `OnboardingGuard`
+(`apps/api/src/auth/guards/onboarding.guard.ts`, registered after
+`RolesGuard`):
+
+- It blocks **mutating verbs** (POST/PATCH/PUT/DELETE) for a `SCHOOL_ADMIN` whose
+  tenant has `onboardingCompletedAt === null`, returning `403 ONBOARDING_REQUIRED`.
+- **Reads always pass** (the admin may inspect their empty workspace), as do
+  platform roles (SUPER_ADMIN/COMMERCIAL, no tenant) and every other persona —
+  no teacher/parent/staff can exist before onboarding anyway (creating them is
+  itself a gated write), so gating `SCHOOL_ADMIN` closes the hole with at most
+  one PK lookup per admin write.
+- The endpoints the wizard needs are allow-listed with `@AllowDuringOnboarding()`
+  (the `onboarding`, `admin/tenant/branding` and `auth` controllers).
+
+Covered by unit tests (guard branches) + e2e (`commercial-onboarding.e2e-spec.ts`:
+PENDING write → 403, reads/branding allowed, ACTIVE write unblocked).
+
 ## Consequences
 
 - The relations the product needs (student↔parent, student↔class, teacher↔class,
   subject↔level, student↔canteen, …) already existed from earlier waves; this
   wave focused on the genuinely new SaaS pipeline.
-- A future hardening item: move the onboarding gate to server-side enforcement
-  (block tenant-data mutations until `ACTIVE`) in addition to the web/mobile
-  client redirects. As of the 2026-06-14 amendment the gate is enforced on both
-  clients, but server-side enforcement would close the remaining gap (a modified
-  client could still skip the wizard).
+- ~~A future hardening item: move the onboarding gate to server-side
+  enforcement.~~ **Done (2026-06-15, decision 9)** — the gate is enforced on the
+  web, mobile **and** the API.
 - `COMMERCIAL` agents are created with an initial password set by the
   super-admin; migrating them to an invite/reset-link flow is a follow-up.

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
+import { AllowDuringOnboarding } from '../auth/decorators/allow-during-onboarding.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CompleteOnboardingDto, OnboardingStatusDto } from './dto/complete-onboarding.dto';
 import { OnboardingService } from './onboarding.service';
@@ -9,6 +10,7 @@ import { OnboardingService } from './onboarding.service';
 @ApiTags('onboarding')
 @ApiBearerAuth('access-token')
 @Roles(UserRole.SCHOOL_ADMIN)
+@AllowDuringOnboarding() // this IS the unblock — never gate it
 @Controller('onboarding')
 export class OnboardingController {
   constructor(private readonly onboarding: OnboardingService) {}

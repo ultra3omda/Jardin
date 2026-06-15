@@ -168,6 +168,35 @@ describe('Commercial pipeline + onboarding (e2e)', () => {
     expect(tenants).toHaveLength(1);
   });
 
+  it('server-side gate: a not-yet-onboarded SCHOOL_ADMIN cannot write tenant data (403)', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: `dir@${DOMAIN}`, password: 'DirectricePass1234!' })
+      .expect(200);
+    const adminToken: string = login.body.accessToken;
+
+    // A tenant-scoped write is blocked by the onboarding guard BEFORE validation.
+    const blocked = await request(app.getHttpServer())
+      .post('/api/students')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(403);
+    expect(blocked.body.code).toBe('ONBOARDING_REQUIRED');
+
+    // Reads are always allowed (the admin may inspect their empty workspace).
+    const read = await request(app.getHttpServer())
+      .get('/api/students')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(read.status).not.toBe(403);
+
+    // Branding is part of the wizard → allow-listed even while PENDING.
+    const branding = await request(app.getHttpServer())
+      .patch('/api/admin/tenant/branding')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ primaryColor: '#123456' });
+    expect(branding.status).not.toBe(403);
+  });
+
   it('blocking onboarding: status → complete → ACTIVE + onboardingCompleted', async () => {
     const login = await request(app.getHttpServer())
       .post('/api/auth/login')
@@ -202,6 +231,22 @@ describe('Commercial pipeline + onboarding (e2e)', () => {
       .expect(200);
     expect(me.body.tenant.onboardingCompleted).toBe(true);
     expect(me.body.tenant.name).toBe('GTM École de l’Avenir');
+  });
+
+  it('server-side gate: once ACTIVE, the SCHOOL_ADMIN can write again (no onboarding 403)', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: `dir@${DOMAIN}`, password: 'DirectricePass1234!' })
+      .expect(200);
+    const adminToken: string = login.body.accessToken;
+
+    // The org is ACTIVE now → the gate no longer blocks. Validation may still
+    // reject an empty body (400), but it must NOT be the onboarding 403.
+    const res = await request(app.getHttpServer())
+      .post('/api/students')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({});
+    expect(res.status).not.toBe(403);
   });
 
   it('isolation: a COMMERCIAL cannot reach the Klasso platform console (403)', async () => {

@@ -25,6 +25,7 @@ import { DisciplineModule } from './discipline/discipline.module';
 import { StudentHealthModule } from './student-health/student-health.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { OnboardingGuard } from './auth/guards/onboarding.guard';
 import { TenantContextInterceptor } from './auth/interceptors/tenant-context.interceptor';
 import { configuration } from './common/config/configuration';
 import { validateEnv } from './common/config/env.validation';
@@ -123,11 +124,14 @@ import { UsersModule } from './users/users.module';
     // V1.5 — Sentry global filter MUST be first so it catches every other
     // filter's caught exceptions and forwards them to Sentry.
     { provide: APP_FILTER, useClass: SentryGlobalFilter },
-    // Order matters: rate limit first, then auth, then role check, then
-    // wrap the request in a tenant context for downstream services.
+    // Order matters: rate limit first, then auth, then role check, then the
+    // onboarding gate (server-side block of writes for not-yet-onboarded
+    // SCHOOL_ADMINs — ADR 0016), then wrap the request in a tenant context for
+    // downstream services.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: OnboardingGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
   ],
 })
