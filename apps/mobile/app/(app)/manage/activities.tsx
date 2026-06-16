@@ -1,15 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   Button,
   ConfirmDialog,
   EmptyState,
+  ErrorState,
   Fab,
   FormField,
   FormSheet,
   Picker,
+  Skeleton,
   colors,
   radius,
   type PickerOption,
@@ -34,7 +36,7 @@ const CATEGORY_OPTIONS: PickerOption[] = [
 
 export default function ManageActivitiesScreen() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useActivities();
+  const { data, isLoading, isError, refetch } = useActivities();
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<Activity | null>(null);
 
@@ -93,9 +95,18 @@ export default function ManageActivitiesScreen() {
     <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={72} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+          <ErrorState
+            message="Impossible de charger les activités."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="color-palette-outline" title="Aucune activité" description="Ajoutez-en une avec le bouton +." />
         ) : (

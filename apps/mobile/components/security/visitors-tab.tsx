@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { Button, ConfirmDialog, EmptyState, Fab, FormField, FormSheet, colors, radius } from '@klasso/ui-mobile';
+import { Button, ConfirmDialog, EmptyState, ErrorState, Fab, FormField, FormSheet, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import {
   VISITOR_LOGS_KEY,
   createVisitorLog,
@@ -20,7 +20,7 @@ const fmt = (iso: string) => {
 
 export function VisitorsTab() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useQuery({ queryKey: VISITOR_LOGS_KEY, queryFn: listVisitorLogs });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: VISITOR_LOGS_KEY, queryFn: listVisitorLogs });
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<VisitorLog | null>(null);
 
@@ -68,9 +68,18 @@ export function VisitorsTab() {
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={72} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+          <ErrorState
+            message="Impossible de charger les visiteurs."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="person-outline" title="Aucun visiteur" description="Enregistrez une entrée avec +." />
         ) : (

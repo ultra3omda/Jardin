@@ -1,14 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   Button,
   ConfirmDialog,
   EmptyState,
+  ErrorState,
   Fab,
   FormField,
   FormSheet,
+  Skeleton,
   colors,
   radius,
 } from '@klasso/ui-mobile';
@@ -25,7 +27,7 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export default function ManageTransportScreen() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useBusRoutes();
+  const { data, isLoading, isError, refetch } = useBusRoutes();
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<BusRoute | null>(null);
   const [assignRoute, setAssignRoute] = useState<BusRoute | null>(null);
@@ -82,9 +84,18 @@ export default function ManageTransportScreen() {
     <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={72} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+          <ErrorState
+            message="Impossible de charger le transport."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="bus-outline" title="Aucune ligne" description="Ajoutez une ligne de bus avec +." />
         ) : (
