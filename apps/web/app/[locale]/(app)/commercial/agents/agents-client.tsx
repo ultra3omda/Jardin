@@ -3,7 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { Users } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
 import { ApiError } from '@/lib/api/http';
 import { createAgent, listAgents, type CommercialAgent } from '@/lib/api/commercial';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
@@ -23,7 +28,7 @@ export function AgentsClient() {
   const [form, setForm] = useState<AgentForm>(EMPTY);
   const [error, setError] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['commercial', 'agents'],
     queryFn: () => listAgents(accessToken!),
     enabled: !!accessToken,
@@ -73,11 +78,19 @@ export function AgentsClient() {
       <section>
         <h2 className="mb-2 text-sm font-semibold text-navy-900">Commerciaux existants</h2>
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Chargement…</p>
-        ) : agents.length === 0 ? (
-          <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-            Aucun commercial pour l&apos;instant.
+          <div className="space-y-2" role="status" aria-busy="true">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+            ))}
           </div>
+        ) : isError ? (
+          <ErrorRetry message="Impossible de charger les commerciaux." onRetry={() => void refetch()} />
+        ) : agents.length === 0 ? (
+          <EmptyState
+            icon={<Users className="h-8 w-8" aria-hidden="true" />}
+            title="Aucun commercial"
+            description="Créez un commercial avec le formulaire ci-dessus."
+          />
         ) : (
           <ul className="divide-y divide-border rounded-lg border bg-card">
             {agents.map((a) => (
