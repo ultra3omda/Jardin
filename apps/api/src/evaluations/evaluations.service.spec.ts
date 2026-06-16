@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
+import type { TenantContextService } from '../common/tenant/tenant-context.service';
 import { EvaluationsService } from './evaluations.service';
 
 const adminUser = {
@@ -48,7 +49,7 @@ describe('EvaluationsService', () => {
       runDetached: (fn: () => unknown) => {
         void Promise.resolve().then(fn).catch(() => undefined);
       },
-    } as any);
+    } as unknown as TenantContextService);
   });
 
   const baseCreateDto = {

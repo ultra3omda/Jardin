@@ -5,6 +5,7 @@ import { InvoiceStatus, Prisma } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { BillingService } from './billing.service';
@@ -118,6 +119,14 @@ describe('BillingService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: NotificationFanoutService, useValue: { fanoutInvoice: vi.fn() } },
         { provide: InvoicePdfService, useValue: { render: vi.fn().mockResolvedValue(Buffer.from('pdf')) } },
+        {
+          provide: TenantContextService,
+          useValue: {
+            runDetached: (fn: () => unknown) => {
+              void Promise.resolve().then(fn).catch(() => undefined);
+            },
+          },
+        },
       ],
     }).compile();
 
