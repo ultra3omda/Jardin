@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, ScrollView, Text, View, ActivityIndicator } from 'react-native';
+import { Image, ScrollView, Text, View } from 'react-native';
 
-import { Button, EmptyState, colors, radius } from '@klasso/ui-mobile';
+import { Button, EmptyState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import {
   categoryColor,
   categoryLabel,
@@ -27,7 +27,11 @@ export default function ParentObservationsScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
     >
       {isLoading ? (
-        <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+        <View style={{ gap: 10 }} accessibilityRole="progressbar">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={96} radius={radius.lg} />
+          ))}
+        </View>
       ) : isError ? (
         <View style={{ alignItems: 'center', paddingVertical: 32, gap: 16 }}>
           <Text style={{ color: colors.status.danger500, fontSize: 14 }}>Erreur de chargement.</Text>
