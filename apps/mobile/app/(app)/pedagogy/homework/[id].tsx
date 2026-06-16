@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { colors, radius } from '@klasso/ui-mobile';
+import { ErrorState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import {
   submissionLabel,
   useHomeworkDetail,
@@ -28,19 +28,23 @@ export default function HomeworkDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.paper[50], paddingTop: 32 }}>
-        <ActivityIndicator color={colors.ambre[500]} />
+      <View style={{ flex: 1, backgroundColor: colors.paper[50], padding: 16, gap: 10 }}>
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} height={i === 0 ? 90 : 64} radius={radius.lg} />
+        ))}
       </View>
     );
   }
   if (isError || !data) {
     return (
-      <Pressable
-        onPress={() => void refetch()}
-        style={{ flex: 1, backgroundColor: colors.paper[50], padding: 20 }}
-      >
-        <Text style={{ color: colors.status.danger500 }}>Erreur. Toucher pour réessayer.</Text>
-      </Pressable>
+      <View style={{ flex: 1, backgroundColor: colors.paper[50], padding: 20, justifyContent: 'center' }}>
+        <ErrorState
+          message="Impossible de charger le devoir."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
+      </View>
     );
   }
 

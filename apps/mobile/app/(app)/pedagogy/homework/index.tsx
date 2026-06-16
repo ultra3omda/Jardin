@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { EmptyState, Fab, colors, radius } from '@klasso/ui-mobile';
+import { EmptyState, ErrorState, Fab, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { useHomeworkList, type Homework } from '@/lib/api/homework';
 
 function fmt(iso: string): string {
@@ -16,13 +16,18 @@ export default function HomeworkListScreen() {
     <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} height={92} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Pressable onPress={() => void refetch()}>
-            <Text style={{ color: colors.status.danger500, textAlign: 'center' }}>
-              Erreur. Toucher pour réessayer.
-            </Text>
-          </Pressable>
+          <ErrorState
+            message="Impossible de charger les devoirs."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="reader-outline" title="Aucun devoir" description="Créez un devoir avec le bouton +." />
         ) : (
