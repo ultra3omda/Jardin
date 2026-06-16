@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors, radius } from '@klasso/ui-mobile';
+import { ErrorState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import {
   markConversationRead,
@@ -56,13 +56,18 @@ export default function ConversationScreen() {
     >
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 12 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 8, marginTop: 8 }} accessibilityRole="progressbar">
+            <Skeleton width="66%" height={40} radius={16} />
+            <Skeleton width="50%" height={40} radius={16} style={{ alignSelf: 'flex-end' }} />
+            <Skeleton width="60%" height={40} radius={16} />
+          </View>
         ) : isError ? (
-          <Pressable onPress={() => void refetch()}>
-            <Text style={{ color: colors.status.danger500 }}>
-              Impossible de charger les messages. Toucher pour réessayer.
-            </Text>
-          </Pressable>
+          <ErrorState
+            message="Impossible de charger les messages."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : messages.length === 0 ? (
           <Text style={{ color: colors.ink[300], textAlign: 'center', marginTop: 32 }}>
             Aucun message. Démarrez la conversation ci-dessous.

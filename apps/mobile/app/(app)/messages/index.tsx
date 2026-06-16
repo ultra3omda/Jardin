@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Fab, colors, fonts, radius } from '@klasso/ui-mobile';
+import { EmptyState, ErrorState, Fab, Skeleton, colors, fonts, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { useConversations, type Conversation, type Participant } from '@/lib/api/messaging';
 
@@ -123,23 +123,24 @@ export default function MessagesScreen() {
         </Text>
 
       {isLoading ? (
-        <Text style={{ color: colors.ink[500] }}>Chargement…</Text>
-      ) : isError ? (
-        <Pressable onPress={() => void refetch()}>
-          <Text style={{ color: colors.status.danger500 }}>
-            Impossible de charger les conversations. Toucher pour réessayer.
-          </Text>
-        </Pressable>
-      ) : conversations.length === 0 ? (
-        <View style={{ alignItems: 'center', paddingVertical: 56 }}>
-          <Text style={{ fontSize: 32, marginBottom: 12 }}>✉️</Text>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink[700] }}>
-            Aucune conversation
-          </Text>
-          <Text style={{ fontSize: 13, color: colors.ink[300], textAlign: 'center', marginTop: 4 }}>
-            Vos échanges avec l&apos;équipe apparaîtront ici.
-          </Text>
+        <View style={{ gap: 8 }} accessibilityRole="progressbar">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} height={72} radius={radius.lg} />
+          ))}
         </View>
+      ) : isError ? (
+        <ErrorState
+          message="Impossible de charger les conversations."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
+      ) : conversations.length === 0 ? (
+        <EmptyState
+          icon="chatbubbles-outline"
+          title="Aucune conversation"
+          description="Vos échanges avec l'équipe apparaîtront ici."
+        />
       ) : (
         conversations.map((c) => <ThreadRow key={c.id} conv={c} meId={meId} />)
       )}
