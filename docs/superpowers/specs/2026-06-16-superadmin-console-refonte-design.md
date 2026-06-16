@@ -1,6 +1,6 @@
 # Design — Refonte UX SUPER_ADMIN / COMMERCIAL (Vague 5)
 
-> **Statut** : en cours — 2 sous-PR (5.1 commercial, 5.2 tenants/invites). Web only.
+> **Statut** : **complète** — 5.1 pipeline commercial (PR #221) · 5.2 tenants + invites (PR #222). Web only.
 > **Programme** : refonte UX par persona. Vague 5 = console plateforme. Fondations : Phase 0 + V1-4.
 
 ## 1. Constat (mapping 2026-06-16)

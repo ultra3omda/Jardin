@@ -25,6 +25,32 @@
 
 ---
 
+## 🎨 Programme « Refonte UX par persona/surface » — TERMINÉ (juin 2026)
+
+> Initiative transverse post-GTM : faire hériter chaque écran des patterns Phase 0 / Vague 1
+> (`PageHeader`/`ScreenHeader`, `ResourceListPage` + gabarits `DetailPage`/`FormPage`,
+> `Skeleton`/`EmptyState`/`ErrorState`+retry, badges & helpers testés, a11y), **web et mobile**.
+> Specs & plans dans `docs/superpowers/`.
+
+| Vague | Cible | Statut | PR |
+|---|---|---|---|
+| 1 (refonte) | SCHOOL_ADMIN — shell (nav Cmd+K, dashboard, gabarits, productivité) | ✅ | #198-202 |
+| 2 | PARENT — dashboard, finance, pédagogie, communication, vie scolaire, e2e | ✅ | #203-214 |
+| 3 | TEACHER — pédagogie web/mobile, présences, devoirs, dashboard + e2e | ✅ | #215-219 |
+| 4 | STAFF / Vie scolaire — sweep états mobile manage | ✅ | #220 |
+| 5 | SUPER_ADMIN / COMMERCIAL — pipeline commercial, tenants, invites | ✅ | #221-222 |
+| — | Landing / Auth | ✅ déjà moderne (aucun changement nécessaire) | — |
+
+Résultat : **tout le produit** (back-office 5 chantiers + surface publique) est sous les patterns
+standard. Artefacts réutilisables produits : badges `InvoiceStatusBadge`/`GradeBadge`/`AttendanceStatusBadge` ;
+helpers purs testés `computeParentStats`/`sumOutstanding`/`gradeTone`/`parseScoreInput`/`conversation` ;
+gabarits `DetailPage`/`FormPage` ; e2e Playwright **parent** + **teacher**.
+
+**Suivis (non datés, hors programme)** : QA RTL visuelle (arabe) sur les écrans refaits ; hardening du
+flaky build Docker API.
+
+---
+
 ## 📋 Vagues — vue d'ensemble
 
 | Vague | Scope court | Effort estimé | Dépendances | Statut |

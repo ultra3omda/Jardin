@@ -1,8 +1,7 @@
 # Design — Refonte UX PARENT (Vague 2)
 
-> **Statut** : en cours — sous-PR 2.1 (dashboard web) et 2.2 (dashboard mobile) livrés ;
-> spec écrite pour cadrer la suite (2.3 → 2.7). En attente de validation utilisateur
-> avant de coder 2.3.
+> **Statut** : **complète** — 2.1 dashboard web · 2.2 dashboard mobile · 2.3 finance · 2.4 pédagogie ·
+> 2.5 communication · 2.6 vie scolaire · 2.7 transverse + e2e parent. Vague 2 livrée (PR #203-214).
 > **Programme** : refonte UX profonde par persona. **Vague 1 = shell SCHOOL_ADMIN** (livrée).
 > **Vague 2 = persona PARENT** : faire hériter tous les écrans parent des patterns établis
 > (gabarits `ListPage`/`DetailPage`/`FormPage`, états Skeleton/Empty/Error, priority-first,

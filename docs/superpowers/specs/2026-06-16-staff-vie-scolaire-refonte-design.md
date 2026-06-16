@@ -1,6 +1,6 @@
 # Design — Refonte UX STAFF / Vie scolaire (Vague 4)
 
-> **Statut** : en cours — sweep mobile en un seul PR (décision utilisateur 2026-06-16).
+> **Statut** : **complète** — sweep états mobile vie-scolaire (8 fichiers) livré (PR #220). Web déjà moderne.
 > **Programme** : refonte UX par persona. Vague 4 = **STAFF / Vie scolaire**.
 > **Fondations** : Phase 0 + Vagues 1-3 (primitives, gabarits).
 
