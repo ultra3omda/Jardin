@@ -1,7 +1,8 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
-import { EmptyState, colors, radius } from '@klasso/ui-mobile';
+import { EmptyState, ErrorState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { formatAmount, statusLabel, type InvoiceStatus } from '@/lib/api/billing';
+import { sumOutstanding } from '@/lib/billing/outstanding';
 import { useMyInvoices } from '@/lib/api/parent';
 
 const STATUS_COLOR: Record<InvoiceStatus, string> = {
@@ -12,13 +13,22 @@ const STATUS_COLOR: Record<InvoiceStatus, string> = {
   CANCELLED: '#94a3b8',
 };
 
+function PaymentsSkeleton() {
+  return (
+    <View accessibilityRole="progressbar" style={{ gap: 12 }}>
+      <Skeleton height={64} radius={radius.lg} />
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} height={88} radius={radius.lg} />
+      ))}
+    </View>
+  );
+}
+
 /** Vue parent en lecture seule des factures de ses enfants. */
 export default function ParentPaymentsScreen() {
-  const { data, isLoading, isError } = useMyInvoices();
+  const { data, isLoading, isError, refetch } = useMyInvoices();
   const items = data?.items ?? [];
-  const pending = items
-    .filter((i) => i.status !== 'PAID' && i.status !== 'CANCELLED')
-    .reduce((acc, i) => acc + i.amount, 0);
+  const pending = sumOutstanding(items);
 
   return (
     <ScrollView
@@ -26,26 +36,35 @@ export default function ParentPaymentsScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
     >
       {isLoading ? (
-        <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+        <PaymentsSkeleton />
       ) : isError ? (
-        <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+        <ErrorState
+          message="Impossible de charger les factures."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
       ) : items.length === 0 ? (
-        <EmptyState icon="card-outline" title="Aucune facture" description="Rien à régler pour le moment." />
+        <EmptyState
+          icon="card-outline"
+          title="Aucune facture"
+          description="Rien à régler pour le moment."
+        />
       ) : (
         <>
           {pending > 0 ? (
             <View
               style={{
-                backgroundColor: '#fff7ed',
+                backgroundColor: colors.paper[100],
                 borderWidth: 1,
-                borderColor: '#fed7aa',
+                borderColor: colors.line,
                 borderRadius: radius.lg,
                 padding: 14,
                 marginBottom: 14,
               }}
             >
               <Text style={{ fontSize: 12, color: colors.ink[500] }}>Solde à régler</Text>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#d97706', marginTop: 2 }}>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: colors.ambre[500], marginTop: 2 }}>
                 {formatAmount(pending)}
               </Text>
             </View>
@@ -63,7 +82,9 @@ export default function ParentPaymentsScreen() {
                 marginBottom: 10,
               }}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View
+                style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+              >
                 <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: colors.ink[900] }}>
                   {inv.title}
                 </Text>
