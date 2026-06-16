@@ -6,6 +6,34 @@
 
 Effort estimé : **~2-4 j** (dont soak staging). Chaque phase = 1 PR mergeable et réversible.
 
+## Découpage R1 (décision utilisateur 2026-06-16 — RLS complet)
+
+Chaque sous-phase = 1 PR, gated par `RLS_SESSION_ENABLED` (OFF en prod jusqu'à la fin).
+
+- **R1.1 — Plomberie tx-de-requête (flag OFF prod, ON en CI).** `PrismaService`
+  route les délégués vers une tx de requête stockée dans le contexte ALS ;
+  `TenantContextInterceptor` ouvre la tx + `set_config('app.current_tenant'/'app.bypass_rls')`.
+  Flag activé dans le job CI `test-api` (modif workflow) → toute la suite e2e
+  exerce la plomberie ⇒ valide la justesse fonctionnelle (Postgres réel).
+- **R1.2 — Sortir l'I/O externe des transactions.** Auditer payments / notifications /
+  messaging / emails ; garantir qu'aucun `fetch` externe ne tourne pendant une tx
+  de requête (défér après-commit / fire-and-forget). Prérequis avant d'activer le
+  flag en prod (sinon pool Neon tenu pendant l'I/O).
+- **R1.3 — Rôle non-superuser en CI.** Le job CI applique les migrations en owner
+  puis fait tourner l'app/les tests via un rôle restreint (sans BYPASSRLS) ⇒ RLS
+  s'applique réellement en CI ⇒ on peut tester l'isolation (pas juste le
+  fonctionnel). Migrations via `directUrl`.
+- **R1.4 — Pilote RLS (2-3 tables).** Migration `ENABLE+FORCE` + policies ;
+  e2e d'isolation (cross-tenant brut bloqué) sous le rôle restreint.
+- **R1.5 — Généralisation** à tous les `TENANT_SCOPED_MODELS` + garde-fou CI de
+  couverture RLS + plateforme-partagés (`tenant_id IS NULL`).
+- **R1.6 — Activation prod** : rôle Neon dédié + `DIRECT_URL` + flags (runbook),
+  soak surveillé, rollback prêt (`DISABLE ROW LEVEL SECURITY`).
+
+> ⚠️ Limite de validation : la CI (Postgres simple) ne reproduit ni le pooler
+> pgbouncer Neon ni la charge → R1.6 exige un **soak côté Neon** (toggle flag)
+> avant activation des policies. Documenté pour l'utilisateur.
+
 ---
 
 ## Phase 0 — Spike de validation
