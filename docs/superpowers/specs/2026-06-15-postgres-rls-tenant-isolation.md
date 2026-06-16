@@ -122,8 +122,22 @@ réel est apparu — Prisma + le profil d'I/O de l'app le rendent coûteux :
 | **R2 — Backstops ciblés (recommandé)** | NE PAS faire RLS maintenant. Fermer en code les **mêmes trous** que RLS visait, sans son coût : (a) interdire `$queryRaw/$executeRaw` sur tables tenant sans `tenantId` explicite (lint/garde) ; (b) scoper `findUnique`/`update`/`delete` by-id ou ajouter une garde d'ownership ; (c) tests de régression d'isolation sur ces chemins ; (d) garder le test de policy RLS comme preuve, prête à activer plus tard. | Faible, autonome, sûr | Comble les gaps connus, sans garantie DB |
 | **R3 — Défer** | L'extension actuelle (solide + testée) suffit au stade actuel ; on rouvrira R1 à plus grande échelle. | Nul | Statu quo |
 
-**Recommandation** : **R2**. L'extension applicative isole déjà correctement ;
-le gain marginal de RLS ne justifie pas, au stade actuel, le refacto R1 de zones
-critiques (paiement/notifs). R2 ferme les trous *réels* (raw SQL, by-id) à coût
-faible et sûr, et on garde la preuve de policy + le plan pour activer le RLS
-complet quand l'échelle le justifiera. **À trancher par l'utilisateur.**
+**Recommandation initiale** : R2. **Décision utilisateur (2026-06-16) : R1 — RLS
+complet retenu.** On vise donc la garantie au niveau base. L'exécution est
+strictement phasée, gated par flag (`RLS_SESSION_ENABLED`, OFF en prod), et
+réversible — voir le découpage R1 dans le plan d'exécution.
+
+### Architecture R1 retenue (contrainte I/O externe)
+
+La tx-par-requête est incompatible avec les handlers qui font de l'I/O externe
+(connexion DB tenue pendant les appels réseau). R1 résout ça en **bornant la
+transaction au travail DB et en sortant tout l'I/O externe de la transaction** :
+
+- L'I/O externe (ClicToPay, Resend, SMS Orange, Expo Push) est déjà majoritairement
+  *fire-and-forget* / post-traitement ; on s'assure qu'aucun appel réseau externe
+  ne se produit pendant qu'une transaction de requête est ouverte (déféré
+  après-commit ou hors tx).
+- La transaction de requête (qui pose `set_config`) n'enveloppe que les requêtes
+  Prisma, pas les `await fetch(...)` externes.
+- `PrismaService` route les délégués vers la tx de requête (stockée dans le
+  contexte ALS) quand le flag est actif ; sinon comportement actuel inchangé.
