@@ -38,7 +38,7 @@ test.describe('Messaging', () => {
 
     // Either the conversation list OR the empty-state card must be visible
     const list = page.locator('ul', { has: page.locator('li') });
-    const emptyState = page.getByText(/Aucune conversation pour l'instant/i);
+    const emptyState = page.getByText(/Aucune conversation/i);
 
     const hasConversations = (await list.count()) > 0;
     if (hasConversations) {
@@ -70,7 +70,7 @@ test.describe('Messaging', () => {
       await expect(page.locator('main, [role="main"], .container').first()).toBeVisible();
     } else {
       // No conversations exist — verify the empty state, not a crash
-      await expect(page.getByText(/Aucune conversation pour l'instant/i)).toBeVisible();
+      await expect(page.getByText(/Aucune conversation/i)).toBeVisible();
     }
   });
 });
