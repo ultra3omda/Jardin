@@ -94,6 +94,12 @@ export class EnvironmentVariables {
   // Landing page — email address that receives demo request notifications.
   // Optional: if missing, email sending is skipped and only audit log is written.
   @IsOptional() @IsString() DEMO_REQUEST_TO_EMAIL?: string;
+
+  // R1.1 (RLS) — when 'true', each HTTP request runs in a transaction that sets
+  // the Postgres `app.current_tenant` GUC (foundation for Row-Level Security).
+  // OFF by default (any other value) → pre-RLS behaviour. Enabled in CI to
+  // exercise the plumbing; enabled in prod only after the I/O-out-of-tx refactor.
+  @IsOptional() @IsString() RLS_SESSION_ENABLED?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

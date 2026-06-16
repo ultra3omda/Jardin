@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable } from '@nestjs/common';
-import type { UserRole } from '@prisma/client';
+import type { Prisma, UserRole } from '@prisma/client';
 
 /**
  * Per-request tenant context, propagated through async calls via
@@ -20,6 +20,15 @@ export interface TenantContext {
    * Reserved for SUPER_ADMIN platform-wide operations. Defaults to false.
    */
   skipTenantFilter: boolean;
+  /**
+   * R1.1 (RLS) — request-scoped Prisma transaction client. When
+   * `RLS_SESSION_ENABLED` is on, `TenantContextInterceptor` opens one
+   * transaction per request, sets `app.current_tenant` on it, and stores it
+   * here; `PrismaService` then routes the request's queries to it so the
+   * Postgres RLS session variable is in scope. Undefined when the flag is off
+   * or outside an HTTP request (system/seed/migration paths).
+   */
+  rlsTx?: Prisma.TransactionClient;
 }
 
 @Injectable()

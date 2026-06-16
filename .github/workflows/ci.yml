@@ -68,6 +68,10 @@ jobs:
           --health-retries 10
     env:
       NODE_ENV: test
+      # R1.1 (RLS) — exercise the request-scoped transaction plumbing across the
+      # whole API suite (validates it functionally on real Postgres). RLS is not
+      # yet enabled on any table, so set_config is a harmless no-op here.
+      RLS_SESSION_ENABLED: 'true'
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecole_saas?schema=public
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 30d
