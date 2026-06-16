@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { EmptyState, Fab, colors, radius } from '@klasso/ui-mobile';
+import { EmptyState, ErrorState, Fab, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { useEvaluations, type Evaluation } from '@/lib/api/evaluations';
 import { useMyClasses } from '@/lib/api/classes';
 import { useSubjects } from '@/lib/api/subjects';
@@ -35,13 +35,18 @@ export default function EvaluationsListScreen() {
     <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} height={76} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Pressable onPress={() => void refetch()} style={{ marginTop: 24 }}>
-            <Text style={{ color: colors.status.danger500, textAlign: 'center' }}>
-              Erreur de chargement. Toucher pour réessayer.
-            </Text>
-          </Pressable>
+          <ErrorState
+            message="Impossible de charger les évaluations."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : evaluations.length === 0 ? (
           <EmptyState
             icon="document-text-outline"
