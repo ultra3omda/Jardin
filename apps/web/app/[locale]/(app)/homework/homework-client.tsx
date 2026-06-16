@@ -14,6 +14,10 @@ import {
 import { useResource } from '@/lib/hooks/use-resource';
 import { listClasses, type SchoolClass } from '@/lib/api/classes';
 import { useToast } from '@/lib/ui/use-toast';
+import { BookOpen } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
 
 const INPUT =
   'h-10 w-full rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500';
@@ -152,33 +156,20 @@ export function HomeworkClient() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-2" role="status" aria-label="Chargement des devoirs">
+        <div className="space-y-2" role="status" aria-busy="true">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
           ))}
         </div>
       ) : isError ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-10 text-center dark:border-rose-900/40 dark:bg-rose-900/10">
-          <p className="text-sm text-rose-700 dark:text-rose-300">Impossible de charger les devoirs.</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="mt-4 text-sm font-medium text-rose-700 hover:underline dark:text-rose-300"
-          >
-            Réessayer
-          </button>
-        </div>
+        <ErrorRetry message="Impossible de charger les devoirs." onRetry={() => { void refetch(); }} />
       ) : items.length === 0 ? (
-        <div className="rounded-xl border bg-card p-10 text-center">
-          <p className="text-sm text-muted-foreground">Aucun devoir pour l&apos;instant.</p>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="mt-4 text-sm font-medium text-primary hover:underline"
-          >
-            Créer le premier devoir →
-          </button>
-        </div>
+        <EmptyState
+          icon={<BookOpen className="h-8 w-8" aria-hidden="true" />}
+          title="Aucun devoir pour l'instant"
+          description="Créez le premier devoir pour cette classe."
+          action={{ label: 'Créer le premier devoir', onClick: openCreate }}
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-card">
           <table className="min-w-full divide-y divide-border">
