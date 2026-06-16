@@ -4,7 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { Link } from '@/i18n/routing';
+import { ClipboardList } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { PageHeader } from '@/components/ui/page-header';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
+import { parseScoreInput } from '@/lib/grades/score-input';
 
 interface SubjectDto {
   id: string;
@@ -133,6 +139,8 @@ export function GradesClient({ classId }: Props): JSX.Element {
 
   const selectedPeriod = periodsQ.data?.items.find((p) => p.id === selectedPeriodId);
   const isClosed = selectedPeriod?.isClosed ?? false;
+  const primaryLoading =
+    classQ.isLoading || subjectsQ.isLoading || periodsQ.isLoading || studentsQ.isLoading;
 
   const createEval = useMutation({
     mutationFn: async () => {
@@ -180,15 +188,17 @@ export function GradesClient({ classId }: Props): JSX.Element {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold">
-        Notes — {cls?.name}{' '}
-        {cls && (
-          <span className="text-sm font-normal text-muted-foreground">
-            ({cls.level} {cls.schoolYear})
-          </span>
-        )}
-      </h1>
+      <PageHeader
+        title={cls ? `Notes — ${cls.name}` : 'Notes'}
+        description={cls ? `${cls.level} ${cls.schoolYear}` : 'Saisie des notes par évaluation.'}
+      />
 
+      {primaryLoading ? (
+        <TableSkeleton rows={6} cols={2} />
+      ) : classQ.isError ? (
+        <ErrorRetry message="Impossible de charger la classe." onRetry={() => void classQ.refetch()} />
+      ) : (
+        <>
       <div className="flex flex-wrap gap-3 items-center">
         <label htmlFor="period" className="font-medium">
           Période :
@@ -299,23 +309,30 @@ export function GradesClient({ classId }: Props): JSX.Element {
       )}
 
       <div className="space-y-6">
-        {evaluationsQ.data?.items.length === 0 && (
-          <p className="text-gray-500">Aucune évaluation pour cette période.</p>
-        )}
-        {evaluationsQ.data?.items.map((evaluation) => (
-          <EvaluationCard
-            key={evaluation.id}
-            evaluation={evaluation}
-            students={studentsQ.data?.items ?? []}
-            subjects={subjectsQ.data?.items ?? []}
-            isClosed={isClosed}
-            accessToken={accessToken}
-            onScoreChange={(studentId, score) =>
-              upsertGrade.mutate({ evaluationId: evaluation.id, studentId, score })
-            }
+        {evaluationsQ.data?.items.length === 0 ? (
+          <EmptyState
+            icon={<ClipboardList className="h-8 w-8" aria-hidden="true" />}
+            title="Aucune évaluation"
+            description="Aucune évaluation pour cette période. Créez-en une ci-dessus."
           />
-        ))}
+        ) : (
+          evaluationsQ.data?.items.map((evaluation) => (
+            <EvaluationCard
+              key={evaluation.id}
+              evaluation={evaluation}
+              students={studentsQ.data?.items ?? []}
+              subjects={subjectsQ.data?.items ?? []}
+              isClosed={isClosed}
+              accessToken={accessToken}
+              onScoreChange={(studentId, score) =>
+                upsertGrade.mutate({ evaluationId: evaluation.id, studentId, score })
+              }
+            />
+          ))
+        )}
       </div>
+        </>
+      )}
     </div>
   );
 }
@@ -396,10 +413,8 @@ function EvaluationCard({
                       disabled={isClosed}
                       aria-label={`Note ${st.lastName} ${st.firstName}`}
                       onBlur={(e) => {
-                        const v = e.target.value;
-                        if (v === '') return;
-                        const n = Number(v);
-                        if (Number.isFinite(n) && n !== current) onScoreChange(st.id, n);
+                        const n = parseScoreInput(e.target.value, evaluation.maxScore);
+                        if (n !== null && n !== current) onScoreChange(st.id, n);
                       }}
                       className="border rounded px-2 py-1 w-24 text-right disabled:bg-gray-100"
                     />

@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { ClipboardList } from 'lucide-react';
+import { Link } from '@/i18n/routing';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { PageHeader } from '@/components/ui/page-header';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
 
 interface Evaluation { id: string; title: string; date: string; maxScore: number; classId: string; subjectId: string; gradePeriodId: string }
 interface ClassOption { id: string; name: string }
@@ -24,8 +30,7 @@ export default function EvaluationsPage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   const [periods, setPeriods] = useState<PeriodOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [filterClass, setFilterClass] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterPeriod, setFilterPeriod] = useState('');
@@ -37,30 +42,23 @@ export default function EvaluationsPage() {
 
   const load = useCallback(async () => {
     if (!token) return;
-    setLoading(true); setFetchError(null);
-    try {
-      const [evRes, clRes, subRes, perRes] = await Promise.allSettled([
-        apiFetch<{ items: Evaluation[] }>('/api/evaluations', token),
-        apiFetch<{ items: ClassOption[] }>('/api/classes', token),
-        apiFetch<{ items: SubjectOption[] }>('/api/subjects', token),
-        apiFetch<{ items: PeriodOption[] }>('/api/grade-periods', token),
-      ]);
-      const evItems = evRes.status === 'fulfilled' ? (evRes.value?.items ?? []) : [];
-      const clItems = clRes.status === 'fulfilled' ? (clRes.value?.items ?? []) : [];
-      const subItems = subRes.status === 'fulfilled' ? (subRes.value?.items ?? []) : [];
-      const perItems = perRes.status === 'fulfilled' ? (perRes.value?.items ?? []) : [];
-
-      setEvaluations(evItems);
-      setClasses(clItems);
-      setSubjects(subItems);
-      setPeriods(perItems);
-    } catch (e) {
-      setEvaluations([]);
-      setClasses([]);
-      setSubjects([]);
-      setPeriods([]);
-      setFetchError(e instanceof Error ? e.message : 'Erreur');
-    } finally { setLoading(false); }
+    setLoadState('loading');
+    const [evRes, clRes, subRes, perRes] = await Promise.allSettled([
+      apiFetch<{ items: Evaluation[] }>('/api/evaluations', token),
+      apiFetch<{ items: ClassOption[] }>('/api/classes', token),
+      apiFetch<{ items: SubjectOption[] }>('/api/subjects', token),
+      apiFetch<{ items: PeriodOption[] }>('/api/grade-periods', token),
+    ]);
+    // The evaluations list is the primary data — its failure is a load error.
+    if (evRes.status === 'rejected') {
+      setLoadState('error');
+      return;
+    }
+    setEvaluations(evRes.value?.items ?? []);
+    setClasses(clRes.status === 'fulfilled' ? clRes.value?.items ?? [] : []);
+    setSubjects(subRes.status === 'fulfilled' ? subRes.value?.items ?? [] : []);
+    setPeriods(perRes.status === 'fulfilled' ? perRes.value?.items ?? [] : []);
+    setLoadState('ready');
   }, [token]);
 
   useEffect(() => { void load(); }, [load]);
@@ -87,7 +85,7 @@ export default function EvaluationsPage() {
       await apiFetch(`/api/evaluations/${id}`, token, { method: 'DELETE' });
       void load();
     } catch (e) {
-      setFetchError(e instanceof Error ? e.message : 'Suppression impossible');
+      alert(e instanceof Error ? e.message : 'Suppression impossible.');
     }
   }
   async function handleSubmit(e: React.FormEvent) {
@@ -112,15 +110,15 @@ export default function EvaluationsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900">Évaluations</h1>
-          <p className="text-sm text-muted-foreground">Planifiez et gérez les évaluations.</p>
-        </div>
-        <button onClick={openCreate} className="inline-flex h-10 items-center rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 text-sm font-medium text-white">
-          + Nouvelle évaluation
-        </button>
-      </header>
+      <PageHeader
+        title="Évaluations"
+        description="Planifiez et gérez les évaluations."
+        actions={
+          <button onClick={openCreate} className="inline-flex h-10 items-center rounded-md bg-ambre-500 px-4 text-sm font-medium text-white hover:bg-ambre-600">
+            + Nouvelle évaluation
+          </button>
+        }
+      />
 
       <div className="flex flex-wrap gap-3">
         <select className="rounded-md border px-3 py-2 text-sm" value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
@@ -137,8 +135,16 @@ export default function EvaluationsPage() {
         </select>
       </div>
 
-      {loading ? <p className="text-sm text-muted-foreground">Chargement…</p> : filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">Aucune évaluation.</div>
+      {loadState === 'loading' ? (
+        <TableSkeleton rows={5} cols={7} />
+      ) : loadState === 'error' ? (
+        <ErrorRetry message="Impossible de charger les évaluations." onRetry={() => void load()} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<ClipboardList className="h-8 w-8" aria-hidden="true" />}
+          title="Aucune évaluation"
+          description="Créez une évaluation pour commencer la saisie des notes."
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
           <table className="w-full text-sm">
@@ -165,7 +171,7 @@ export default function EvaluationsPage() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button onClick={() => openEdit(ev)} className="text-xs text-blue-600 hover:underline">Modifier</button>
-                      <a href={`/classes/${ev.classId}/grades`} className="text-xs text-green-600 hover:underline">Notes</a>
+                      <Link href={`/classes/${ev.classId}/grades` as never} className="text-xs text-green-600 hover:underline">Notes</Link>
                       <button onClick={() => void handleDelete(ev.id)} className="text-xs text-red-600 hover:underline">Supprimer</button>
                     </div>
                   </td>
