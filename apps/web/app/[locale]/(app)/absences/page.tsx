@@ -186,23 +186,25 @@ function StaffAbsencesView() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900">Absences &amp; Présences</h1>
-          <p className="text-sm text-muted-foreground">Enregistrez les présences journalières des élèves.</p>
-        </div>
-        <button onClick={() => void handleSave()} disabled={saving || students.length === 0}
-          className="inline-flex h-10 items-center rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 text-sm font-medium text-white disabled:opacity-50">
-          {saving ? 'Enregistrement…' : saved ? 'Enregistré ✓' : 'Enregistrer'}
-        </button>
-      </header>
+      <PageHeader
+        title="Absences & Présences"
+        description="Enregistrez les présences journalières des élèves."
+        actions={
+          <button onClick={() => void handleSave()} disabled={saving || students.length === 0}
+            className="inline-flex h-10 items-center rounded-md bg-ambre-500 px-4 text-sm font-medium text-white hover:bg-ambre-600 disabled:opacity-50">
+            {saving ? 'Enregistrement…' : saved ? 'Enregistré ✓' : 'Enregistrer'}
+          </button>
+        }
+      />
 
       <div className="flex flex-wrap gap-3">
-        <select className="rounded-md border px-3 py-2 text-sm" value={selectedClass}
+        <label htmlFor="attendance-class" className="sr-only">Classe</label>
+        <select id="attendance-class" className="rounded-md border px-3 py-2 text-sm" value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)} disabled={loadingClasses}>
           {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <input type="date" className="rounded-md border px-3 py-2 text-sm" value={selectedDate}
+        <label htmlFor="attendance-date" className="sr-only">Date</label>
+        <input id="attendance-date" type="date" className="rounded-md border px-3 py-2 text-sm" value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)} />
       </div>
 
@@ -217,15 +219,19 @@ function StaffAbsencesView() {
       )}
 
       {fetchError && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Erreur : {fetchError}
         </div>
       )}
 
-      {loadingStudents ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
+      {loadingClasses || loadingStudents ? (
+        <TableSkeleton rows={6} cols={5} />
       ) : students.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">Aucun élève dans cette classe.</div>
+        <EmptyState
+          icon={<CalendarCheck className="h-8 w-8" aria-hidden="true" />}
+          title="Aucun élève"
+          description="Aucun élève dans cette classe pour cette date."
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
           <table className="w-full text-sm">
