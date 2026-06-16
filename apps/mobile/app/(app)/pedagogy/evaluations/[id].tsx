@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 
-import { Button, colors, radius } from '@klasso/ui-mobile';
+import { Button, EmptyState, ErrorState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import {
   upsertGrade,
   useEvaluationDetail,
@@ -80,11 +80,24 @@ export default function GradeEntryScreen() {
       </Text>
 
       {loading ? (
-        <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+        <View style={{ gap: 8 }} accessibilityRole="progressbar">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} height={56} radius={radius.lg} />
+          ))}
+        </View>
       ) : detail.isError ? (
-        <Text style={{ color: colors.status.danger500 }}>Impossible de charger l&apos;évaluation.</Text>
+        <ErrorState
+          message="Impossible de charger l'évaluation."
+          onRetry={() => {
+            void detail.refetch();
+          }}
+        />
       ) : students.length === 0 ? (
-        <Text style={{ color: colors.ink[500] }}>Aucun élève dans cette classe.</Text>
+        <EmptyState
+          icon="people-outline"
+          title="Aucun élève"
+          description="Aucun élève dans cette classe."
+        />
       ) : (
         <View>
           {students.map((s) => (
