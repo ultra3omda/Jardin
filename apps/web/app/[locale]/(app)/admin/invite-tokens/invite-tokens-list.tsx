@@ -3,6 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { Mail } from 'lucide-react';
+
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   listInviteTokens,
   revokeInviteToken,
@@ -54,7 +58,7 @@ export function InviteTokensList() {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Chargement…</p>;
+    return <TableSkeleton rows={5} cols={6} />;
   }
 
   // On API error (e.g. demo mode without a reachable backend) fall through to
@@ -74,16 +78,12 @@ export function InviteTokensList() {
       </div>
 
       {tokens.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">Aucun token d&apos;invitation.</p>
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="mt-3 text-sm font-medium text-primary hover:underline"
-          >
-            Créer le premier →
-          </button>
-        </div>
+        <EmptyState
+          icon={<Mail className="h-8 w-8" aria-hidden="true" />}
+          title="Aucune invitation"
+          description="Créez un token d'invitation pour un nouvel utilisateur."
+          action={{ label: 'Créer une invitation', onClick: () => setShowCreateModal(true) }}
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="min-w-full divide-y divide-border">
