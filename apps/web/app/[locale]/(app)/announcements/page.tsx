@@ -1,8 +1,13 @@
 ﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Megaphone } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
 import { useCircularAttachmentUploadUrl } from '@/lib/api/calendar';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
 
 type AnnouncementKind = 'NEWS' | 'CIRCULAIRE';
 
@@ -53,7 +58,7 @@ export default function AnnouncementsPage() {
   const isAdmin = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadState, setLoadState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Announcement | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
@@ -73,13 +78,14 @@ export default function AnnouncementsPage() {
 
   const load = useCallback(async () => {
     if (!token) return;
-    setLoading(true);
+    setLoadState('loading');
     try {
       const data = await apiFetch<{ items: Announcement[] }>('/api/announcements', token);
       setAnnouncements(data.items ?? []);
+      setLoadState('ready');
     } catch {
-      setAnnouncements([]);
-    } finally { setLoading(false); }
+      setLoadState('error');
+    }
   }, [token]);
 
   useEffect(() => { void load(); }, [load]);
@@ -149,22 +155,32 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900">Annonces</h1>
-          <p className="text-sm text-muted-foreground">Publiez et consultez les annonces de l&apos;établissement.</p>
-        </div>
-        {isAdmin && (
-          <button onClick={openCreate} className="inline-flex h-10 items-center rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 text-sm font-medium text-white">
-            + Nouvelle annonce
-          </button>
-        )}
-      </header>
+      <PageHeader
+        title="Annonces"
+        description="Publiez et consultez les annonces de l'établissement."
+        actions={
+          isAdmin ? (
+            <button onClick={openCreate} className="inline-flex h-10 items-center rounded-md bg-ambre-500 px-4 text-sm font-medium text-white hover:bg-ambre-600">
+              + Nouvelle annonce
+            </button>
+          ) : undefined
+        }
+      />
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
+      {loadState === 'loading' ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : loadState === 'error' ? (
+        <ErrorRetry message="Impossible de charger les annonces." onRetry={() => void load()} />
       ) : displayed.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">Aucune annonce publiée.</div>
+        <EmptyState
+          icon={<Megaphone className="h-8 w-8" aria-hidden="true" />}
+          title="Aucune annonce publiée"
+          description="Les annonces de l'établissement apparaîtront ici."
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {displayed.map((a) => (

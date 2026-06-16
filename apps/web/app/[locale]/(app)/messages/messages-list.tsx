@@ -1,28 +1,41 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { MessageSquare } from 'lucide-react';
 
 import { Link } from '@/i18n/routing';
-import { listConversations, type Conversation } from '@/lib/api/messaging';
+import { listConversations } from '@/lib/api/messaging';
+import { otherParticipant, formatConversationPreview } from '@/lib/messaging/conversation';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
 
-function otherParticipant(c: Conversation, currentUserId: string) {
-  return c.participants.find((p) => p.userId !== currentUserId);
-}
-
-function formatPreview(c: Conversation, currentUserId: string): string {
-  if (!c.lastMessage) return 'Conversation ouverte. Aucun message encore.';
-  const prefix = c.lastMessage.senderId === currentUserId ? 'Vous : ' : '';
-  const body =
-    c.lastMessage.body.length > 80 ? `${c.lastMessage.body.slice(0, 77)}…` : c.lastMessage.body;
-  return `${prefix}${body}`;
+function ConversationSkeleton() {
+  return (
+    <div
+      className="divide-y divide-border overflow-hidden rounded-lg border bg-card"
+      role="status"
+      aria-busy="true"
+    >
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-4">
+          <Skeleton className="h-10 w-10 flex-none rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3.5 w-1/3" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function MessagesList() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const currentUser = useAuthStore((s) => s.user);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['messaging', 'conversations'],
     queryFn: () => listConversations(accessToken!),
     enabled: !!accessToken,
@@ -32,17 +45,21 @@ export function MessagesList() {
   if (!accessToken || !currentUser) {
     return <p className="text-sm text-muted-foreground">Authentification requise.</p>;
   }
-  if (isLoading) return <p className="text-sm text-muted-foreground">Chargement...</p>;
+  if (isLoading) return <ConversationSkeleton />;
+  if (isError) {
+    return (
+      <ErrorRetry message="Impossible de charger les conversations." onRetry={() => void refetch()} />
+    );
+  }
 
   const items = data?.items ?? [];
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border bg-card p-8 text-center">
-        <p className="text-sm text-muted-foreground">Aucune conversation pour l&apos;instant.</p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Démarrez une conversation depuis la fiche d&apos;un parent ou d&apos;un élève.
-        </p>
-      </div>
+      <EmptyState
+        icon={<MessageSquare className="h-8 w-8" aria-hidden="true" />}
+        title="Aucune conversation"
+        description="Démarrez une conversation depuis la fiche d'un parent ou d'un élève."
+      />
     );
   }
 
@@ -75,7 +92,7 @@ export function MessagesList() {
                   </span>
                 </div>
                 <p className="mt-1 truncate text-sm text-muted-foreground">
-                  {formatPreview(c, currentUser.id)}
+                  {formatConversationPreview(c, currentUser.id)}
                 </p>
               </div>
               {c.unreadCount > 0 && (

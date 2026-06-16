@@ -11,6 +11,7 @@ import {
   type Message,
 } from '@/lib/api/messaging';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   connectMessagingSocket,
   emitMarkRead,
@@ -127,7 +128,11 @@ export function ConversationThread({ conversationId }: Props) {
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto bg-muted/20 px-4 py-6">
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Chargement de l&apos;historique…</p>
+          <div className="space-y-3" role="status" aria-busy="true">
+            <Skeleton className="h-12 w-2/3 rounded-2xl" />
+            <Skeleton className="ms-auto h-12 w-1/2 rounded-2xl" />
+            <Skeleton className="h-12 w-3/5 rounded-2xl" />
+          </div>
         ) : allMessages.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Aucun message. Commencez la conversation.
@@ -161,7 +166,7 @@ export function ConversationThread({ conversationId }: Props) {
       </div>
 
       {error && (
-        <p className="border-t border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700">
+        <p role="alert" className="border-t border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700">
           {error}
         </p>
       )}
