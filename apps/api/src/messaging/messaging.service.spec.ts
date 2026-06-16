@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import { MessagingService } from './messaging.service';
 
@@ -52,6 +53,14 @@ describe('MessagingService', () => {
         MessagingService,
         { provide: PrismaService, useValue: prisma },
         { provide: NotificationFanoutService, useValue: fanout },
+        {
+          provide: TenantContextService,
+          useValue: {
+            runDetached: (fn: () => unknown) => {
+              void Promise.resolve().then(fn).catch(() => undefined);
+            },
+          },
+        },
       ],
     }).compile();
     service = module.get(MessagingService);

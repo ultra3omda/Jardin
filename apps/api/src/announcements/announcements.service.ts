@@ -4,6 +4,7 @@ import { AnnouncementAudience, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import {
   AnnouncementResponseDto,
@@ -17,6 +18,7 @@ export class AnnouncementsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   private toDto(a: {
@@ -63,7 +65,10 @@ export class AnnouncementsService {
       include: { author: { select: { firstName: true, lastName: true } } },
     });
     // V10 — fan-out the announcement to its audience. Fire-and-forget.
-    void this.fanoutAnnouncementNotification(user.tenantId, row.audience, row.title, user.id);
+    const notifyTenantId = user.tenantId;
+    this.tenantContext.runDetached(() =>
+      this.fanoutAnnouncementNotification(notifyTenantId, row.audience, row.title, user.id),
+    );
     return this.toDto(row);
   }
 

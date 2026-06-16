@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
+import type { TenantContextService } from '../common/tenant/tenant-context.service';
 import { EvaluationsService } from './evaluations.service';
 
 const adminUser = {
@@ -44,7 +45,11 @@ describe('EvaluationsService', () => {
     prisma = buildPrismaMock();
     const fanout = { fanoutGrade: vi.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new EvaluationsService(prisma as any, fanout as any);
+    service = new EvaluationsService(prisma as any, fanout as any, {
+      runDetached: (fn: () => unknown) => {
+        void Promise.resolve().then(fn).catch(() => undefined);
+      },
+    } as unknown as TenantContextService);
   });
 
   const baseCreateDto = {

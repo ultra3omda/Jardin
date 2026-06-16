@@ -4,6 +4,7 @@ import { AttendanceStatus } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import {
   AttendanceEntryDto,
@@ -22,6 +23,7 @@ export class AttendanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   private toDto(a: {
@@ -109,7 +111,10 @@ export class AttendanceService {
       ),
     );
     // V10 — notify parents of any newly recorded absence. Fire-and-forget.
-    void this.fanoutAbsences(user.tenantId, dateObj, dto.entries);
+    const notifyTenantId = user.tenantId;
+    this.tenantContext.runDetached(() =>
+      this.fanoutAbsences(notifyTenantId, dateObj, dto.entries),
+    );
     return results.map((r) => this.toDto(r));
   }
 

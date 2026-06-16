@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import type { PrismaService } from '../common/prisma/prisma.service';
+import type { TenantContextService } from '../common/tenant/tenant-context.service';
 import type { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import { InfirmaryVisitsService } from './infirmary-visits.service';
 
@@ -55,6 +56,11 @@ describe('InfirmaryVisitsService', () => {
     service = new InfirmaryVisitsService(
       prisma as unknown as PrismaService,
       fanout as unknown as NotificationFanoutService,
+      {
+        runDetached: (fn: () => unknown) => {
+          void Promise.resolve().then(fn).catch(() => undefined);
+        },
+      } as unknown as TenantContextService,
     );
   });
 

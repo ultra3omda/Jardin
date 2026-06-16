@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import { createTenantExtension } from './tenant.extension';
 
@@ -47,10 +47,38 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }),
     ) as unknown as Record<string | symbol, unknown>;
 
+    // R1.1 (RLS) — read once at construction. When OFF (default everywhere
+    // except the CI test job and, later, opted-in prod), the routing branch
+    // below is skipped entirely and the Proxy behaves byte-for-byte as before.
+    const rlsSessionEnabled = process.env.RLS_SESSION_ENABLED === 'true';
+
     return new Proxy(this, {
       get: (target, prop) => {
         if (RAW_CLIENT_PROPS.has(prop) || typeof prop === 'symbol') {
           return Reflect.get(target, prop);
+        }
+        // When a request-scoped RLS transaction is active (HTTP request + flag
+        // on), route the query surface to it so the `app.current_tenant` GUC
+        // set on that transaction is in scope. The interceptor's own
+        // `$transaction` that OPENS this tx still falls through (rlsTx is unset
+        // at that point). Service-level `$transaction` calls join the ambient
+        // request tx rather than opening a separate (GUC-less) one.
+        if (rlsSessionEnabled) {
+          const ctxTx = tenantContext.get()?.rlsTx;
+          if (ctxTx) {
+            if (prop === '$transaction') {
+              return (arg: unknown) =>
+                Array.isArray(arg)
+                  ? Promise.all(arg as Array<Promise<unknown>>)
+                  : (arg as (client: Prisma.TransactionClient) => unknown)(ctxTx);
+            }
+            const txValue = (ctxTx as unknown as Record<string | symbol, unknown>)[prop];
+            if (txValue !== undefined) {
+              return typeof txValue === 'function'
+                ? (txValue as (...a: unknown[]) => unknown).bind(ctxTx)
+                : txValue;
+            }
+          }
         }
         const guardedValue = guarded[prop];
         if (guardedValue === undefined) {

@@ -9,6 +9,7 @@ import { Prisma, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
   AdminClassPerfDto,
@@ -28,6 +29,7 @@ export class EvaluationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   // ───── Evaluations ─────
@@ -189,7 +191,10 @@ export class EvaluationsService {
       update: { score: dto.score },
     });
     // V10 — notify the student's parents of the new/updated grade. Fire-and-forget.
-    void this.fanoutGradeNotification(user.tenantId, evaluation, dto.studentId);
+    const notifyTenantId = user.tenantId;
+    this.tenantContext.runDetached(() =>
+      this.fanoutGradeNotification(notifyTenantId, evaluation, dto.studentId),
+    );
     return this.toGradeResponse(upserted);
   }
 

@@ -10,6 +10,7 @@ import { Prisma, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
   ContactsResponseDto,
@@ -38,6 +39,7 @@ export class MessagingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   // ───── Conversations ─────
@@ -162,7 +164,9 @@ export class MessagingService {
     });
     // V10 — fan-out a notification to the other participant(s). Fire-and-forget:
     // delivery never blocks (or fails) the message send.
-    void this.fanoutNewMessage(conversation.tenantId, dto.conversationId, user);
+    this.tenantContext.runDetached(() =>
+      this.fanoutNewMessage(conversation.tenantId, dto.conversationId, user),
+    );
     return this.toMessageResponse(created);
   }
 
