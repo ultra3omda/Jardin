@@ -1,22 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { CalendarCheck } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { PageHeader } from '@/components/ui/page-header';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
+import {
+  AttendanceStatusBadge,
+  ATTENDANCE_STATUS_LABELS as STATUS_LABELS,
+  ATTENDANCE_STATUS_TONE as STATUS_COLORS,
+  type AttendanceStatus,
+} from '@/components/attendance/attendance-status-badge';
 
 interface ClassOption { id: string; name: string }
 interface Student { id: string; firstName: string; lastName: string; classroom: string }
 interface AttendanceRecord { studentId: string; status: AttendanceStatus; notes?: string }
-type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
-
-const STATUS_LABELS: Record<AttendanceStatus, string> = {
-  PRESENT: 'Présent', ABSENT: 'Absent', LATE: 'Retard', EXCUSED: 'Excusé',
-};
-const STATUS_COLORS: Record<AttendanceStatus, string> = {
-  PRESENT: 'bg-green-100 text-green-800 border-green-300',
-  ABSENT: 'bg-red-100 text-red-800 border-red-300',
-  LATE: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  EXCUSED: 'bg-slate-100 text-slate-700 border-slate-300',
-};
 
 async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -39,30 +39,35 @@ interface MyChildAttendance { studentId: string; studentName: string; date: stri
 function ParentAbsencesView() {
   const token = useAuthStore((s) => s.accessToken);
   const [rows, setRows] = useState<MyChildAttendance[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadState, setLoadState] = useState<'loading' | 'error' | 'ready'>('loading');
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!token) return;
-    setLoading(true);
+    setLoadState('loading');
     apiFetch<{ items: MyChildAttendance[] }>('/api/attendance/my-children', token)
-      .then((d) => setRows(d?.items ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false));
+      .then((d) => { setRows(d?.items ?? []); setLoadState('ready'); })
+      .catch(() => setLoadState('error'));
   }, [token]);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Présences de mes enfants</h1>
-        <p className="text-sm text-muted-foreground">Suivez les présences et absences de vos enfants.</p>
-      </header>
+      <PageHeader
+        title="Présences de mes enfants"
+        description="Suivez les présences et absences de vos enfants."
+      />
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
+      {loadState === 'loading' ? (
+        <TableSkeleton rows={5} cols={3} />
+      ) : loadState === 'error' ? (
+        <ErrorRetry message="Impossible de charger les présences." onRetry={() => load()} />
       ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          Aucun relevé de présence pour le moment.
-        </div>
+        <EmptyState
+          icon={<CalendarCheck className="h-8 w-8" aria-hidden="true" />}
+          title="Aucun relevé de présence"
+          description="Les présences de vos enfants apparaîtront ici."
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
           <table className="w-full text-sm">
@@ -81,9 +86,7 @@ function ParentAbsencesView() {
                     {new Date(r.date).toLocaleDateString('fr-FR')}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[r.status]}`}>
-                      {STATUS_LABELS[r.status]}
-                    </span>
+                    <AttendanceStatusBadge status={r.status} />
                   </td>
                 </tr>
               ))}
