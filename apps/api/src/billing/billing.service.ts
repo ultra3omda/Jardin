@@ -9,6 +9,7 @@ import { InvoiceStatus, Prisma, UserRole } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 
@@ -37,6 +38,7 @@ export class BillingService {
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
     private readonly invoicePdf: InvoicePdfService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   // ───── PDF ─────
@@ -226,7 +228,10 @@ export class BillingService {
 
     // V10 — notify the student's parents of the new invoice. Fire-and-forget.
     if (dto.studentId) {
-      void this.fanoutInvoiceNotification(tenantId, dto.studentId, Number(invoiceAmount));
+      const notifyStudentId = dto.studentId;
+      this.tenantContext.runDetached(() =>
+        this.fanoutInvoiceNotification(tenantId, notifyStudentId, Number(invoiceAmount)),
+      );
     }
 
     return this.toInvoiceResponse(created);

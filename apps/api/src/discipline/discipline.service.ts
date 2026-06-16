@@ -4,6 +4,7 @@ import { createId } from '@paralleldrive/cuid2';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
   CreateDisciplineIncidentDto,
@@ -21,6 +22,7 @@ export class DisciplineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   private async parentStudentIds(tenantId: string, parentUserId: string): Promise<string[]> {
@@ -91,11 +93,14 @@ export class DisciplineService {
       include: { student: true },
     });
     // T2b — notify the student's parents. Fire-and-forget; never blocks creation.
-    void this.fanoutIncident(
-      user.tenantId,
-      dto.studentId,
-      `${student.firstName} ${student.lastName}`.trim(),
-      dto.type,
+    const notifyTenantId = user.tenantId;
+    this.tenantContext.runDetached(() =>
+      this.fanoutIncident(
+        notifyTenantId,
+        dto.studentId,
+        `${student.firstName} ${student.lastName}`.trim(),
+        dto.type,
+      ),
     );
     return this.toResponse(row);
   }

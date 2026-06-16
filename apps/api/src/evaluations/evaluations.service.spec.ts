@@ -44,7 +44,11 @@ describe('EvaluationsService', () => {
     prisma = buildPrismaMock();
     const fanout = { fanoutGrade: vi.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new EvaluationsService(prisma as any, fanout as any);
+    service = new EvaluationsService(prisma as any, fanout as any, {
+      runDetached: (fn: () => unknown) => {
+        void Promise.resolve().then(fn).catch(() => undefined);
+      },
+    } as any);
   });
 
   const baseCreateDto = {

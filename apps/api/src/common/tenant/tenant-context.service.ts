@@ -57,4 +57,25 @@ export class TenantContextService {
   shouldSkipTenantFilter(): boolean {
     return this.als.getStore()?.skipTenantFilter ?? false;
   }
+
+  /**
+   * R1.1 (RLS) — run fire-and-forget background work (e.g. notification
+   * fan-out) DETACHED from the current request's transaction. It keeps the
+   * tenant identity (tenantId/role/userId) but drops `rlsTx`, so its queries go
+   * to the normal pooled client instead of the request transaction — which has
+   * already committed by the time the background work runs (otherwise: P2028
+   * "transaction already closed"). Errors are swallowed (callers log their own).
+   *
+   * Deferred to a microtask so it never adds latency to the triggering request.
+   */
+  runDetached(work: () => Promise<unknown>): void {
+    const current = this.als.getStore();
+    const run =
+      current === undefined
+        ? work
+        : () => this.als.run({ ...current, rlsTx: undefined }, work);
+    void Promise.resolve()
+      .then(run)
+      .catch(() => undefined);
+  }
 }

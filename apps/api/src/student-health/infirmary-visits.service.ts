@@ -4,6 +4,7 @@ import { createId } from '@paralleldrive/cuid2';
 
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { NotificationFanoutService } from '../notifications/notification-fanout.service';
 import type {
   CreateInfirmaryVisitDto,
@@ -26,6 +27,7 @@ export class InfirmaryVisitsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fanout: NotificationFanoutService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   private async parentStudentIds(tenantId: string, parentUserId: string): Promise<string[]> {
@@ -102,11 +104,14 @@ export class InfirmaryVisitsService {
       include: { student: true },
     });
     if (NOTIFY_OUTCOMES.has(outcome)) {
-      void this.fanoutVisit(
-        user.tenantId,
-        dto.studentId,
-        `${student.firstName} ${student.lastName}`.trim(),
-        outcome as 'SENT_HOME' | 'EMERGENCY',
+      const notifyTenantId = user.tenantId;
+      this.tenantContext.runDetached(() =>
+        this.fanoutVisit(
+          notifyTenantId,
+          dto.studentId,
+          `${student.firstName} ${student.lastName}`.trim(),
+          outcome as 'SENT_HOME' | 'EMERGENCY',
+        ),
       );
     }
     return this.toResponse(row);
@@ -140,11 +145,14 @@ export class InfirmaryVisitsService {
       NOTIFY_OUTCOMES.has(dto.outcome) &&
       !NOTIFY_OUTCOMES.has(existing.outcome)
     ) {
-      void this.fanoutVisit(
-        user.tenantId,
-        existing.studentId,
-        `${existing.student.firstName} ${existing.student.lastName}`.trim(),
-        dto.outcome as 'SENT_HOME' | 'EMERGENCY',
+      const notifyTenantId = user.tenantId;
+      this.tenantContext.runDetached(() =>
+        this.fanoutVisit(
+          notifyTenantId,
+          existing.studentId,
+          `${existing.student.firstName} ${existing.student.lastName}`.trim(),
+          dto.outcome as 'SENT_HOME' | 'EMERGENCY',
+        ),
       );
     }
     return this.toResponse(row);

@@ -23,7 +23,11 @@ describe('AttendanceService.myChildrenAttendance', () => {
 
   beforeEach(() => {
     prisma = buildPrisma();
-    service = new AttendanceService(prisma as any, { fanoutAbsence: vi.fn() } as any);
+    service = new AttendanceService(
+      prisma as any,
+      { fanoutAbsence: vi.fn() } as any,
+      { runDetached: (fn: () => unknown) => { void Promise.resolve().then(fn).catch(() => undefined); } } as any,
+    );
   });
 
   it('returns empty when the parent has no children', async () => {
