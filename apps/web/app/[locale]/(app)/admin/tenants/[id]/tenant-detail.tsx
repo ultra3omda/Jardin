@@ -4,7 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@/i18n/routing';
 import { useState } from 'react';
 
+import { Building2 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
 import {
   getTenant,
   resendInvite,
@@ -17,7 +22,7 @@ export function TenantDetail({ id }: { id: string }) {
   const queryClient = useQueryClient();
   const [resentInvite, setResentInvite] = useState<InviteSummary | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin', 'tenant', id],
     queryFn: () => getTenant(accessToken!, id),
     enabled: !!accessToken,
@@ -33,8 +38,32 @@ export function TenantDetail({ id }: { id: string }) {
     },
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Chargement...</p>;
-  if (!tenant) return <p className="text-sm text-muted-foreground">École introuvable.</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-40 w-full rounded-lg" />
+      </div>
+    );
+  }
+  if (isError) {
+    return <ErrorRetry message="Impossible de charger l'établissement." onRetry={() => void refetch()} />;
+  }
+  if (!tenant) {
+    return (
+      <EmptyState
+        icon={<Building2 className="h-8 w-8" aria-hidden="true" />}
+        title="École introuvable"
+        description="Cet établissement n'existe pas ou n'est plus accessible."
+        action={{ label: 'Toutes les écoles', href: '/admin/tenants' }}
+      />
+    );
+  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ecole-saas-weld.vercel.app';
   const webUrl = `${appUrl}/t/${tenant.slug}/login`;
