@@ -1,6 +1,7 @@
 # Design — Refonte UX TEACHER (Vague 3)
 
-> **Statut** : validé (cadrage 2026-06-16) — prêt pour exécution sous-PR par sous-PR.
+> **Statut** : **complète** (3.1 pédagogie web · 3.2 pédagogie mobile · 3.3 présences · 3.4 devoirs ·
+> 3.5 dashboard confirmé + e2e teacher) — Vague 3 livrée.
 > **Programme** : refonte UX profonde par persona. **Vague 3 = persona TEACHER** : appliquer les
 > patterns Vague 1 (PageHeader/ScreenHeader, Skeleton/EmptyState/ErrorState, badges réutilisables)
 > aux écrans **spécifiques enseignant** encore legacy.
