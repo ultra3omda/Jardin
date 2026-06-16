@@ -1,12 +1,12 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
-import { EmptyState, ScheduleGrid, colors } from '@klasso/ui-mobile';
+import { EmptyState, ErrorState, ScheduleGrid, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { useClassDetail } from '@/lib/api/classes';
 import { useMyChildren, type MyChild } from '@/lib/api/parent';
 
 /** Emploi du temps des enfants — même grille jour × créneau que le web. */
 export default function ParentScheduleScreen() {
-  const { data: children, isLoading, isError } = useMyChildren();
+  const { data: children, isLoading, isError, refetch } = useMyChildren();
 
   return (
     <ScrollView
@@ -14,9 +14,18 @@ export default function ParentScheduleScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
     >
       {isLoading ? (
-        <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+        <View style={{ gap: 12 }} accessibilityRole="progressbar">
+          {[0, 1].map((i) => (
+            <Skeleton key={i} height={120} radius={radius.lg} />
+          ))}
+        </View>
       ) : isError ? (
-        <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+        <ErrorState
+          message="Impossible de charger l'emploi du temps."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
       ) : !children || children.length === 0 ? (
         <EmptyState icon="calendar-outline" title="Aucun enfant" description="Aucun emploi du temps disponible." />
       ) : (
@@ -42,7 +51,7 @@ function ChildSchedule({ child }: { child: MyChild }) {
       {!child.classId ? (
         <Text style={{ fontSize: 13, color: colors.ink[300] }}>Pas de classe rattachée.</Text>
       ) : isLoading ? (
-        <ActivityIndicator color={colors.ambre[500]} />
+        <Skeleton height={96} radius={radius.lg} />
       ) : slots.length === 0 ? (
         <Text style={{ fontSize: 13, color: colors.ink[300] }}>Emploi du temps non encore renseigné.</Text>
       ) : (

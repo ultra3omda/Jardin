@@ -1,6 +1,6 @@
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { EmptyState, colors, radius } from '@klasso/ui-mobile';
+import { EmptyState, ErrorState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { submissionLabel, useChildrenHomework, type SubmissionStatus } from '@/lib/api/homework';
 
 const STATUS_COLOR: Record<SubmissionStatus, string> = {
@@ -15,7 +15,7 @@ function fmt(iso: string): string {
 
 /** Devoirs des enfants du parent, avec l'échéance et le statut de chacun. */
 export default function ParentHomeworkScreen() {
-  const { data, isLoading, isError } = useChildrenHomework();
+  const { data, isLoading, isError, refetch } = useChildrenHomework();
   const items = data?.items ?? [];
 
   return (
@@ -24,9 +24,18 @@ export default function ParentHomeworkScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
     >
       {isLoading ? (
-        <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+        <View style={{ gap: 10 }} accessibilityRole="progressbar">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={110} radius={radius.lg} />
+          ))}
+        </View>
       ) : isError ? (
-        <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+        <ErrorState
+          message="Impossible de charger les devoirs."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
       ) : items.length === 0 ? (
         <EmptyState icon="reader-outline" title="Aucun devoir" description="Aucun devoir à venir pour vos enfants." />
       ) : (
