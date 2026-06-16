@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
-import { colors, radius } from '@klasso/ui-mobile';
+import { ScreenHeader, EmptyState, ErrorState, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import { useAuthStore } from '@/lib/auth/store';
 import { useMyGrades, type ChildGrades } from '@/lib/api/evaluations';
 import { BulletinDownloads } from '@/components/bulletins/bulletin-downloads';
@@ -80,14 +80,14 @@ function Releve({ child }: { child: ChildGrades }) {
 
 /**
  * Relevé de notes (vue parent). Reconstruit depuis /evaluations/my-grades —
- * fiable et autorisé pour le parent (l'ancien appel /bulletins/:id/* renvoyait
- * 404). Le bulletin PDF officiel reste généré côté direction (web).
+ * fiable et autorisé pour le parent. Le bulletin PDF officiel reste généré côté
+ * direction (web).
  */
 export default function BulletinScreen() {
   const { name } = useLocalSearchParams<{ id: string; name?: string }>();
   const role = useAuthStore((s) => s.user?.role);
   const isParent = role === 'PARENT';
-  const { data, isLoading, isError } = useMyGrades();
+  const { data, isLoading, isError, refetch } = useMyGrades();
 
   if (!isParent) {
     return (
@@ -113,17 +113,28 @@ export default function BulletinScreen() {
       style={{ flex: 1, backgroundColor: colors.paper[50] }}
       contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
     >
-      <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink[900], marginBottom: 4 }} accessibilityRole="header">
-        Relevé de notes
-      </Text>
-      <Text style={{ fontSize: 13, color: colors.ink[500], marginBottom: 20 }}>Résultats de votre enfant</Text>
+      <ScreenHeader title="Relevé de notes" subtitle="Résultats de votre enfant" />
+      <View style={{ height: 16 }} />
 
       {isLoading ? (
-        <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+        <View style={{ gap: 8 }} accessibilityRole="progressbar">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={64} radius={radius.lg} />
+          ))}
+        </View>
       ) : isError ? (
-        <Text style={{ color: colors.status.danger500 }}>Impossible de charger le relevé.</Text>
+        <ErrorState
+          message="Impossible de charger le relevé."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
       ) : !child ? (
-        <Text style={{ color: colors.ink[500] }}>Aucune note disponible pour le moment.</Text>
+        <EmptyState
+          icon="school-outline"
+          title="Aucune note"
+          description="Aucune note disponible pour le moment."
+        />
       ) : (
         <Releve child={child} />
       )}
