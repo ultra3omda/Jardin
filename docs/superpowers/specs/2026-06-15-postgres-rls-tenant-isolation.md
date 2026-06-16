@@ -89,3 +89,41 @@ Conséquence : **chaque opération applicative doit s'exécuter dans une transac
 
 > Le plan d'exécution détaillé (phases, migrations, tests, rollout) est dans
 > [`docs/superpowers/plans/2026-06-15-postgres-rls-implementation.md`](../plans/2026-06-15-postgres-rls-implementation.md).
+
+---
+
+## 9. Addendum (2026-06-16) — Faisabilité de la plomberie runtime : constat & reco révisée
+
+La **Phase 0** (validation du pattern de policy) est ✅ prouvée en CI
+(`apps/api/test/rls-policy.e2e-spec.ts`). En attaquant la **plomberie runtime**
+(faire parvenir `app.current_tenant` à chaque requête), un blocage architectural
+réel est apparu — Prisma + le profil d'I/O de l'app le rendent coûteux :
+
+1. **Per-opération impossible proprement avec Prisma.** Dans `$allOperations`, le
+   thunk `query(args)` s'exécute sur la connexion d'origine, pas sur une tx
+   ouverte dans le hook → `set_config(LOCAL)` et la requête atterriraient sur des
+   connexions différentes (pooling). Aucune API ne rattache `query` à une tx
+   choisie. Le « reissue » (`tx[model][operation](args)`) crée des problèmes de
+   récursion d'extension + d'ordre d'injection `tenantId`.
+2. **Per-requête (tx par requête HTTP) incompatible avec l'app.** De nombreux
+   handlers entrelacent **DB + I/O externe** (ClicToPay, Resend, SMS Orange, Expo
+   Push, R2). Une tx par requête tiendrait une connexion ouverte **pendant les
+   appels réseau** → épuisement du pool Neon + tx longues (anti-pattern).
+3. **Transactions de service** (`auth.register`, `commercial.createOrganization`,
+   `onboarding.complete`, …) : l'auto-wrapping casse leur atomicité, et la CI
+   peut rester verte en *happy path* tout en étant **silencieusement incorrecte**
+   (la CI ne reproduit ni le pooler Neon ni le rôle non-superuser).
+
+### Options (décision utilisateur)
+
+| Option | Description | Coût / Risque | Couverture |
+|---|---|---|---|
+| **R1 — RLS complet** | Tx par requête + **sortir tout l'I/O externe des transactions** (refacto paiements/notifs/messagerie) puis activer RLS partout. | Élevé (~plusieurs jours, refacto de zones sensibles) | Totale, garantie DB |
+| **R2 — Backstops ciblés (recommandé)** | NE PAS faire RLS maintenant. Fermer en code les **mêmes trous** que RLS visait, sans son coût : (a) interdire `$queryRaw/$executeRaw` sur tables tenant sans `tenantId` explicite (lint/garde) ; (b) scoper `findUnique`/`update`/`delete` by-id ou ajouter une garde d'ownership ; (c) tests de régression d'isolation sur ces chemins ; (d) garder le test de policy RLS comme preuve, prête à activer plus tard. | Faible, autonome, sûr | Comble les gaps connus, sans garantie DB |
+| **R3 — Défer** | L'extension actuelle (solide + testée) suffit au stade actuel ; on rouvrira R1 à plus grande échelle. | Nul | Statu quo |
+
+**Recommandation** : **R2**. L'extension applicative isole déjà correctement ;
+le gain marginal de RLS ne justifie pas, au stade actuel, le refacto R1 de zones
+critiques (paiement/notifs). R2 ferme les trous *réels* (raw SQL, by-id) à coût
+faible et sûr, et on garde la preuve de policy + le plan pour activer le RLS
+complet quand l'échelle le justifiera. **À trancher par l'utilisateur.**
