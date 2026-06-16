@@ -1,23 +1,32 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { FileText } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { PageHeader } from '@/components/ui/page-header';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorRetry } from '@/components/ui/error-retry';
 
 interface StudentOption { id: string; firstName: string; lastName: string; classroom: string }
 interface PeriodOption { id: string; name: string; schoolYear: string; isClosed: boolean }
 interface BulletinInfo { id: string; pdfUrl: string | null; generatedAt: string }
+interface MyChild { id: string; firstName: string; lastName: string; className: string | null }
+
+type LoadState = 'loading' | 'error' | 'ready';
 
 async function apiFetch<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...opts,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(opts?.headers ?? {}) },
   });
-  if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error(t || `HTTP ${res.status}`); }
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(t || `HTTP ${res.status}`);
+  }
   const t = await res.text();
   return t ? (JSON.parse(t) as T) : (null as T);
 }
-
-interface MyChild { id: string; firstName: string; lastName: string; className: string | null }
 
 export default function BulletinsPage() {
   const token = useAuthStore((s) => s.accessToken);
@@ -26,7 +35,7 @@ export default function BulletinsPage() {
   const [periods, setPeriods] = useState<PeriodOption[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
   const [bulletinsMap, setBulletinsMap] = useState<Map<string, BulletinInfo | null>>(new Map());
-  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [loadState, setLoadState] = useState<LoadState>('loading');
   const [loadingBulletins, setLoadingBulletins] = useState(false);
   const [generating, setGenerating] = useState<Set<string>>(new Set());
   const [progressCount, setProgressCount] = useState(0);
@@ -35,10 +44,8 @@ export default function BulletinsPage() {
 
   const loadBase = useCallback(async () => {
     if (!token) return;
-    setLoadingStudents(true);
+    setLoadState('loading');
     try {
-      // A parent only sees their own children (the tenant-wide /students list
-      // is admin/teacher-only); admins/teachers keep the full roster.
       const studentsReq = isParent
         ? apiFetch<MyChild[]>('/api/students/my-children', token).then((rows) => ({
             items: (rows ?? []).map((c) => ({
@@ -49,24 +56,24 @@ export default function BulletinsPage() {
             })),
           }))
         : apiFetch<{ items: StudentOption[] }>('/api/students?limit=200', token);
-      const [sData, pData] = await Promise.allSettled([
+      const [sData, pData] = await Promise.all([
         studentsReq,
         apiFetch<{ items: PeriodOption[] }>('/api/grade-periods', token),
       ]);
-      const sItems = sData.status === 'fulfilled' ? (sData.value?.items ?? []) : [];
-      const pItems = pData.status === 'fulfilled' ? (pData.value?.items ?? []) : [];
+      const sItems = sData?.items ?? [];
+      const pItems = pData?.items ?? [];
       setStudents(sItems);
       setPeriods(pItems);
-      // Default to the most recent period (grade-periods come sorted by
-      // startDate asc) → the current term, where grades actually live.
       if (pItems.length > 0) setSelectedPeriodId(pItems[pItems.length - 1].id);
-    } catch (_) {
-      setStudents([]);
-      setPeriods([]);
-    } finally { setLoadingStudents(false); }
+      setLoadState('ready');
+    } catch {
+      setLoadState('error');
+    }
   }, [token, isParent]);
 
-  useEffect(() => { void loadBase(); }, [loadBase]);
+  useEffect(() => {
+    void loadBase();
+  }, [loadBase]);
 
   const loadBulletins = useCallback(async () => {
     if (!token || !selectedPeriodId || students.length === 0) return;
@@ -75,8 +82,8 @@ export default function BulletinsPage() {
       students.map((s) =>
         apiFetch<BulletinInfo>(`/api/bulletins/${s.id}/${selectedPeriodId}/latest`, token)
           .then((b) => ({ studentId: s.id, bulletin: b }))
-          .catch(() => ({ studentId: s.id, bulletin: null }))
-      )
+          .catch(() => ({ studentId: s.id, bulletin: null })),
+      ),
     );
     const map = new Map<string, BulletinInfo | null>();
     for (const r of results) {
@@ -86,7 +93,9 @@ export default function BulletinsPage() {
     setLoadingBulletins(false);
   }, [token, selectedPeriodId, students]);
 
-  useEffect(() => { void loadBulletins(); }, [loadBulletins]);
+  useEffect(() => {
+    void loadBulletins();
+  }, [loadBulletins]);
 
   function clearGenerating(studentId: string) {
     setGenerating((prev) => {
@@ -96,7 +105,6 @@ export default function BulletinsPage() {
     });
   }
 
-  // Parent: read-only download (generates the PDF on demand, scoped to own child).
   async function handleDownload(studentId: string) {
     if (!token || !selectedPeriodId) return;
     setErrorMsg(null);
@@ -119,7 +127,6 @@ export default function BulletinsPage() {
     if (!token || !selectedPeriodId) return;
     setErrorMsg(null);
     setGenerating((prev) => new Set(prev).add(studentId));
-
     try {
       const res = await fetch('/api/bulletins/generate', {
         method: 'POST',
@@ -130,10 +137,9 @@ export default function BulletinsPage() {
         const ct = res.headers.get('content-type') ?? '';
         if (ct.includes('application/pdf')) {
           const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
+          window.open(URL.createObjectURL(blob), '_blank');
         } else {
-          const data = await res.json() as { pdfUrl?: string };
+          const data = (await res.json()) as { pdfUrl?: string };
           if (data.pdfUrl) window.open(data.pdfUrl, '_blank');
         }
         void loadBulletins();
@@ -149,7 +155,8 @@ export default function BulletinsPage() {
 
   async function handleGenerateAll() {
     const missing = students.filter((s) => !bulletinsMap.get(s.id));
-    setTotalCount(missing.length); setProgressCount(0);
+    setTotalCount(missing.length);
+    setProgressCount(0);
     for (const s of missing) {
       await handleGenerate(s.id).catch(() => null);
       setProgressCount((p) => p + 1);
@@ -159,30 +166,44 @@ export default function BulletinsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-navy-900">Bulletins</h1>
-          <p className="text-sm text-muted-foreground">
-            {isParent
-              ? 'Téléchargez les bulletins de vos enfants.'
-              : 'Générez et téléchargez les bulletins de notes.'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <select className="rounded-md border px-3 py-2 text-sm" value={selectedPeriodId} onChange={(e) => setSelectedPeriodId(e.target.value)}>
-            {periods.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.schoolYear}</option>)}
-          </select>
-          {/* Generation is an admin/teacher action — never shown to parents. */}
-          {!isParent &&
-            (totalCount > 0 ? (
-              <span className="flex items-center text-sm text-muted-foreground">Génération {progressCount}/{totalCount}…</span>
-            ) : (
-              <button onClick={() => void handleGenerateAll()} className="rounded-md bg-ambre-500 hover:bg-ambre-600 px-4 py-2 text-sm font-medium text-white">
-                Générer tous
-              </button>
-            ))}
-        </div>
-      </header>
+      <PageHeader
+        title="Bulletins"
+        description={
+          isParent ? 'Téléchargez les bulletins de vos enfants.' : 'Générez et téléchargez les bulletins de notes.'
+        }
+        actions={
+          <div className="flex gap-2">
+            <label htmlFor="bulletin-period" className="sr-only">
+              Période
+            </label>
+            <select
+              id="bulletin-period"
+              className="rounded-md border px-3 py-2 text-sm"
+              value={selectedPeriodId}
+              onChange={(e) => setSelectedPeriodId(e.target.value)}
+            >
+              {periods.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {p.schoolYear}
+                </option>
+              ))}
+            </select>
+            {!isParent &&
+              (totalCount > 0 ? (
+                <span className="flex items-center text-sm text-muted-foreground">
+                  Génération {progressCount}/{totalCount}…
+                </span>
+              ) : (
+                <button
+                  onClick={() => void handleGenerateAll()}
+                  className="rounded-md bg-ambre-500 px-4 py-2 text-sm font-medium text-white hover:bg-ambre-600"
+                >
+                  Générer tous
+                </button>
+              ))}
+          </div>
+        }
+      />
 
       {errorMsg && (
         <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
@@ -190,10 +211,16 @@ export default function BulletinsPage() {
         </div>
       )}
 
-      {loadingStudents || loadingBulletins ? (
-        <p className="text-sm text-muted-foreground">Chargement…</p>
+      {loadState === 'loading' || loadingBulletins ? (
+        <TableSkeleton rows={5} cols={5} />
+      ) : loadState === 'error' ? (
+        <ErrorRetry message="Impossible de charger les bulletins." onRetry={() => void loadBase()} />
       ) : students.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">Aucun élève.</div>
+        <EmptyState
+          icon={<FileText className="h-8 w-8" aria-hidden="true" />}
+          title="Aucun élève"
+          description={isParent ? 'Aucun enfant rattaché à votre compte.' : 'Aucun élève à afficher.'}
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
           <table className="w-full text-sm">
@@ -212,7 +239,9 @@ export default function BulletinsPage() {
                 const isGenerating = generating.has(s.id);
                 return (
                   <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium">{s.lastName} {s.firstName}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {s.lastName} {s.firstName}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{s.classroom || '—'}</td>
                     <td className="px-4 py-3">
                       {isParent ? (
@@ -220,7 +249,9 @@ export default function BulletinsPage() {
                           Disponible
                         </span>
                       ) : (
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${b ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${b ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}
+                        >
                           {b ? 'Généré ✓' : 'Non généré'}
                         </span>
                       )}
@@ -231,13 +262,30 @@ export default function BulletinsPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         {isParent ? (
-                          <button disabled={isGenerating} onClick={() => void handleDownload(s.id)} className="text-xs text-blue-600 hover:underline disabled:opacity-50">
+                          <button
+                            disabled={isGenerating}
+                            onClick={() => void handleDownload(s.id)}
+                            className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                          >
                             {isGenerating ? 'Préparation…' : 'Télécharger le bulletin'}
                           </button>
                         ) : (
                           <>
-                            {b?.pdfUrl && <a href={b.pdfUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Télécharger PDF</a>}
-                            <button disabled={isGenerating} onClick={() => void handleGenerate(s.id)} className="text-xs text-ambre-600 hover:underline disabled:opacity-50">
+                            {b?.pdfUrl && (
+                              <a
+                                href={b.pdfUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-blue-600 hover:underline"
+                              >
+                                Télécharger PDF
+                              </a>
+                            )}
+                            <button
+                              disabled={isGenerating}
+                              onClick={() => void handleGenerate(s.id)}
+                              className="text-xs text-ambre-600 hover:underline disabled:opacity-50"
+                            >
                               {isGenerating ? 'Génération…' : 'Générer'}
                             </button>
                           </>
