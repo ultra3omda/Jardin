@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { Button, ConfirmDialog, EmptyState, Fab, FormField, FormSheet, Picker, colors, radius } from '@klasso/ui-mobile';
+import { Button, ConfirmDialog, EmptyState, ErrorState, Fab, FormField, FormSheet, Picker, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import {
   DRILL_TYPE_LABELS,
   DRILL_TYPE_OPTIONS,
@@ -23,7 +23,7 @@ const fmt = (iso: string) => {
 
 export function DrillsTab() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useQuery({ queryKey: SAFETY_DRILLS_KEY, queryFn: listSafetyDrills });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: SAFETY_DRILLS_KEY, queryFn: listSafetyDrills });
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState<SafetyDrill | null>(null);
 
@@ -72,9 +72,18 @@ export function DrillsTab() {
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={72} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+          <ErrorState
+            message="Impossible de charger les exercices."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="alarm-outline" title="Aucun exercice" description="Enregistrez un exercice avec +." />
         ) : (

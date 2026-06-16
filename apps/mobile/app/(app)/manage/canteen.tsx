@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { Button, EmptyState, Fab, FormField, FormSheet, colors, radius } from '@klasso/ui-mobile';
+import { Button, EmptyState, ErrorState, Fab, FormField, FormSheet, Skeleton, colors, radius } from '@klasso/ui-mobile';
 import {
   createCanteenMenu,
   SCHOOL_LIFE_KEYS,
@@ -22,7 +22,7 @@ function fmt(iso: string): string {
 
 export default function ManageCanteenScreen() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useCanteenMenus();
+  const { data, isLoading, isError, refetch } = useCanteenMenus();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'menus' | 'regimes'>('menus');
 
@@ -86,9 +86,18 @@ export default function ManageCanteenScreen() {
         <>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={72} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+          <ErrorState
+            message="Impossible de charger la cantine."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="restaurant-outline" title="Aucun menu" description="Ajoutez le menu du jour avec +." />
         ) : (

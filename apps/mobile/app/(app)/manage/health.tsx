@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   Button,
   ConfirmDialog,
   EmptyState,
+  ErrorState,
   Fab,
   FormField,
   FormSheet,
   Picker,
+  Skeleton,
   colors,
   radius,
   type PickerOption,
@@ -25,7 +27,7 @@ import { listStudents } from '@/lib/api/students';
 
 export default function ManageHealthScreen() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useHealthRecords();
+  const { data, isLoading, isError, refetch } = useHealthRecords();
   const { data: studentsData } = useQuery({
     queryKey: ['students', 'health-picker'],
     queryFn: () => listStudents({ pageSize: 100 }),
@@ -98,9 +100,18 @@ export default function ManageHealthScreen() {
           Données sensibles (RGPD) — accès tracé.
         </Text>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={72} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+          <ErrorState
+            message="Impossible de charger la santé."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="medkit-outline" title="Aucun dossier" description="Ajoutez un dossier santé avec +." />
         ) : (

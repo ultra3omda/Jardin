@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   Button,
   ConfirmDialog,
   EmptyState,
+  ErrorState,
   Fab,
   FormField,
   FormSheet,
   Picker,
+  Skeleton,
   colors,
   radius,
   type PickerOption,
@@ -41,7 +43,7 @@ function fmtDate(iso: string): string {
 
 export default function ManageDisciplineScreen() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useQuery({ queryKey: DISCIPLINE_KEY, queryFn: listDiscipline });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: DISCIPLINE_KEY, queryFn: listDiscipline });
   const { data: studentsData } = useQuery({
     queryKey: ['students', 'picker'] as const,
     queryFn: () => listStudents({ pageSize: 200 }),
@@ -120,9 +122,18 @@ export default function ManageDisciplineScreen() {
     <View style={{ flex: 1, backgroundColor: colors.paper[50] }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.ambre[500]} style={{ marginTop: 24 }} />
+          <View style={{ gap: 10 }} accessibilityRole="progressbar">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={72} radius={radius.lg} />
+            ))}
+          </View>
         ) : isError ? (
-          <Text style={{ color: colors.status.danger500 }}>Erreur de chargement.</Text>
+          <ErrorState
+            message="Impossible de charger la discipline."
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : items.length === 0 ? (
           <EmptyState icon="warning-outline" title="Aucun incident" description="Signalez un incident avec le bouton +." />
         ) : (
