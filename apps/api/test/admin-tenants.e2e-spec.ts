@@ -351,6 +351,22 @@ async function waitForTerminalStatus(
   return 'PROVISIONING';
 }
 
+/**
+ * Wait until a vi spy has been called at least once. The detached provision()
+ * sends the invite a tick AFTER it writes the ACTIVE status, so observing
+ * ACTIVE in the DB does not guarantee the email spy has fired yet — poll it.
+ */
+async function waitForSpyCalled(
+  spy: { mock: { calls: unknown[] } },
+  maxTicks = 20,
+): Promise<boolean> {
+  for (let i = 0; i < maxTicks; i++) {
+    if (spy.mock.calls.length > 0) return true;
+    await new Promise<void>((r) => setImmediate(r));
+  }
+  return spy.mock.calls.length > 0;
+}
+
 describe('domain automation', () => {
   // ---------------------------------------------------------------------------
   // automation ON — happy path (isReady returns true)
@@ -451,9 +467,6 @@ describe('domain automation', () => {
       const tenant = await prisma.tenant.findUnique({ where: { slug: 'da-active' } });
       expect(tenant).not.toBeNull();
 
-      // Clear the spy before waiting so the call count below is unambiguous.
-      noopResend.send.mockClear();
-
       const finalStatus = await waitForTerminalStatus(prisma, tenant!.id);
       expect(finalStatus).toBe('ACTIVE');
 
@@ -464,7 +477,9 @@ describe('domain automation', () => {
       expect(fakeVercel.addDomain).toHaveBeenCalledWith('da-active.klasso.tn');
 
       // Finding 2: invite email must be sent once the tenant is ACTIVE.
-      expect(noopResend.send).toHaveBeenCalled();
+      // provision() sends the invite a tick after writing ACTIVE — poll the spy.
+      const inviteSent = await waitForSpyCalled(noopResend.send);
+      expect(inviteSent).toBe(true);
       // The invite URL must reference the subdomain (da-active.klasso.tn) so the
       // admin registers on their own domain, not on the generic path-based URL.
       const sendCall = noopResend.send.mock.calls[0]?.[0] as
