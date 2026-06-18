@@ -49,9 +49,29 @@ export function setRefreshCookie(response: NextResponse, token: string): void {
   response.cookies.set(REFRESH_COOKIE_NAME, token, refreshCookieOptions());
 }
 
+/** Serialize an expiring (Max-Age=0) refresh cookie, optionally scoped to `domain`. */
+function serializeClearCookie(domain?: string): string {
+  const parts = [`${REFRESH_COOKIE_NAME}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'];
+  if (process.env.NODE_ENV === 'production') parts.push('Secure');
+  if (domain) parts.push(`Domain=${domain}`);
+  return parts.join('; ');
+}
+
+/**
+ * Clear the refresh cookie. A cookie set host-only (`klasso.tn`) and one set
+ * with `Domain=.klasso.tn` are DISTINCT cookies, so a single domain-scoped
+ * clear cannot delete a host-only cookie (and vice-versa). We therefore emit
+ * BOTH clears: the host-only one always (covers apex/preview AND legacy
+ * sessions created before subdomain mode was enabled), plus the
+ * `.<base>`-scoped one when subdomain mode is on. Without this, enabling
+ * subdomain mode leaves users from an earlier (host-only) session unable to
+ * log out. Uses raw Set-Cookie appends so both headers (same cookie name,
+ * different Domain) are emitted.
+ */
 export function clearRefreshCookie(response: NextResponse): void {
-  response.cookies.set(REFRESH_COOKIE_NAME, '', {
-    ...refreshCookieOptions(),
-    maxAge: 0,
-  });
+  response.headers.append('Set-Cookie', serializeClearCookie());
+  const domain = subdomainCookieDomain();
+  if (domain) {
+    response.headers.append('Set-Cookie', serializeClearCookie(domain));
+  }
 }
