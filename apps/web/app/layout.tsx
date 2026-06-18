@@ -1,3 +1,4 @@
+import type * as React from 'react';
 /**
  * Root layout — minimal passthrough required by Next.js App Router when
  * the [locale] segment owns the actual <html>/<body>. See next-intl docs:

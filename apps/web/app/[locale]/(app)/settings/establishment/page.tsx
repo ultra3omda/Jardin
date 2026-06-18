@@ -1,4 +1,5 @@
 'use client';
+import type * as React from 'react';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Building2, Palette, User, CheckCircle, AlertCircle } from 'lucide-react';

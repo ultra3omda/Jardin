@@ -1,3 +1,4 @@
+import type * as React from 'react';
 interface EyebrowProps {
   children: React.ReactNode;
   className?: string;

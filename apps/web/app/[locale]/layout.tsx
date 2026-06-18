@@ -1,3 +1,4 @@
+import type * as React from 'react';
 import type { Metadata } from 'next';
 import { Fraunces, Public_Sans, JetBrains_Mono, Markazi_Text, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';

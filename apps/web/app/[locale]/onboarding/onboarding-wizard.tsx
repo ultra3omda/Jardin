@@ -1,4 +1,5 @@
 'use client';
+import type * as React from 'react';
 
 import { DEFAULT_BRAND } from '@ecole-saas/shared';
 import { Loader2 } from 'lucide-react';

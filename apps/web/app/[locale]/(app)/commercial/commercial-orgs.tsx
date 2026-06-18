@@ -1,4 +1,5 @@
 'use client';
+import type * as React from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
