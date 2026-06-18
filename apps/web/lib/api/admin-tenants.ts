@@ -6,6 +6,8 @@ import type { CreateTenantFormValues } from '@/lib/validation/tenant.schemas';
 
 const ADMIN_BASE = '/api/admin';
 
+export type DomainProvisioningStatus = 'PROVISIONING' | 'ACTIVE' | 'FAILED' | 'NONE';
+
 export interface TenantSummary {
   id: string;
   name: string;
@@ -17,6 +19,14 @@ export interface TenantSummary {
   usersCount: number;
   adminOnboarded: boolean;
   inviteStatus: 'pending' | 'consumed' | 'expired' | null;
+  /** Custom domain assigned to this tenant, if any. */
+  customDomain: string | null;
+  /** Current provisioning status of the custom domain. Defaults to 'NONE'. */
+  domainStatus: DomainProvisioningStatus;
+}
+
+export interface RetryDomainResponse {
+  domainStatus: DomainProvisioningStatus;
 }
 
 export interface InviteSummary {
@@ -87,6 +97,14 @@ export async function createTenant(
 
 export async function resendInvite(token: string, id: string): Promise<InviteSummary> {
   return jsonRequest(`${ADMIN_BASE}/tenants/${id}/resend-invite`, {
+    method: 'POST',
+    auth: token,
+  });
+}
+
+/** Retry domain provisioning for a tenant. Returns the updated domain status. */
+export async function retryTenantDomain(token: string, id: string): Promise<RetryDomainResponse> {
+  return jsonRequest(`${ADMIN_BASE}/tenants/${id}/domain/retry`, {
     method: 'POST',
     auth: token,
   });
