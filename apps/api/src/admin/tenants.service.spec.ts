@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { ResendService } from '../common/email/resend.service';
 import { InviteTokensService } from './invite-tokens.service';
+import { DomainProvisioningService } from './domain-provisioning.service';
 import { TenantsService } from './tenants.service';
 
 describe('TenantsService.create', () => {
@@ -16,12 +17,15 @@ describe('TenantsService.create', () => {
   let inviteTokens: any;
   let resend: any;
   let config: any;
+  let domains: any;
 
   beforeEach(async () => {
     prisma = {
       tenant: {
         findUnique: vi.fn().mockResolvedValue(null),
         findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue(null),
+        update: vi.fn().mockResolvedValue({}),
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: 't1',
           name: 'Demo',
@@ -30,6 +34,8 @@ describe('TenantsService.create', () => {
           locale: Locale.fr,
           brand: null,
           createdAt: new Date('2026-05-25'),
+          domainStatus: 'NONE',
+          customDomain: null,
         }),
       },
       user: {
@@ -74,6 +80,8 @@ describe('TenantsService.create', () => {
     };
     resend = { send: vi.fn().mockResolvedValue({ success: true, id: 'r1' }) };
     config = { get: vi.fn().mockImplementation((_k: string, def: unknown) => def) };
+    // Flag off by default → legacy path (invite minted, email sent).
+    domains = { isEnabled: () => false, provision: vi.fn() };
 
     const mod = await Test.createTestingModule({
       providers: [
@@ -82,6 +90,7 @@ describe('TenantsService.create', () => {
         { provide: InviteTokensService, useValue: inviteTokens },
         { provide: ResendService, useValue: resend },
         { provide: ConfigService, useValue: config },
+        { provide: DomainProvisioningService, useValue: domains },
       ],
     }).compile();
     service = mod.get(TenantsService);
@@ -102,8 +111,10 @@ describe('TenantsService.create', () => {
     );
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(inviteTokens.create).toHaveBeenCalled();
-    expect(res.invite.url).toContain('?token=tok-plain');
+    expect(res.invite).not.toBeNull();
+    expect(res.invite?.url).toContain('?token=tok-plain');
     expect(res.inviteEmailSent).toBe(true);
+    expect(res.domainStatus).toBe('NONE');
   });
 
   it('rejects reserved slug', async () => {

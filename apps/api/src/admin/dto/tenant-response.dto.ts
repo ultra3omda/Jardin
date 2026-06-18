@@ -15,6 +15,9 @@ export class TenantSummaryDto {
   @ApiProperty() adminOnboarded!: boolean;
   @ApiProperty({ enum: ['pending', 'consumed', 'expired'], nullable: true })
   inviteStatus!: 'pending' | 'consumed' | 'expired' | null;
+  @ApiProperty({ enum: ['NONE', 'PROVISIONING', 'ACTIVE', 'FAILED'] })
+  domainStatus!: string;
+  @ApiPropertyOptional({ nullable: true }) customDomain!: string | null;
 }
 
 export class InviteSummaryDto {
@@ -25,6 +28,9 @@ export class InviteSummaryDto {
 
 export class CreateTenantResponseDto {
   @ApiProperty({ type: TenantSummaryDto }) tenant!: TenantSummaryDto;
-  @ApiProperty({ type: InviteSummaryDto }) invite!: InviteSummaryDto;
+  @ApiPropertyOptional({ type: InviteSummaryDto, nullable: true })
+  invite!: InviteSummaryDto | null;
   @ApiProperty() inviteEmailSent!: boolean;
+  @ApiProperty({ enum: ['NONE', 'PROVISIONING', 'ACTIVE', 'FAILED'] })
+  domainStatus!: string;
 }
