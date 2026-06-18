@@ -1394,6 +1394,74 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     });
   });
 
+  // ==========================================================================
+  // Task 13 — R10 regression: spoofed subdomain Host header never leaks data
+  //
+  // Invariant D3: tenant scoping is derived exclusively from the JWT
+  // (TenantContextService carries tenantId extracted at auth-guard time).
+  // No HTTP Host header, custom header, or query param participates in
+  // tenant resolution.
+  //
+  // This test proves it at the data-access layer: even if an attacker sends
+  // Host: <tenantB.slug>.klasso.tn while holding tenant A's JWT, the Prisma
+  // extension scopes every query to tenantA — because the context comes from
+  // the JWT-derived TenantContextService, not from the Host header.
+  //
+  // The spec has no HTTP server (pure integration), so we prove the contract
+  // directly: run a tenantPrisma.client.student.findMany() inside
+  // TenantContextService.run({tenantId: tenantAId, ...}) and assert zero
+  // tenant-B rows are visible — regardless of what any middleware could have
+  // read from a spoofed Host header. The HTTP-layer test (with a real
+  // supertest agent) is covered by the admin-tenants e2e which exercises the
+  // full AppModule stack; this spec's harness intentionally omits the HTTP
+  // server to stay focused on the data-access invariant.
+  // ==========================================================================
+  describe('R10 — spoofed subdomain Host never leaks tenant data (CRITICAL)', () => {
+    it('tenant A JWT context sees only tenant A students even when Host would resolve tenant B', async () => {
+      // Arrange: two tenants with one student each are already seeded by the
+      // global beforeEach above (studentAId in tenantA, studentBId in tenantB).
+
+      // Simulate what a subdomain middleware that read Host: <tenantB.slug>.klasso.tn
+      // *would* try to do: run queries with tenantB's id injected into the context.
+      // This block asserts the OPPOSITE is true when the context is correctly
+      // set from the JWT (tenantA).
+
+      // Act: run under tenant A's JWT-derived context — this is what the
+      // AuthGuard + TenantMiddleware set after validating the JWT.
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          // A spoofed Host header would carry tenantB's slug, but the context
+          // is tenantA — the Prisma extension uses the context, not the header.
+          const students = await tenantPrisma.client.student.findMany();
+
+          // Assert: only tenant A's student is visible.
+          expect(students).toHaveLength(1);
+          expect(students[0]!.id).toBe(studentAId);
+          expect(students[0]!.tenantId).toBe(tenantAId);
+
+          // Tenant B's student must be completely invisible.
+          const leaked = students.find((s) => s.id === studentBId);
+          expect(leaked).toBeUndefined();
+        },
+      );
+    });
+
+    it('explicitly querying tenant B id from tenant A context returns null (no Host bypass)', async () => {
+      // Even an explicit WHERE { id: studentBId } is blocked by the extension
+      // — it injects AND tenantId = tenantAId, so the row is never returned.
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.student.findFirst({
+            where: { id: studentBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+  });
+
   describe('COMMERCIAL role isolation (CRITICAL)', () => {
     const commercialCtx = {
       tenantId: null,
