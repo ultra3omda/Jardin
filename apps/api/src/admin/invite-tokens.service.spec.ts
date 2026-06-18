@@ -247,4 +247,17 @@ describe('InviteTokensService', () => {
       expect(pending.map((i) => i.id)).toEqual(['a']);
     });
   });
+
+  describe('create — baseUrlOverride', () => {
+    it('builds the register URL from the override host when provided', async () => {
+      const result = await service.create(
+        'super-1',
+        { invitedEmail: 'a@b.tn' },
+        {},
+        null,
+        'https://ecole.klasso.tn',
+      );
+      expect(result.url.startsWith('https://ecole.klasso.tn/register?token=')).toBe(true);
+    });
+  });
 });
