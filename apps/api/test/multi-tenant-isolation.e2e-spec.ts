@@ -18,6 +18,7 @@
  *
  * Requires a running Postgres (docker compose up -d) and a clean DB.
  */
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createId } from '@paralleldrive/cuid2';
@@ -32,10 +33,14 @@ import {
   TenantType,
   UserRole,
 } from '@prisma/client';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import * as bcrypt from 'bcrypt';
+import request from 'supertest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AppModule } from '../src/app.module';
 import { configuration } from '../src/common/config/configuration';
 import { validateEnv } from '../src/common/config/env.validation';
+import { ResendService } from '../src/common/email/resend.service';
 import { PrismaModule } from '../src/common/prisma/prisma.module';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 import { TenantPrismaService } from '../src/common/prisma/tenant-prisma.service';
@@ -1394,6 +1399,74 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     });
   });
 
+  // ==========================================================================
+  // Task 13 — R10 regression: spoofed subdomain Host header never leaks data
+  //
+  // Invariant D3: tenant scoping is derived exclusively from the JWT
+  // (TenantContextService carries tenantId extracted at auth-guard time).
+  // No HTTP Host header, custom header, or query param participates in
+  // tenant resolution.
+  //
+  // This test proves it at the data-access layer: even if an attacker sends
+  // Host: <tenantB.slug>.klasso.tn while holding tenant A's JWT, the Prisma
+  // extension scopes every query to tenantA — because the context comes from
+  // the JWT-derived TenantContextService, not from the Host header.
+  //
+  // The spec has no HTTP server (pure integration), so we prove the contract
+  // directly: run a tenantPrisma.client.student.findMany() inside
+  // TenantContextService.run({tenantId: tenantAId, ...}) and assert zero
+  // tenant-B rows are visible — regardless of what any middleware could have
+  // read from a spoofed Host header. The HTTP-layer test (with a real
+  // supertest agent) is covered by the admin-tenants e2e which exercises the
+  // full AppModule stack; this spec's harness intentionally omits the HTTP
+  // server to stay focused on the data-access invariant.
+  // ==========================================================================
+  describe('R10 — spoofed subdomain Host never leaks tenant data (CRITICAL)', () => {
+    it('tenant A JWT context sees only tenant A students even when Host would resolve tenant B', async () => {
+      // Arrange: two tenants with one student each are already seeded by the
+      // global beforeEach above (studentAId in tenantA, studentBId in tenantB).
+
+      // Simulate what a subdomain middleware that read Host: <tenantB.slug>.klasso.tn
+      // *would* try to do: run queries with tenantB's id injected into the context.
+      // This block asserts the OPPOSITE is true when the context is correctly
+      // set from the JWT (tenantA).
+
+      // Act: run under tenant A's JWT-derived context — this is what the
+      // AuthGuard + TenantMiddleware set after validating the JWT.
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          // A spoofed Host header would carry tenantB's slug, but the context
+          // is tenantA — the Prisma extension uses the context, not the header.
+          const students = await tenantPrisma.client.student.findMany();
+
+          // Assert: only tenant A's student is visible.
+          expect(students).toHaveLength(1);
+          expect(students[0]!.id).toBe(studentAId);
+          expect(students[0]!.tenantId).toBe(tenantAId);
+
+          // Tenant B's student must be completely invisible.
+          const leaked = students.find((s) => s.id === studentBId);
+          expect(leaked).toBeUndefined();
+        },
+      );
+    });
+
+    it('explicitly querying tenant B id from tenant A context returns null (no Host bypass)', async () => {
+      // Even an explicit WHERE { id: studentBId } is blocked by the extension
+      // — it injects AND tenantId = tenantAId, so the row is never returned.
+      await tenantContext.run(
+        { tenantId: tenantAId, userId: userAId, role: UserRole.SCHOOL_ADMIN, skipTenantFilter: false },
+        async () => {
+          const stolen = await tenantPrisma.client.student.findFirst({
+            where: { id: studentBId },
+          });
+          expect(stolen).toBeNull();
+        },
+      );
+    });
+  });
+
   describe('COMMERCIAL role isolation (CRITICAL)', () => {
     const commercialCtx = {
       tenantId: null,
@@ -1504,4 +1577,218 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
       });
     });
   });
+});
+
+// ==========================================================================
+// Task 13 — HTTP boundary regression (D3 invariant)
+//
+// The data-layer tests above prove the Prisma extension scopes by JWT context.
+// This block proves the same invariant at the FULL HTTP stack: a real HTTP
+// request with Authorization: Bearer <tokenA> + Host: <tenantB-slug>.klasso.tn
+// returns ONLY tenant A students — the Host header has zero effect on tenant
+// scoping because the guard derives tenantId exclusively from the JWT.
+//
+// Lives in its OWN top-level describe (NOT nested inside the main one) so the
+// outer beforeEach's unconditional prisma.tenant/student.deleteMany({}) cannot
+// wipe the http-iso tenants/students that are seeded once in this block's
+// beforeAll.
+// ==========================================================================
+describe('HTTP boundary — spoofed Host header never leaks tenant data (CRITICAL)', () => {
+  let httpApp: INestApplication;
+  let httpPrisma: PrismaService;
+  let tenantASlug: string;
+  let tenantBSlug: string;
+  let tokenA: string;
+  let httpStudentAId: string;
+  let httpStudentBId: string;
+
+  const HTTP_ISO_EMAIL_DOMAIN = 'http-iso.test';
+  const HTTP_ISO_PASSWORD = 'HttpIsoTest1234!';
+  const HTTP_SLUG_PREFIX = 'http-iso-';
+
+  /** Remove leftovers from previous failed runs. */
+  async function cleanupHttpIso(p: PrismaService): Promise<void> {
+    await p.refreshToken
+      .deleteMany({ where: { user: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } } })
+      .catch(() => undefined);
+    await p.auditLog
+      .deleteMany({
+        where: {
+          OR: [
+            { user: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } },
+            { tenant: { slug: { startsWith: HTTP_SLUG_PREFIX } } },
+          ],
+        },
+      })
+      .catch(() => undefined);
+    await p.student
+      .deleteMany({ where: { tenant: { slug: { startsWith: HTTP_SLUG_PREFIX } } } })
+      .catch(() => undefined);
+    await p.user
+      .deleteMany({ where: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } })
+      .catch(() => undefined);
+    await p.tenant
+      .deleteMany({ where: { slug: { startsWith: HTTP_SLUG_PREFIX } } })
+      .catch(() => undefined);
+  }
+
+  beforeAll(async () => {
+    const noopResend = { send: vi.fn().mockResolvedValue({ success: true }) };
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ResendService)
+      .useValue(noopResend)
+      .compile();
+
+    httpApp = moduleRef.createNestApplication();
+    httpApp.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+      }),
+    );
+    httpApp.setGlobalPrefix('api', { exclude: ['health'] });
+    await httpApp.init();
+    httpPrisma = moduleRef.get(PrismaService);
+
+    await cleanupHttpIso(httpPrisma);
+
+    // Seed two tenants with deterministic slugs.
+    tenantASlug = `${HTTP_SLUG_PREFIX}a`;
+    tenantBSlug = `${HTTP_SLUG_PREFIX}b`;
+    const pwHash = await bcrypt.hash(HTTP_ISO_PASSWORD, 4);
+
+    const tA = await httpPrisma.tenant.create({
+      data: {
+        id: createId(),
+        name: 'HTTP Iso Tenant A',
+        slug: tenantASlug,
+        type: TenantType.PRIMARY_SCHOOL,
+        locale: Locale.fr,
+      },
+    });
+    const tB = await httpPrisma.tenant.create({
+      data: {
+        id: createId(),
+        name: 'HTTP Iso Tenant B',
+        slug: tenantBSlug,
+        type: TenantType.PRIMARY_SCHOOL,
+        locale: Locale.fr,
+      },
+    });
+
+    // One SCHOOL_ADMIN per tenant (email-verified so login succeeds).
+    await httpPrisma.user.create({
+      data: {
+        id: createId(),
+        tenantId: tA.id,
+        email: `admin-a@${HTTP_ISO_EMAIL_DOMAIN}`,
+        passwordHash: pwHash,
+        firstName: 'AdminA',
+        lastName: 'IsoHTTP',
+        role: UserRole.SCHOOL_ADMIN,
+        emailVerifiedAt: new Date(),
+      },
+    });
+    await httpPrisma.user.create({
+      data: {
+        id: createId(),
+        tenantId: tB.id,
+        email: `admin-b@${HTTP_ISO_EMAIL_DOMAIN}`,
+        passwordHash: pwHash,
+        firstName: 'AdminB',
+        lastName: 'IsoHTTP',
+        role: UserRole.SCHOOL_ADMIN,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    // One student per tenant (no parentEmail required to be an existing user —
+    // parentEmail is stored as a plain string on the Student model).
+    const sA = await httpPrisma.student.create({
+      data: {
+        id: createId(),
+        tenantId: tA.id,
+        firstName: 'Alice',
+        lastName: 'HTTP-A',
+        dateOfBirth: new Date('2018-06-01'),
+        sex: Sex.F,
+        classroom: 'CP-A',
+        parentEmail: `parent-a@${HTTP_ISO_EMAIL_DOMAIN}`,
+      },
+    });
+    const sB = await httpPrisma.student.create({
+      data: {
+        id: createId(),
+        tenantId: tB.id,
+        firstName: 'Bob',
+        lastName: 'HTTP-B',
+        dateOfBirth: new Date('2017-03-15'),
+        sex: Sex.M,
+        classroom: 'CP-B',
+        parentEmail: `parent-b@${HTTP_ISO_EMAIL_DOMAIN}`,
+      },
+    });
+    httpStudentAId = sA.id;
+    httpStudentBId = sB.id;
+
+    // Mint a valid access token for tenant A's admin via POST /api/auth/login.
+    const loginRes = await request(httpApp.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: `admin-a@${HTTP_ISO_EMAIL_DOMAIN}`, password: HTTP_ISO_PASSWORD })
+      .expect(200);
+    tokenA = loginRes.body.accessToken as string;
+  });
+
+  afterAll(async () => {
+    await cleanupHttpIso(httpPrisma);
+    await httpApp.close();
+  });
+
+  it(
+    'GET /api/students with tenant-A JWT + spoofed Host: <tenantB>.klasso.tn returns ONLY tenant-A students',
+    async () => {
+      // The Host header carries tenantB's subdomain — simulating what an attacker
+      // would send if they held tenant A's JWT but tried to read tenant B data by
+      // spoofing the Host header.  The tenant scoping comes from the JWT (tenantAId
+      // baked in at login), NOT from the Host header, so only tenant A students
+      // must be visible.
+      const res = await request(httpApp.getHttpServer())
+        .get('/api/students')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .set('Host', `${tenantBSlug}.klasso.tn`)
+        .expect(200);
+
+      // Response shape is { items: Student[] } — confirmed from students.e2e-spec.ts
+      // (SCHOOL_ADMIN list at GET /api/students returns res.body.items).
+      const items = res.body.items as Array<{ id: string; tenantId: string }>;
+
+      // Tenant A's student is present.
+      const foundA = items.find((s) => s.id === httpStudentAId);
+      expect(foundA).toBeDefined();
+      expect(foundA?.tenantId).toBe(
+        (await httpPrisma.tenant.findUnique({ where: { slug: tenantASlug } }))!.id,
+      );
+
+      // Tenant B's student is completely absent — Host header had zero effect.
+      const foundB = items.find((s) => s.id === httpStudentBId);
+      expect(foundB).toBeUndefined();
+    },
+  );
+
+  it(
+    'GET /api/students without a spoofed Host returns the same tenant-A-only result',
+    async () => {
+      // Baseline: confirm no Host header tampering also returns only tenant A students.
+      const res = await request(httpApp.getHttpServer())
+        .get('/api/students')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      const items = res.body.items as Array<{ id: string }>;
+      expect(items.find((s) => s.id === httpStudentAId)).toBeDefined();
+      expect(items.find((s) => s.id === httpStudentBId)).toBeUndefined();
+    },
+  );
 });

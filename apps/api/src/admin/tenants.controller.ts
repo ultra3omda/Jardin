@@ -87,4 +87,15 @@ export class TenantsController {
   ): Promise<InviteSummaryDto> {
     return this.tenants.resendInvite(id, user.id, getRequestMeta(req));
   }
+
+  @Post(':id/domain/retry')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Retry/kick domain provisioning for a tenant (SUPER_ADMIN only)' })
+  @ApiResponse({ status: 202 })
+  async retryDomain(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ): Promise<{ domainStatus: string }> {
+    return this.tenants.retryDomain(id, user.id);
+  }
 }

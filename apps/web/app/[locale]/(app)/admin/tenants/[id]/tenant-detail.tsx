@@ -13,9 +13,11 @@ import { ErrorRetry } from '@/components/ui/error-retry';
 import {
   getTenant,
   resendInvite,
+  retryTenantDomain,
   type InviteSummary,
 } from '@/lib/api/admin-tenants';
 import { useAuthStore } from '@/lib/auth/use-auth-store';
+import { DomainStatusBadge } from '@/components/tenants/domain-status-badge';
 
 export function TenantDetail({ id }: { id: string }) {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -34,6 +36,13 @@ export function TenantDetail({ id }: { id: string }) {
     mutationFn: () => resendInvite(accessToken!, id),
     onSuccess: (invite) => {
       setResentInvite(invite);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenant', id] });
+    },
+  });
+
+  const retryDomainMutation = useMutation({
+    mutationFn: () => retryTenantDomain(accessToken!, id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'tenant', id] });
     },
   });
@@ -90,6 +99,37 @@ export function TenantDetail({ id }: { id: string }) {
         <h2 className="text-sm font-semibold">URLs preview</h2>
         <UrlRow label="Web" url={webUrl} />
         <UrlRow label="Mobile" url={mobileUrl} note={`Code école : ${tenant.slug}`} />
+      </section>
+
+      <section className="space-y-3 rounded-lg border bg-card p-6">
+        <h2 className="text-sm font-semibold">Domaine personnalisé</h2>
+        <div className="flex items-center gap-3">
+          <DomainStatusBadge status={tenant.domainStatus ?? 'NONE'} />
+          {tenant.customDomain && (
+            <a
+              href={`https://${tenant.customDomain}`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-sm text-muted-foreground hover:underline"
+            >
+              {tenant.customDomain} ↗
+            </a>
+          )}
+        </div>
+        {(tenant.domainStatus === 'FAILED' || tenant.domainStatus === 'NONE') && (
+          <Button
+            variant="outline"
+            onClick={() => retryDomainMutation.mutate()}
+            disabled={retryDomainMutation.isPending}
+          >
+            {retryDomainMutation.isPending ? 'En cours…' : 'Réessayer le provisioning'}
+          </Button>
+        )}
+        {retryDomainMutation.isError && (
+          <p className="text-xs text-red-600" role="alert">
+            Échec de la relance. Veuillez réessayer.
+          </p>
+        )}
       </section>
 
       <section className="space-y-3 rounded-lg border bg-card p-6">

@@ -13,11 +13,13 @@ import * as bcrypt from 'bcrypt';
 import { webcrypto } from 'node:crypto';
 
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { DEMO_TENANT_SLUG_PREFIX } from './constants/demo-tenants';
 import { ResendService } from '../common/email/resend.service';
 import { InviteEmail } from '../common/email/templates/invite';
 import type { RequestMeta } from '../auth/utils/request-meta.utils';
 import { InviteTokensService } from './invite-tokens.service';
+import { DomainProvisioningService } from './domain-provisioning.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import {
   CreateTenantResponseDto,
@@ -50,6 +52,8 @@ export class TenantsService {
     private readonly inviteTokens: InviteTokensService,
     private readonly resend: ResendService,
     private readonly config: ConfigService,
+    private readonly domains: DomainProvisioningService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   async create(
@@ -109,16 +113,65 @@ export class TenantsService {
       return { tenant: newTenant };
     });
 
+    if (this.domains.isEnabled()) {
+      await this.prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          domainStatus: 'PROVISIONING',
+          customDomain: `${slug}.${this.config.get<string>('domainAutomation.baseDomain', 'klasso.tn')}`,
+        },
+      });
+      await this.writeTenantCreatedAudit(superAdminId, tenant.id, slug, adminEmail, null, meta);
+      // Detached from the request: DNS + Vercel + SSL poll, then email on resolve.
+      // runDetached drops rlsTx so provision() never runs on the committed request tx (P2028).
+      const provisionTenantId = tenant.id;
+      this.tenantContext.runDetached(() => this.domains.provision(provisionTenantId, superAdminId));
+      return {
+        tenant: await this.buildSummary(tenant.id),
+        invite: null,
+        inviteEmailSent: false,
+        domainStatus: 'PROVISIONING',
+      };
+    }
+
+    // Automation OFF — unchanged legacy flow (immediate path-based invite).
     const invite = await this.inviteTokens.create(
       superAdminId,
-      {
-        invitedEmail: adminEmail,
-        intendedRole: UserRole.SCHOOL_ADMIN,
-        expiresInDays: INVITE_EXPIRES_IN_DAYS,
-      },
+      { invitedEmail: adminEmail, intendedRole: UserRole.SCHOOL_ADMIN, expiresInDays: INVITE_EXPIRES_IN_DAYS },
       meta,
     );
+    await this.writeTenantCreatedAudit(superAdminId, tenant.id, slug, adminEmail, invite.id, meta);
+    let inviteEmailSent = false;
+    if (dto.sendInviteEmail !== false) {
+      inviteEmailSent = await this.sendCreateInviteEmail(superAdminId, adminEmail, tenant, brand, invite.url);
+    }
+    return {
+      tenant: await this.buildSummary(tenant.id),
+      invite: { id: invite.id, url: invite.url, expiresAt: invite.expiresAt } satisfies InviteSummaryDto,
+      inviteEmailSent,
+      domainStatus: 'NONE',
+    };
+  }
 
+  async retryDomain(id: string, superAdminId: string): Promise<{ domainStatus: string }> {
+    const tenant = await this.prisma.tenant.findFirst({ where: { id, deletedAt: null } });
+    if (!tenant) throw new NotFoundException({ code: 'TENANT_NOT_FOUND' });
+    await this.prisma.tenant.update({
+      where: { id },
+      data: { domainStatus: 'PROVISIONING', domainError: null },
+    });
+    this.tenantContext.runDetached(() => this.domains.provision(id, superAdminId));
+    return { domainStatus: 'PROVISIONING' };
+  }
+
+  private async writeTenantCreatedAudit(
+    superAdminId: string,
+    tenantId: string,
+    slug: string,
+    adminEmail: string,
+    inviteTokenId: string | null,
+    meta: RequestMeta,
+  ): Promise<void> {
     try {
       await this.prisma.auditLog.create({
         data: {
@@ -127,7 +180,7 @@ export class TenantsService {
           resource: 'tenant',
           tenantId: null,
           userId: superAdminId,
-          metadata: { tenantId: tenant.id, slug, adminEmail, inviteTokenId: invite.id },
+          metadata: { tenantId, slug, adminEmail, inviteTokenId },
           ip: meta.ip,
           userAgent: meta.userAgent,
         },
@@ -135,39 +188,34 @@ export class TenantsService {
     } catch (err) {
       this.logger.error(`audit admin.tenant.created failed: ${String(err)}`);
     }
+  }
 
-    let inviteEmailSent = false;
-    if (dto.sendInviteEmail !== false) {
-      const superAdmin = await this.prisma.user.findUnique({
-        where: { id: superAdminId },
-        select: { firstName: true, lastName: true },
-      });
-      const inviterName = superAdmin
-        ? `${superAdmin.firstName} ${superAdmin.lastName}`.trim()
-        : 'Klasso';
-      const result = await this.resend.send({
-        to: adminEmail,
-        subject: `Bienvenue sur Klasso — administrer ${tenant.name}`,
-        template: InviteEmail({
-          inviterName,
-          registerUrl: invite.url,
-          expiresInDays: INVITE_EXPIRES_IN_DAYS,
-          brand: brand ?? DEFAULT_BRAND,
-          tenantName: tenant.name,
-        }),
-      });
-      inviteEmailSent = result.success;
-    }
-
-    return {
-      tenant: await this.buildSummary(tenant.id),
-      invite: {
-        id: invite.id,
-        url: invite.url,
-        expiresAt: invite.expiresAt,
-      } satisfies InviteSummaryDto,
-      inviteEmailSent,
-    };
+  private async sendCreateInviteEmail(
+    superAdminId: string,
+    adminEmail: string,
+    tenant: { id: string; name: string },
+    brand: TenantBrand | null,
+    inviteUrl: string,
+  ): Promise<boolean> {
+    const superAdmin = await this.prisma.user.findUnique({
+      where: { id: superAdminId },
+      select: { firstName: true, lastName: true },
+    });
+    const inviterName = superAdmin
+      ? `${superAdmin.firstName} ${superAdmin.lastName}`.trim()
+      : 'Klasso';
+    const result = await this.resend.send({
+      to: adminEmail,
+      subject: `Bienvenue sur Klasso — administrer ${tenant.name}`,
+      template: InviteEmail({
+        inviterName,
+        registerUrl: inviteUrl,
+        expiresInDays: INVITE_EXPIRES_IN_DAYS,
+        brand: brand ?? DEFAULT_BRAND,
+        tenantName: tenant.name,
+      }),
+    });
+    return result.success;
   }
 
   /**
@@ -338,6 +386,8 @@ export class TenantsService {
       usersCount,
       adminOnboarded,
       inviteStatus,
+      domainStatus: t.domainStatus,
+      customDomain: t.customDomain ?? null,
     };
   }
 

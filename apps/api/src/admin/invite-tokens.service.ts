@@ -46,6 +46,12 @@ export class InviteTokensService {
      * endpoint — only set internally by the commercial flow.
      */
     tenantId: string | null = null,
+    /**
+     * Domain automation — when set, the returned `url` uses this base URL
+     * (e.g. `https://ecole.klasso.tn`) instead of `webAppUrl`. Allows the
+     * provisioning flow to send a branded subdomain link once the domain is live.
+     */
+    baseUrlOverride?: string,
   ): Promise<InviteTokenCreatedDto> {
     const plaintext = generateRefreshToken();
     const tokenHash = hashRefreshToken(plaintext);
@@ -73,10 +79,7 @@ export class InviteTokensService {
       ...meta,
     });
 
-    const baseUrl = this.config.get<string>(
-      'webAppUrl',
-      'https://klasso.tn',
-    );
+    const baseUrl = baseUrlOverride ?? this.config.get<string>('webAppUrl', 'https://klasso.tn');
     return {
       id,
       token: plaintext,

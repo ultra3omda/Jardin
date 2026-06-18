@@ -48,6 +48,13 @@ enum TenantStatus {
   SUSPENDED
 }
 
+enum DomainStatus {
+  NONE
+  PROVISIONING
+  ACTIVE
+  FAILED
+}
+
 enum Sex {
   M
   F
@@ -107,6 +114,11 @@ model Tenant {
   // tenants créés autrement (admin/tenants, seeds, fixtures) sont opérationnels.
   status                TenantStatus @default(ACTIVE)
   onboardingCompletedAt DateTime?
+  // Domain automation (OVH CNAME + Vercel) — additive, backward-compat.
+  domainStatus        DomainStatus @default(NONE)
+  customDomain        String?
+  domainError         String?
+  domainProvisionedAt DateTime?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
   deletedAt             DateTime?
