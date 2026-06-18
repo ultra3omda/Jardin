@@ -339,10 +339,13 @@ function makeValidationPipe(): ValidationPipe {
 async function waitForTerminalStatus(
   prisma: PrismaService,
   tenantId: string,
-  maxTicks = 20,
+  maxTicks = 60,
 ): Promise<string> {
   for (let i = 0; i < maxTicks; i++) {
-    await new Promise<void>((r) => setImmediate(r));
+    // Real delay (not setImmediate): the detached provision() finalizes inside
+    // a fresh RLS transaction (connection acquire + statements + commit), which
+    // needs wall-clock time the microtask queue alone does not give.
+    await new Promise<void>((r) => setTimeout(r, 30));
     const t = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { domainStatus: true },
@@ -359,11 +362,11 @@ async function waitForTerminalStatus(
  */
 async function waitForSpyCalled(
   spy: { mock: { calls: unknown[] } },
-  maxTicks = 20,
+  maxTicks = 60,
 ): Promise<boolean> {
   for (let i = 0; i < maxTicks; i++) {
     if (spy.mock.calls.length > 0) return true;
-    await new Promise<void>((r) => setImmediate(r));
+    await new Promise<void>((r) => setTimeout(r, 30));
   }
   return spy.mock.calls.length > 0;
 }
