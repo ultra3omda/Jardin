@@ -9,6 +9,7 @@ function makeConfig() {
       'domainAutomation.vercel.teamId': 'team_1',
       'domainAutomation.vercel.apiBase': 'https://api.vercel.com',
     }[key]),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 
@@ -24,6 +25,7 @@ describe('VercelDomainsClient', () => {
   });
 
   it('isReady true only when verified && !misconfigured', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: any) => {
       const url = String(input);
       if (url.includes('/v9/projects/')) return new Response(JSON.stringify({ verified: true }));
@@ -35,6 +37,7 @@ describe('VercelDomainsClient', () => {
   });
 
   it('isReady false when misconfigured', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: any) => {
       const url = String(input);
       if (url.includes('/v9/projects/')) return new Response(JSON.stringify({ verified: true }));

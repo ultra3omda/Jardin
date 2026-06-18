@@ -11,6 +11,7 @@ function makeConfig() {
       'domainAutomation.ovh.apiBase': 'https://eu.api.ovh.com/1.0',
       'domainAutomation.dnsZone': 'klasso.tn',
     }[key]),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 
@@ -26,6 +27,7 @@ describe('OvhDnsClient', () => {
 
   it('creates a CNAME then refreshes the zone when none exists', async () => {
     const calls: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: any, init: any) => {
       const url = String(input);
       calls.push(`${init?.method ?? 'GET'} ${url}`);
