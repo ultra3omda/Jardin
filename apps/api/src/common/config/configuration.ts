@@ -1,5 +1,8 @@
 import type { NodeEnv } from './env.validation';
 
+export const DEFAULT_DOMAIN_POLL_INTERVAL_MS = 10_000;
+export const DEFAULT_DOMAIN_POLL_MAX_ATTEMPTS = 180; // ~30 min @ 10s
+
 /**
  * Origins toujours autorisés en plus de la var d'env `CORS_ORIGIN`.
  * Évite un CORS-block silencieux quand un nouveau front cloud est livré
@@ -77,6 +80,17 @@ export interface AppConfig {
   demoRequest: {
     toEmail: string | undefined;
   };
+  /** Tenant domain automation (OVH CNAME + Vercel). Gated by ENABLE_TENANT_DOMAIN_AUTOMATION. */
+  domainAutomation: {
+    enabled: boolean;
+    dnsZone: string;
+    cnameTarget: string;
+    baseDomain: string;
+    pollIntervalMs: number;
+    pollMaxAttempts: number;
+    ovh: { appKey?: string; appSecret?: string; consumerKey?: string; apiBase: string };
+    vercel: { token?: string; projectId?: string; teamId?: string; apiBase: string };
+  };
 }
 
 export function configuration(): AppConfig {
@@ -121,6 +135,32 @@ export function configuration(): AppConfig {
     },
     demoRequest: {
       toEmail: process.env.DEMO_REQUEST_TO_EMAIL,
+    },
+    domainAutomation: {
+      enabled: process.env.ENABLE_TENANT_DOMAIN_AUTOMATION === 'true',
+      dnsZone: process.env.OVH_DNS_ZONE ?? 'klasso.tn',
+      cnameTarget: process.env.DOMAIN_CNAME_TARGET ?? 'cname.vercel-dns.com.',
+      baseDomain: process.env.NEXT_PUBLIC_BASE_DOMAIN ?? 'klasso.tn',
+      pollIntervalMs: parseInt(
+        process.env.DOMAIN_POLL_INTERVAL_MS ?? String(DEFAULT_DOMAIN_POLL_INTERVAL_MS),
+        10,
+      ),
+      pollMaxAttempts: parseInt(
+        process.env.DOMAIN_POLL_MAX_ATTEMPTS ?? String(DEFAULT_DOMAIN_POLL_MAX_ATTEMPTS),
+        10,
+      ),
+      ovh: {
+        appKey: process.env.OVH_APP_KEY,
+        appSecret: process.env.OVH_APP_SECRET,
+        consumerKey: process.env.OVH_CONSUMER_KEY,
+        apiBase: process.env.OVH_API_BASE ?? 'https://eu.api.ovh.com/1.0',
+      },
+      vercel: {
+        token: process.env.VERCEL_TOKEN,
+        projectId: process.env.VERCEL_PROJECT_ID,
+        teamId: process.env.VERCEL_TEAM_ID,
+        apiBase: process.env.VERCEL_API_BASE ?? 'https://api.vercel.com',
+      },
     },
   };
 }

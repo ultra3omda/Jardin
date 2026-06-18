@@ -113,5 +113,23 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
       .join('\n');
     throw new Error(`Invalid environment variables:\n${messages}`);
   }
+
+  // Fail-fast: domain automation requires all DNS/Vercel credentials at boot time.
+  if (process.env.ENABLE_TENANT_DOMAIN_AUTOMATION === 'true') {
+    const required = [
+      'OVH_APP_KEY',
+      'OVH_APP_SECRET',
+      'OVH_CONSUMER_KEY',
+      'VERCEL_TOKEN',
+      'VERCEL_PROJECT_ID',
+    ];
+    const missing = required.filter((k) => !process.env[k]);
+    if (missing.length) {
+      throw new Error(
+        `Domain automation enabled but missing env: ${missing.join(', ')}`,
+      );
+    }
+  }
+
   return validated;
 }
