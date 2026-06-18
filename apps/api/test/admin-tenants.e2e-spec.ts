@@ -451,6 +451,9 @@ describe('domain automation', () => {
       const tenant = await prisma.tenant.findUnique({ where: { slug: 'da-active' } });
       expect(tenant).not.toBeNull();
 
+      // Clear the spy before waiting so the call count below is unambiguous.
+      noopResend.send.mockClear();
+
       const finalStatus = await waitForTerminalStatus(prisma, tenant!.id);
       expect(finalStatus).toBe('ACTIVE');
 
@@ -459,6 +462,16 @@ describe('domain automation', () => {
 
       expect(fakeDns.upsertCname).toHaveBeenCalledWith('da-active', expect.any(String));
       expect(fakeVercel.addDomain).toHaveBeenCalledWith('da-active.klasso.tn');
+
+      // Finding 2: invite email must be sent once the tenant is ACTIVE.
+      expect(noopResend.send).toHaveBeenCalled();
+      // The invite URL must reference the subdomain (da-active.klasso.tn) so the
+      // admin registers on their own domain, not on the generic path-based URL.
+      const sendCall = noopResend.send.mock.calls[0]?.[0] as
+        | { template?: { props?: { registerUrl?: string } } }
+        | undefined;
+      const registerUrl: string = sendCall?.template?.props?.registerUrl ?? '';
+      expect(registerUrl).toMatch(/da-active\.klasso\.tn/);
     });
 
     it('GET /admin/tenants/:id returns domainStatus ACTIVE and customDomain', async () => {
@@ -486,6 +499,10 @@ describe('domain automation', () => {
         .expect(202);
 
       expect(res.body.domainStatus).toBe('PROVISIONING');
+
+      // Finding 3: drain the detached provision() so afterAll cleanup doesn't
+      // race against an in-flight DB write (FK / record-not-found in CI).
+      await waitForTerminalStatus(prisma, tenant!.id);
     });
   });
 
@@ -587,6 +604,11 @@ describe('domain automation', () => {
 
       const updated = await prisma.tenant.findUnique({ where: { id: tenant!.id } });
       expect(updated?.domainError).toBeTruthy();
+
+      // Finding 4: isReady must have been polled — with pollMaxAttempts=2 and
+      // pollIntervalMs=0, exactly 2 calls are made before giving up.
+      expect(fakeVercelF.isReady).toHaveBeenCalled();
+      expect(fakeVercelF.isReady).toHaveBeenCalledTimes(2);
     });
   });
 
