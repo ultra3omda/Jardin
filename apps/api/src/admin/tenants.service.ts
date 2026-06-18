@@ -139,7 +139,7 @@ export class TenantsService {
     await this.writeTenantCreatedAudit(superAdminId, tenant.id, slug, adminEmail, invite.id, meta);
     let inviteEmailSent = false;
     if (dto.sendInviteEmail !== false) {
-      inviteEmailSent = await this.sendCreateInviteEmail(superAdminId, tenant, brand, invite.url);
+      inviteEmailSent = await this.sendCreateInviteEmail(superAdminId, adminEmail, tenant, brand, invite.url);
     }
     return {
       tenant: await this.buildSummary(tenant.id),
@@ -188,6 +188,7 @@ export class TenantsService {
 
   private async sendCreateInviteEmail(
     superAdminId: string,
+    adminEmail: string,
     tenant: { id: string; name: string },
     brand: TenantBrand | null,
     inviteUrl: string,
@@ -199,14 +200,8 @@ export class TenantsService {
     const inviterName = superAdmin
       ? `${superAdmin.firstName} ${superAdmin.lastName}`.trim()
       : 'Klasso';
-    const admin = await this.prisma.user.findFirst({
-      where: { tenantId: tenant.id, role: UserRole.SCHOOL_ADMIN, deletedAt: null },
-      orderBy: { createdAt: 'asc' },
-      select: { email: true },
-    });
-    if (!admin) return false;
     const result = await this.resend.send({
-      to: admin.email,
+      to: adminEmail,
       subject: `Bienvenue sur Klasso — administrer ${tenant.name}`,
       template: InviteEmail({
         inviterName,
