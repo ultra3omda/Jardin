@@ -122,7 +122,7 @@ export function TenantDetail({ id }: { id: string }) {
             onClick={() => retryDomainMutation.mutate()}
             disabled={retryDomainMutation.isPending}
           >
-            {retryDomainMutation.isPending ? 'Provisioning...' : 'Réessayer le provisioning'}
+            {retryDomainMutation.isPending ? 'En cours…' : 'Réessayer le provisioning'}
           </Button>
         )}
         {retryDomainMutation.isError && (
