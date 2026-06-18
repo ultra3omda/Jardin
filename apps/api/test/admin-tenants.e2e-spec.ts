@@ -20,6 +20,7 @@ import { Test } from '@nestjs/testing';
 import { createId } from '@paralleldrive/cuid2';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { render } from '@react-email/render';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -480,13 +481,13 @@ describe('domain automation', () => {
       // provision() sends the invite a tick after writing ACTIVE — poll the spy.
       const inviteSent = await waitForSpyCalled(noopResend.send);
       expect(inviteSent).toBe(true);
-      // The invite URL must reference the subdomain (da-active.klasso.tn) so the
-      // admin registers on their own domain, not on the generic path-based URL.
-      const sendCall = noopResend.send.mock.calls[0]?.[0] as
-        | { template?: { props?: { registerUrl?: string } } }
-        | undefined;
-      const registerUrl: string = sendCall?.template?.props?.registerUrl ?? '';
-      expect(registerUrl).toMatch(/da-active\.klasso\.tn/);
+      // The invite must link to the tenant subdomain (da-active.klasso.tn), not
+      // the generic path-based URL. The template is the RENDERED React element,
+      // so render it to HTML and assert the URL appears in the email body.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sendArg = noopResend.send.mock.calls[0]?.[0] as any;
+      const html = await render(sendArg.template);
+      expect(html).toMatch(/da-active\.klasso\.tn/);
     });
 
     it('GET /admin/tenants/:id returns domainStatus ACTIVE and customDomain', async () => {
