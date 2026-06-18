@@ -105,4 +105,32 @@ describe('DomainProvisioningService', () => {
     expect(last.data.domainStatus).toBe(DomainStatus.FAILED);
     expect(last.data.domainError).toContain('ovh down');
   });
+
+  it('resolves without throwing even when prisma.update inside fail() rejects', async () => {
+    const d = deps();
+    // DNS throws → enters fail() path
+    d.dns.upsertCname = vi.fn().mockRejectedValue(new Error('dns error'));
+    // prisma.update inside fail() also rejects
+    d.prisma.tenant.update = vi.fn().mockRejectedValue(new Error('db down'));
+    // provision() must resolve, never reject
+    await expect(make(d).provision('t1', 'super1')).resolves.toBeUndefined();
+  });
+
+  it('domain stays ACTIVE even when invite send throws after successful provisioning', async () => {
+    const d = deps();
+    // vercel is ready → success path
+    d.vercel.isReady = vi.fn().mockResolvedValue(true);
+    // invite creation throws after ACTIVE is written
+    d.invites.create = vi.fn().mockRejectedValue(new Error('smtp timeout'));
+
+    await expect(make(d).provision('t1', 'super1')).resolves.toBeUndefined();
+
+    // The last prisma.tenant.update call must have set ACTIVE, not FAILED
+    const calls = d.prisma.tenant.update.mock.calls as any[][];
+    const activeCall = calls.find((c) => c[0]?.data?.domainStatus === DomainStatus.ACTIVE);
+    expect(activeCall).toBeDefined();
+    // Must NOT have set FAILED at any point
+    const failedCall = calls.find((c) => c[0]?.data?.domainStatus === DomainStatus.FAILED);
+    expect(failedCall).toBeUndefined();
+  });
 });

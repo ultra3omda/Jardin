@@ -12,6 +12,8 @@ import { VercelDomainsClient } from '../dns/vercel-domains.client';
 import { InviteTokensService } from './invite-tokens.service';
 
 const INVITE_EXPIRES_IN_DAYS = 14;
+const MAX_LOG_ERROR_LEN = 200;
+const MAX_DOMAIN_ERROR_LEN = 500;
 
 /** Shape of the tenant data needed by the provisioning helpers. */
 interface TenantSnapshot {
@@ -61,28 +63,16 @@ export class DomainProvisioningService {
       await this.dns.upsertCname(tenant.slug, cnameTarget);
       await this.vercel.addDomain(fqdn);
       const ready = await this.pollReady(fqdn);
-      if (!ready) {
-        await this.fail(tenantId, superAdminId, tenant, 'Domain not verified before timeout');
-        return;
-      }
-      await this.prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
-          domainStatus: DomainStatus.ACTIVE,
-          customDomain: fqdn,
-          domainError: null,
-          domainProvisionedAt: new Date(),
-        },
-      });
-      await this.sendInvite(tenant, tenantId, superAdminId, `https://${fqdn}`);
+      // Funnel timeout through the single catch-based fail() path.
+      if (!ready) throw new Error('Domain not verified before timeout');
+
+      await this.markActive(tenantId, fqdn);
       await this.audit('admin.tenant.domain_provisioned', superAdminId, { tenantId, fqdn });
+      // Post-ACTIVE invite failure must NOT revert the domain to FAILED.
+      await this.trySendInvite(tenant, tenantId, superAdminId, `https://${fqdn}`);
     } catch (err) {
-      await this.fail(
-        tenantId,
-        superAdminId,
-        tenant,
-        err instanceof Error ? err.message : String(err),
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      await this.fail(tenantId, superAdminId, tenant, message);
     }
   }
 
@@ -97,7 +87,12 @@ export class DomainProvisioningService {
     } finally {
       await this.prisma.tenant.update({
         where: { id: tenantId },
-        data: { domainStatus: DomainStatus.NONE, customDomain: null, domainProvisionedAt: null },
+        data: {
+          domainStatus: DomainStatus.NONE,
+          customDomain: null,
+          domainError: null,
+          domainProvisionedAt: null,
+        },
       });
     }
   }
@@ -133,9 +128,42 @@ export class DomainProvisioningService {
     return false;
   }
 
+  /** Set domain to ACTIVE in DB — called only from the success path. */
+  private async markActive(tenantId: string, fqdn: string): Promise<void> {
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        domainStatus: DomainStatus.ACTIVE,
+        customDomain: fqdn,
+        domainError: null,
+        domainProvisionedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Send the subdomain invite after ACTIVE is persisted.
+   * Swallows all errors — an invite-send failure must NOT revert the domain to FAILED.
+   */
+  private async trySendInvite(
+    tenant: TenantSnapshot,
+    tenantId: string,
+    superAdminId: string,
+    baseUrlOverride: string,
+  ): Promise<void> {
+    try {
+      await this.sendInvite(tenant, tenantId, superAdminId, baseUrlOverride);
+    } catch (err) {
+      this.logger.error(
+        `Invite send failed after ACTIVE for tenant ${tenant.slug} (domain stays ACTIVE): ${String(err).slice(0, MAX_LOG_ERROR_LEN)}`,
+      );
+    }
+  }
+
   /**
    * Persist FAILED state and send a path-based fallback invite so the tenant
    * is never blocked waiting on a broken domain.
+   * Never throws — all errors are caught and logged.
    */
   private async fail(
     tenantId: string,
@@ -143,13 +171,23 @@ export class DomainProvisioningService {
     tenant: TenantSnapshot,
     message: string,
   ): Promise<void> {
-    this.logger.error(`Domain provisioning failed for tenant ${tenant.slug}: ${message}`);
-    await this.prisma.tenant.update({
-      where: { id: tenantId },
-      data: { domainStatus: DomainStatus.FAILED, domainError: message },
-    });
-    // 5th arg undefined → path-based fallback (invites.create uses webAppUrl default).
-    await this.sendInvite(tenant, tenantId, superAdminId, undefined);
+    const safeLog = message.slice(0, MAX_LOG_ERROR_LEN);
+    const safeError = message.slice(0, MAX_DOMAIN_ERROR_LEN);
+    this.logger.error(`Domain provisioning failed for tenant ${tenant.slug}: ${safeLog}`);
+    try {
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { domainStatus: DomainStatus.FAILED, domainError: safeError },
+      });
+    } catch (dbErr) {
+      this.logger.error(`fail(): prisma update threw for tenant ${tenant.slug}: ${String(dbErr).slice(0, MAX_LOG_ERROR_LEN)}`);
+    }
+    try {
+      // 5th arg undefined → path-based fallback (invites.create uses webAppUrl default).
+      await this.sendInvite(tenant, tenantId, superAdminId, undefined);
+    } catch (inviteErr) {
+      this.logger.error(`fail(): fallback sendInvite threw for tenant ${tenant.slug}: ${String(inviteErr).slice(0, MAX_LOG_ERROR_LEN)}`);
+    }
     await this.audit('admin.tenant.domain_failed', superAdminId, { tenantId });
   }
 
