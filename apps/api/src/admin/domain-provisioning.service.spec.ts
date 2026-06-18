@@ -3,9 +3,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DomainProvisioningService } from './domain-provisioning.service';
 import { DomainStatus } from '@prisma/client';
 
+// RLS_SESSION_ENABLED is intentionally NOT set in the unit spec so
+// withTenantRls() takes the fast `await work()` branch — keeping these
+// tests focused on business logic without needing a real Prisma tx.
+
 function deps(overrides: Record<string, unknown> = {}) {
   const tenant = { id: 't1', slug: 'ecole', name: 'École', brand: null, locale: 'fr' };
   const admin = { id: 'u1', email: 'admin@ecole.tn', firstName: 'A', lastName: 'B' };
+
+  // txStub: used only when $transaction is exercised (RLS path, not active here).
+  const txStub = { $queryRawUnsafe: vi.fn().mockResolvedValue(undefined) };
+
   const prisma = {
     tenant: {
       findFirst: vi.fn().mockResolvedValue(tenant),
@@ -14,6 +22,10 @@ function deps(overrides: Record<string, unknown> = {}) {
     },
     user: { findFirst: vi.fn().mockResolvedValue(admin) },
     auditLog: { create: vi.fn() },
+    // Safe $transaction fallback — passes the tx stub to the callback.
+    $transaction: vi.fn().mockImplementation(
+      (fn: (tx: typeof txStub) => Promise<unknown>) => fn(txStub),
+    ),
   };
   const dns = {
     upsertCname: vi.fn().mockResolvedValue({ id: '1' }),
@@ -42,7 +54,12 @@ function deps(overrides: Record<string, unknown> = {}) {
         'domainAutomation.pollMaxAttempts': 3,
       })[k],
   };
-  return { prisma, dns, vercel, resend, invites, config, ...overrides };
+  // tenantContext mock: run() simply invokes the work callback, get() returns undefined.
+  const tenantContext = {
+    get: vi.fn().mockReturnValue(undefined),
+    run: vi.fn().mockImplementation((_ctx: unknown, work: () => Promise<unknown>) => work()),
+  };
+  return { prisma, dns, vercel, resend, invites, config, tenantContext, ...overrides };
 }
 
 function make(d: ReturnType<typeof deps>) {
@@ -53,6 +70,7 @@ function make(d: ReturnType<typeof deps>) {
     d.config as any,
     d.resend as any,
     d.invites as any,
+    d.tenantContext as any,
   );
 }
 

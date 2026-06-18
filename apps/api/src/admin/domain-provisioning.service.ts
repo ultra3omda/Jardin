@@ -10,6 +10,7 @@ import { InviteEmail } from '../common/email/templates/invite';
 import { DNS_PROVIDER, type DnsProvider } from '../dns/dns-provider.interface';
 import { VercelDomainsClient } from '../dns/vercel-domains.client';
 import { InviteTokensService } from './invite-tokens.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 
 const INVITE_EXPIRES_IN_DAYS = 14;
 const MAX_LOG_ERROR_LEN = 200;
@@ -39,6 +40,7 @@ export class DomainProvisioningService {
     private readonly config: ConfigService,
     private readonly resend: ResendService,
     private readonly invites: InviteTokensService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   isEnabled(): boolean {
@@ -48,6 +50,11 @@ export class DomainProvisioningService {
   /**
    * Full provisioning flow: OVH CNAME → Vercel domain → poll SSL → email.
    * Never throws — all failures are captured into domainStatus = FAILED.
+   *
+   * External I/O (OVH upsertCname, Vercel addDomain, pollReady) stays OUTSIDE
+   * any DB transaction. Only the finalization DB writes (markActive / fail)
+   * run inside withTenantRls so the `app.current_tenant` GUC is in scope for
+   * the RLS policy on tenant-scoped tables (e.g. invite_tokens records).
    */
   async provision(tenantId: string, superAdminId: string): Promise<void> {
     const tenant = await this.prisma.tenant.findFirst({
@@ -60,16 +67,20 @@ export class DomainProvisioningService {
     const fqdn = `${tenant.slug}.${baseDomain}`;
 
     try {
+      // External I/O — stays outside any DB transaction (can take minutes).
       await this.dns.upsertCname(tenant.slug, cnameTarget);
       await this.vercel.addDomain(fqdn);
       const ready = await this.pollReady(fqdn);
       // Funnel timeout through the single catch-based fail() path.
       if (!ready) throw new Error('Domain not verified before timeout');
 
-      await this.markActive(tenantId, fqdn);
-      await this.audit('admin.tenant.domain_provisioned', superAdminId, { tenantId, fqdn });
-      // Post-ACTIVE invite failure must NOT revert the domain to FAILED.
-      await this.trySendInvite(tenant, tenantId, superAdminId, `https://${fqdn}`);
+      // DB finalization: markActive + audit + invite — needs RLS GUC.
+      await this.withTenantRls(tenantId, async () => {
+        await this.markActive(tenantId, fqdn);
+        await this.audit('admin.tenant.domain_provisioned', superAdminId, { tenantId, fqdn });
+        // Post-ACTIVE invite failure must NOT revert the domain to FAILED.
+        await this.trySendInvite(tenant, tenantId, superAdminId, `https://${fqdn}`);
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await this.fail(tenantId, superAdminId, tenant, message);
@@ -117,6 +128,47 @@ export class DomainProvisioningService {
   }
 
   // ===== Private helpers =====
+
+  /**
+   * Runs `work` inside a fresh Prisma transaction that sets the Postgres
+   * `app.current_tenant` GUC so RLS policies on tenant-scoped tables pass.
+   *
+   * When `RLS_SESSION_ENABLED` is off (default, non-CI), delegates directly
+   * to `work()` — zero overhead, no behaviour change.
+   *
+   * When on: opens a fresh `$transaction` (the detached context has no ambient
+   * `rlsTx`, so PrismaService routes this to the real pooled client), sets the
+   * GUC on it, then runs `work` inside a new ALS context that carries that tx
+   * as `rlsTx` — so every `this.prisma` / service call inside `work` routes
+   * its queries through the GUC-scoped connection and RLS passes.
+   *
+   * Falls back gracefully when called from `reconcilePending` (no ALS ctx):
+   * `base` will be undefined; userId/role default to system/SUPER_ADMIN.
+   */
+  private async withTenantRls(tenantId: string, work: () => Promise<void>): Promise<void> {
+    if (process.env.RLS_SESSION_ENABLED !== 'true') {
+      await work();
+      return;
+    }
+    const base = this.tenantContext.get();
+    await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRawUnsafe(
+          `SELECT set_config('app.current_tenant', $1, true)`,
+          tenantId,
+        );
+        const ctx = {
+          tenantId,
+          userId: base?.userId ?? 'system',
+          role: base?.role ?? UserRole.SUPER_ADMIN,
+          skipTenantFilter: true,
+          rlsTx: tx,
+        };
+        await this.tenantContext.run(ctx, work);
+      },
+      { timeout: 30_000, maxWait: 15_000 },
+    );
+  }
 
   private async pollReady(fqdn: string): Promise<boolean> {
     const intervalMs = this.config.get<number>('domainAutomation.pollIntervalMs', 10_000);
@@ -174,21 +226,27 @@ export class DomainProvisioningService {
     const safeLog = message.slice(0, MAX_LOG_ERROR_LEN);
     const safeError = message.slice(0, MAX_DOMAIN_ERROR_LEN);
     this.logger.error(`Domain provisioning failed for tenant ${tenant.slug}: ${safeLog}`);
-    try {
-      await this.prisma.tenant.update({
-        where: { id: tenantId },
-        data: { domainStatus: DomainStatus.FAILED, domainError: safeError },
-      });
-    } catch (dbErr) {
-      this.logger.error(`fail(): prisma update threw for tenant ${tenant.slug}: ${String(dbErr).slice(0, MAX_LOG_ERROR_LEN)}`);
-    }
-    try {
-      // 5th arg undefined → path-based fallback (invites.create uses webAppUrl default).
-      await this.sendInvite(tenant, tenantId, superAdminId, undefined);
-    } catch (inviteErr) {
-      this.logger.error(`fail(): fallback sendInvite threw for tenant ${tenant.slug}: ${String(inviteErr).slice(0, MAX_LOG_ERROR_LEN)}`);
-    }
-    await this.audit('admin.tenant.domain_failed', superAdminId, { tenantId });
+
+    await this.withTenantRls(tenantId, async () => {
+      try {
+        await this.prisma.tenant.update({
+          where: { id: tenantId },
+          data: { domainStatus: DomainStatus.FAILED, domainError: safeError },
+        });
+      } catch (dbErr) {
+        this.logger.error(`fail(): prisma update threw for tenant ${tenant.slug}: ${String(dbErr).slice(0, MAX_LOG_ERROR_LEN)}`);
+      }
+      try {
+        // 5th arg undefined → path-based fallback (invites.create uses webAppUrl default).
+        await this.sendInvite(tenant, tenantId, superAdminId, undefined);
+      } catch (inviteErr) {
+        this.logger.error(`fail(): fallback sendInvite threw for tenant ${tenant.slug}: ${String(inviteErr).slice(0, MAX_LOG_ERROR_LEN)}`);
+      }
+      await this.audit('admin.tenant.domain_failed', superAdminId, { tenantId });
+    }).catch((rlsErr) => {
+      // withTenantRls itself must never escape fail() — swallow and log.
+      this.logger.error(`fail(): withTenantRls threw for tenant ${tenant.slug}: ${String(rlsErr).slice(0, MAX_LOG_ERROR_LEN)}`);
+    });
   }
 
   /**
