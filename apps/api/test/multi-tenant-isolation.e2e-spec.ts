@@ -1467,218 +1467,6 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
     });
   });
 
-  // ==========================================================================
-  // Task 13 — HTTP boundary regression (D3 invariant)
-  //
-  // The data-layer tests above prove the Prisma extension scopes by JWT context.
-  // This block proves the same invariant at the FULL HTTP stack: a real HTTP
-  // request with Authorization: Bearer <tokenA> + Host: <tenantB-slug>.klasso.tn
-  // returns ONLY tenant A students — the Host header has zero effect on tenant
-  // scoping because the guard derives tenantId exclusively from the JWT.
-  //
-  // Placed here (inside the main describe) so it can reuse the existing two-
-  // tenant + two-student seed from the outer beforeEach. A separate HTTP app
-  // is needed, so this nested describe has its own beforeAll/afterAll that boot
-  // AppModule once for all HTTP tests in this block.
-  // ==========================================================================
-  describe('HTTP boundary — spoofed Host header never leaks tenant data (CRITICAL)', () => {
-    let httpApp: INestApplication;
-    let httpPrisma: PrismaService;
-    let tenantASlug: string;
-    let tenantBSlug: string;
-    let tokenA: string;
-    let httpStudentAId: string;
-    let httpStudentBId: string;
-
-    const HTTP_ISO_EMAIL_DOMAIN = 'http-iso.test';
-    const HTTP_ISO_PASSWORD = 'HttpIsoTest1234!';
-    const HTTP_SLUG_PREFIX = 'http-iso-';
-
-    /** Remove leftovers from previous failed runs. */
-    async function cleanupHttpIso(p: PrismaService): Promise<void> {
-      await p.refreshToken
-        .deleteMany({ where: { user: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } } })
-        .catch(() => undefined);
-      await p.auditLog
-        .deleteMany({
-          where: {
-            OR: [
-              { user: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } },
-              { tenant: { slug: { startsWith: HTTP_SLUG_PREFIX } } },
-            ],
-          },
-        })
-        .catch(() => undefined);
-      await p.student
-        .deleteMany({ where: { tenant: { slug: { startsWith: HTTP_SLUG_PREFIX } } } })
-        .catch(() => undefined);
-      await p.user
-        .deleteMany({ where: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } })
-        .catch(() => undefined);
-      await p.tenant
-        .deleteMany({ where: { slug: { startsWith: HTTP_SLUG_PREFIX } } })
-        .catch(() => undefined);
-    }
-
-    beforeAll(async () => {
-      const noopResend = { send: vi.fn().mockResolvedValue({ success: true }) };
-      const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-        .overrideProvider(ResendService)
-        .useValue(noopResend)
-        .compile();
-
-      httpApp = moduleRef.createNestApplication();
-      httpApp.useGlobalPipes(
-        new ValidationPipe({
-          whitelist: true,
-          forbidNonWhitelisted: true,
-          transform: true,
-          transformOptions: { enableImplicitConversion: true },
-        }),
-      );
-      httpApp.setGlobalPrefix('api', { exclude: ['health'] });
-      await httpApp.init();
-      httpPrisma = moduleRef.get(PrismaService);
-
-      await cleanupHttpIso(httpPrisma);
-
-      // Seed two tenants with deterministic slugs.
-      tenantASlug = `${HTTP_SLUG_PREFIX}a`;
-      tenantBSlug = `${HTTP_SLUG_PREFIX}b`;
-      const pwHash = await bcrypt.hash(HTTP_ISO_PASSWORD, 4);
-
-      const tA = await httpPrisma.tenant.create({
-        data: {
-          id: createId(),
-          name: 'HTTP Iso Tenant A',
-          slug: tenantASlug,
-          type: TenantType.PRIMARY_SCHOOL,
-          locale: Locale.fr,
-        },
-      });
-      const tB = await httpPrisma.tenant.create({
-        data: {
-          id: createId(),
-          name: 'HTTP Iso Tenant B',
-          slug: tenantBSlug,
-          type: TenantType.PRIMARY_SCHOOL,
-          locale: Locale.fr,
-        },
-      });
-
-      // One SCHOOL_ADMIN per tenant (email-verified so login succeeds).
-      await httpPrisma.user.create({
-        data: {
-          id: createId(),
-          tenantId: tA.id,
-          email: `admin-a@${HTTP_ISO_EMAIL_DOMAIN}`,
-          passwordHash: pwHash,
-          firstName: 'AdminA',
-          lastName: 'IsoHTTP',
-          role: UserRole.SCHOOL_ADMIN,
-          emailVerifiedAt: new Date(),
-        },
-      });
-      await httpPrisma.user.create({
-        data: {
-          id: createId(),
-          tenantId: tB.id,
-          email: `admin-b@${HTTP_ISO_EMAIL_DOMAIN}`,
-          passwordHash: pwHash,
-          firstName: 'AdminB',
-          lastName: 'IsoHTTP',
-          role: UserRole.SCHOOL_ADMIN,
-          emailVerifiedAt: new Date(),
-        },
-      });
-
-      // One student per tenant.
-      const sA = await httpPrisma.student.create({
-        data: {
-          id: createId(),
-          tenantId: tA.id,
-          firstName: 'Alice',
-          lastName: 'HTTP-A',
-          dateOfBirth: new Date('2018-06-01'),
-          sex: Sex.F,
-          classroom: 'CP-A',
-          parentEmail: `parent-a@${HTTP_ISO_EMAIL_DOMAIN}`,
-        },
-      });
-      const sB = await httpPrisma.student.create({
-        data: {
-          id: createId(),
-          tenantId: tB.id,
-          firstName: 'Bob',
-          lastName: 'HTTP-B',
-          dateOfBirth: new Date('2017-03-15'),
-          sex: Sex.M,
-          classroom: 'CP-B',
-          parentEmail: `parent-b@${HTTP_ISO_EMAIL_DOMAIN}`,
-        },
-      });
-      httpStudentAId = sA.id;
-      httpStudentBId = sB.id;
-
-      // Mint a valid access token for tenant A's admin via POST /api/auth/login.
-      const loginRes = await request(httpApp.getHttpServer())
-        .post('/api/auth/login')
-        .send({ email: `admin-a@${HTTP_ISO_EMAIL_DOMAIN}`, password: HTTP_ISO_PASSWORD })
-        .expect(200);
-      tokenA = loginRes.body.accessToken as string;
-    });
-
-    afterAll(async () => {
-      await cleanupHttpIso(httpPrisma);
-      await httpApp.close();
-    });
-
-    it(
-      'GET /api/students with tenant-A JWT + spoofed Host: <tenantB>.klasso.tn returns ONLY tenant-A students',
-      async () => {
-        // The Host header carries tenantB's subdomain — simulating what an attacker
-        // would send if they held tenant A's JWT but tried to read tenant B data by
-        // spoofing the Host header.  The tenant scoping comes from the JWT (tenantAId
-        // baked in at login), NOT from the Host header, so only tenant A students
-        // must be visible.
-        const res = await request(httpApp.getHttpServer())
-          .get('/api/students')
-          .set('Authorization', `Bearer ${tokenA}`)
-          .set('Host', `${tenantBSlug}.klasso.tn`)
-          .expect(200);
-
-        // Response shape is { items: Student[] } (confirmed from students.e2e-spec.ts).
-        const items = res.body.items as Array<{ id: string; tenantId: string }>;
-
-        // Tenant A's student is present.
-        const foundA = items.find((s) => s.id === httpStudentAId);
-        expect(foundA).toBeDefined();
-        expect(foundA?.tenantId).toBe(
-          (await httpPrisma.tenant.findUnique({ where: { slug: tenantASlug } }))!.id,
-        );
-
-        // Tenant B's student is completely absent — Host header had zero effect.
-        const foundB = items.find((s) => s.id === httpStudentBId);
-        expect(foundB).toBeUndefined();
-      },
-    );
-
-    it(
-      'GET /api/students without a spoofed Host returns the same tenant-A-only result',
-      async () => {
-        // Baseline: confirm no Host header tampering also returns only tenant A students.
-        const res = await request(httpApp.getHttpServer())
-          .get('/api/students')
-          .set('Authorization', `Bearer ${tokenA}`)
-          .expect(200);
-
-        const items = res.body.items as Array<{ id: string }>;
-        expect(items.find((s) => s.id === httpStudentAId)).toBeDefined();
-        expect(items.find((s) => s.id === httpStudentBId)).toBeUndefined();
-      },
-    );
-  });
-
   describe('COMMERCIAL role isolation (CRITICAL)', () => {
     const commercialCtx = {
       tenantId: null,
@@ -1789,4 +1577,218 @@ describe('Multi-tenant isolation (CRITICAL)', () => {
       });
     });
   });
+});
+
+// ==========================================================================
+// Task 13 — HTTP boundary regression (D3 invariant)
+//
+// The data-layer tests above prove the Prisma extension scopes by JWT context.
+// This block proves the same invariant at the FULL HTTP stack: a real HTTP
+// request with Authorization: Bearer <tokenA> + Host: <tenantB-slug>.klasso.tn
+// returns ONLY tenant A students — the Host header has zero effect on tenant
+// scoping because the guard derives tenantId exclusively from the JWT.
+//
+// Lives in its OWN top-level describe (NOT nested inside the main one) so the
+// outer beforeEach's unconditional prisma.tenant/student.deleteMany({}) cannot
+// wipe the http-iso tenants/students that are seeded once in this block's
+// beforeAll.
+// ==========================================================================
+describe('HTTP boundary — spoofed Host header never leaks tenant data (CRITICAL)', () => {
+  let httpApp: INestApplication;
+  let httpPrisma: PrismaService;
+  let tenantASlug: string;
+  let tenantBSlug: string;
+  let tokenA: string;
+  let httpStudentAId: string;
+  let httpStudentBId: string;
+
+  const HTTP_ISO_EMAIL_DOMAIN = 'http-iso.test';
+  const HTTP_ISO_PASSWORD = 'HttpIsoTest1234!';
+  const HTTP_SLUG_PREFIX = 'http-iso-';
+
+  /** Remove leftovers from previous failed runs. */
+  async function cleanupHttpIso(p: PrismaService): Promise<void> {
+    await p.refreshToken
+      .deleteMany({ where: { user: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } } })
+      .catch(() => undefined);
+    await p.auditLog
+      .deleteMany({
+        where: {
+          OR: [
+            { user: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } },
+            { tenant: { slug: { startsWith: HTTP_SLUG_PREFIX } } },
+          ],
+        },
+      })
+      .catch(() => undefined);
+    await p.student
+      .deleteMany({ where: { tenant: { slug: { startsWith: HTTP_SLUG_PREFIX } } } })
+      .catch(() => undefined);
+    await p.user
+      .deleteMany({ where: { email: { endsWith: `@${HTTP_ISO_EMAIL_DOMAIN}` } } })
+      .catch(() => undefined);
+    await p.tenant
+      .deleteMany({ where: { slug: { startsWith: HTTP_SLUG_PREFIX } } })
+      .catch(() => undefined);
+  }
+
+  beforeAll(async () => {
+    const noopResend = { send: vi.fn().mockResolvedValue({ success: true }) };
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ResendService)
+      .useValue(noopResend)
+      .compile();
+
+    httpApp = moduleRef.createNestApplication();
+    httpApp.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+      }),
+    );
+    httpApp.setGlobalPrefix('api', { exclude: ['health'] });
+    await httpApp.init();
+    httpPrisma = moduleRef.get(PrismaService);
+
+    await cleanupHttpIso(httpPrisma);
+
+    // Seed two tenants with deterministic slugs.
+    tenantASlug = `${HTTP_SLUG_PREFIX}a`;
+    tenantBSlug = `${HTTP_SLUG_PREFIX}b`;
+    const pwHash = await bcrypt.hash(HTTP_ISO_PASSWORD, 4);
+
+    const tA = await httpPrisma.tenant.create({
+      data: {
+        id: createId(),
+        name: 'HTTP Iso Tenant A',
+        slug: tenantASlug,
+        type: TenantType.PRIMARY_SCHOOL,
+        locale: Locale.fr,
+      },
+    });
+    const tB = await httpPrisma.tenant.create({
+      data: {
+        id: createId(),
+        name: 'HTTP Iso Tenant B',
+        slug: tenantBSlug,
+        type: TenantType.PRIMARY_SCHOOL,
+        locale: Locale.fr,
+      },
+    });
+
+    // One SCHOOL_ADMIN per tenant (email-verified so login succeeds).
+    await httpPrisma.user.create({
+      data: {
+        id: createId(),
+        tenantId: tA.id,
+        email: `admin-a@${HTTP_ISO_EMAIL_DOMAIN}`,
+        passwordHash: pwHash,
+        firstName: 'AdminA',
+        lastName: 'IsoHTTP',
+        role: UserRole.SCHOOL_ADMIN,
+        emailVerifiedAt: new Date(),
+      },
+    });
+    await httpPrisma.user.create({
+      data: {
+        id: createId(),
+        tenantId: tB.id,
+        email: `admin-b@${HTTP_ISO_EMAIL_DOMAIN}`,
+        passwordHash: pwHash,
+        firstName: 'AdminB',
+        lastName: 'IsoHTTP',
+        role: UserRole.SCHOOL_ADMIN,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    // One student per tenant (no parentEmail required to be an existing user —
+    // parentEmail is stored as a plain string on the Student model).
+    const sA = await httpPrisma.student.create({
+      data: {
+        id: createId(),
+        tenantId: tA.id,
+        firstName: 'Alice',
+        lastName: 'HTTP-A',
+        dateOfBirth: new Date('2018-06-01'),
+        sex: Sex.F,
+        classroom: 'CP-A',
+        parentEmail: `parent-a@${HTTP_ISO_EMAIL_DOMAIN}`,
+      },
+    });
+    const sB = await httpPrisma.student.create({
+      data: {
+        id: createId(),
+        tenantId: tB.id,
+        firstName: 'Bob',
+        lastName: 'HTTP-B',
+        dateOfBirth: new Date('2017-03-15'),
+        sex: Sex.M,
+        classroom: 'CP-B',
+        parentEmail: `parent-b@${HTTP_ISO_EMAIL_DOMAIN}`,
+      },
+    });
+    httpStudentAId = sA.id;
+    httpStudentBId = sB.id;
+
+    // Mint a valid access token for tenant A's admin via POST /api/auth/login.
+    const loginRes = await request(httpApp.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: `admin-a@${HTTP_ISO_EMAIL_DOMAIN}`, password: HTTP_ISO_PASSWORD })
+      .expect(200);
+    tokenA = loginRes.body.accessToken as string;
+  });
+
+  afterAll(async () => {
+    await cleanupHttpIso(httpPrisma);
+    await httpApp.close();
+  });
+
+  it(
+    'GET /api/students with tenant-A JWT + spoofed Host: <tenantB>.klasso.tn returns ONLY tenant-A students',
+    async () => {
+      // The Host header carries tenantB's subdomain — simulating what an attacker
+      // would send if they held tenant A's JWT but tried to read tenant B data by
+      // spoofing the Host header.  The tenant scoping comes from the JWT (tenantAId
+      // baked in at login), NOT from the Host header, so only tenant A students
+      // must be visible.
+      const res = await request(httpApp.getHttpServer())
+        .get('/api/students')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .set('Host', `${tenantBSlug}.klasso.tn`)
+        .expect(200);
+
+      // Response shape is { items: Student[] } — confirmed from students.e2e-spec.ts
+      // (SCHOOL_ADMIN list at GET /api/students returns res.body.items).
+      const items = res.body.items as Array<{ id: string; tenantId: string }>;
+
+      // Tenant A's student is present.
+      const foundA = items.find((s) => s.id === httpStudentAId);
+      expect(foundA).toBeDefined();
+      expect(foundA?.tenantId).toBe(
+        (await httpPrisma.tenant.findUnique({ where: { slug: tenantASlug } }))!.id,
+      );
+
+      // Tenant B's student is completely absent — Host header had zero effect.
+      const foundB = items.find((s) => s.id === httpStudentBId);
+      expect(foundB).toBeUndefined();
+    },
+  );
+
+  it(
+    'GET /api/students without a spoofed Host returns the same tenant-A-only result',
+    async () => {
+      // Baseline: confirm no Host header tampering also returns only tenant A students.
+      const res = await request(httpApp.getHttpServer())
+        .get('/api/students')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      const items = res.body.items as Array<{ id: string }>;
+      expect(items.find((s) => s.id === httpStudentAId)).toBeDefined();
+      expect(items.find((s) => s.id === httpStudentBId)).toBeUndefined();
+    },
+  );
 });

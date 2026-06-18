@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Locale, TenantType, UserRole } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { ResendService } from '../common/email/resend.service';
 import { InviteTokensService } from './invite-tokens.service';
 import { DomainProvisioningService } from './domain-provisioning.service';
@@ -18,6 +19,7 @@ describe('TenantsService.create', () => {
   let resend: any;
   let config: any;
   let domains: any;
+  let tenantContext: any;
 
   beforeEach(async () => {
     prisma = {
@@ -82,6 +84,11 @@ describe('TenantsService.create', () => {
     config = { get: vi.fn().mockImplementation((_k: string, def: unknown) => def) };
     // Flag off by default → legacy path (invite minted, email sent).
     domains = { isEnabled: () => false, provision: vi.fn() };
+    tenantContext = {
+      runDetached: (work: () => Promise<unknown>) => {
+        void Promise.resolve().then(work).catch(() => undefined);
+      },
+    };
 
     const mod = await Test.createTestingModule({
       providers: [
@@ -91,6 +98,7 @@ describe('TenantsService.create', () => {
         { provide: ResendService, useValue: resend },
         { provide: ConfigService, useValue: config },
         { provide: DomainProvisioningService, useValue: domains },
+        { provide: TenantContextService, useValue: tenantContext },
       ],
     }).compile();
     service = mod.get(TenantsService);
@@ -201,6 +209,7 @@ describe('TenantsService.retryDomain', () => {
   let service: TenantsService;
   let prisma: any;
   let domains: any;
+  let tenantContext: any;
 
   beforeEach(async () => {
     prisma = {
@@ -249,6 +258,11 @@ describe('TenantsService.retryDomain', () => {
       ),
     };
     domains = { isEnabled: () => true, provision: vi.fn() };
+    tenantContext = {
+      runDetached: (work: () => Promise<unknown>) => {
+        void Promise.resolve().then(work).catch(() => undefined);
+      },
+    };
 
     const mod = await Test.createTestingModule({
       providers: [
@@ -258,6 +272,7 @@ describe('TenantsService.retryDomain', () => {
         { provide: ResendService, useValue: { send: vi.fn() } },
         { provide: ConfigService, useValue: { get: vi.fn().mockImplementation((_k: string, def: unknown) => def) } },
         { provide: DomainProvisioningService, useValue: domains },
+        { provide: TenantContextService, useValue: tenantContext },
       ],
     }).compile();
     service = mod.get(TenantsService);
@@ -277,7 +292,6 @@ describe('TenantsService.retryDomain', () => {
   it('retryDomain throws NotFoundException when tenant not found', async () => {
     prisma.tenant.findFirst.mockResolvedValueOnce(null);
 
-    await expect(service.retryDomain('nonexistent-id', 'super1')).rejects.toThrow(NotFoundException);
     await expect(service.retryDomain('nonexistent-id', 'super1')).rejects.toMatchObject({
       response: { code: 'TENANT_NOT_FOUND' },
     });

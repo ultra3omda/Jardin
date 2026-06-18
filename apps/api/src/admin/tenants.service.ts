@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { webcrypto } from 'node:crypto';
 
 import { PrismaService } from '../common/prisma/prisma.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import { DEMO_TENANT_SLUG_PREFIX } from './constants/demo-tenants';
 import { ResendService } from '../common/email/resend.service';
 import { InviteEmail } from '../common/email/templates/invite';
@@ -52,6 +53,7 @@ export class TenantsService {
     private readonly resend: ResendService,
     private readonly config: ConfigService,
     private readonly domains: DomainProvisioningService,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   async create(
@@ -121,7 +123,9 @@ export class TenantsService {
       });
       await this.writeTenantCreatedAudit(superAdminId, tenant.id, slug, adminEmail, null, meta);
       // Detached from the request: DNS + Vercel + SSL poll, then email on resolve.
-      void this.domains.provision(tenant.id, superAdminId);
+      // runDetached drops rlsTx so provision() never runs on the committed request tx (P2028).
+      const provisionTenantId = tenant.id;
+      this.tenantContext.runDetached(() => this.domains.provision(provisionTenantId, superAdminId));
       return {
         tenant: await this.buildSummary(tenant.id),
         invite: null,
@@ -156,7 +160,7 @@ export class TenantsService {
       where: { id },
       data: { domainStatus: 'PROVISIONING', domainError: null },
     });
-    void this.domains.provision(id, superAdminId);
+    this.tenantContext.runDetached(() => this.domains.provision(id, superAdminId));
     return { domainStatus: 'PROVISIONING' };
   }
 
