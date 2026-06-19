@@ -152,6 +152,13 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   );
 }
 
+const DOMAIN_STATUS_LABEL: Record<CreateTenantResponse['domainStatus'], string> = {
+  PROVISIONING: 'Domaine en cours de provisioning…',
+  ACTIVE: 'Domaine actif',
+  FAILED: 'Échec du provisioning du domaine',
+  NONE: '',
+};
+
 function SuccessPanel({
   response,
   onCreateAnother,
@@ -159,6 +166,9 @@ function SuccessPanel({
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ecole-saas-weld.vercel.app';
   const webUrl = `${appUrl}/t/${response.tenant.slug}/login`;
   const mobileUrl = 'https://klasso-mobile.vercel.app';
+  const customDomainUrl = response.tenant.customDomain
+    ? `https://${response.tenant.customDomain}/login`
+    : null;
 
   return (
     <div className="space-y-4 rounded-lg border border-emerald-200 bg-emerald-50 p-6">
@@ -166,13 +176,39 @@ function SuccessPanel({
         ✅ École « {response.tenant.name} » créée
       </h2>
 
+      {customDomainUrl && (
+        <UrlCard
+          label="Domaine dédié"
+          url={customDomainUrl}
+          note={DOMAIN_STATUS_LABEL[response.tenant.domainStatus] || undefined}
+        />
+      )}
       <UrlCard label="Web (page connexion)" url={webUrl} />
       <UrlCard label="Mobile preview" url={mobileUrl} note={`Code école : ${response.tenant.slug}`} />
-      <UrlCard
-        label="Lien d'invitation admin"
-        url={response.invite.url}
-        note={response.inviteEmailSent ? '✓ Email envoyé via Resend' : '⚠ Email NON envoyé — copie le lien manuellement'}
-      />
+
+      {response.invite ? (
+        <UrlCard
+          label="Lien d'invitation admin"
+          url={response.invite.url}
+          note={response.inviteEmailSent ? '✓ Email envoyé via Resend' : '⚠ Email NON envoyé — copie le lien manuellement'}
+        />
+      ) : (
+        <div className="rounded-md border bg-white p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Invitation admin
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Le domaine{' '}
+            {response.tenant.customDomain ? (
+              <code className="rounded bg-muted px-1 py-0.5">{response.tenant.customDomain}</code>
+            ) : (
+              'dédié'
+            )}{' '}
+            est en cours de provisioning. L&apos;email d&apos;invitation partira automatiquement
+            une fois le domaine actif. Suis l&apos;état sur la fiche de l&apos;école.
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center justify-end gap-2 pt-2">
         <Link href={`/admin/tenants/${response.tenant.id}`} className="text-sm font-medium text-primary hover:underline">

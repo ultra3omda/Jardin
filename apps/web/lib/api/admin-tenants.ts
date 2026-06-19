@@ -37,8 +37,15 @@ export interface InviteSummary {
 
 export interface CreateTenantResponse {
   tenant: TenantSummary;
-  invite: InviteSummary;
+  /**
+   * Null when domain automation is enabled: the invite email is sent later,
+   * once the tenant's custom domain reaches ACTIVE. Present (legacy/path mode)
+   * otherwise.
+   */
+  invite: InviteSummary | null;
   inviteEmailSent: boolean;
+  /** Provisioning status of the tenant's custom domain at creation time. */
+  domainStatus: DomainProvisioningStatus;
 }
 
 export class AdminApiError extends Error {
